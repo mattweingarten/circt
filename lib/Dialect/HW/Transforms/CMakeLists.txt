@@ -5,6 +5,7 @@ add_circt_dialect_library(CIRCTHWTransforms
   PrintPetriNet.cpp
   FlattenIO.cpp
   VerifyInnerRefNamespace.cpp
+  FlattenModules.cpp
 
   DEPENDS
   CIRCTHWTransformsIncGen

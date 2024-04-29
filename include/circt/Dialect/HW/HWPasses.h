@@ -31,6 +31,7 @@ std::unique_ptr<mlir::Pass> createFlattenIOPass(bool recursiveFlag = true,
                                                 bool flattenExternFlag = false,
                                                 char joinChar = '.');
 std::unique_ptr<mlir::Pass> createVerifyInnerRefNamespacePass();
+std::unique_ptr<mlir::Pass> createFlattenModulesPass();
 
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION
