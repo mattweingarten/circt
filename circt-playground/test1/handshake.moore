@@ -1,0 +1,226 @@
+module {
+  moore.module @top_module(in %clk : !moore.l1, in %rst : !moore.l1, in %in_data : !moore.l4, out out_data : !moore.l4) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %rst_1 = moore.variable name "rst" : <l1>
+    %in_data_2 = moore.variable name "in_data" : <l4>
+    %out_data = moore.variable : <l4>
+    %interconnect1 = moore.variable : <l4>
+    %interconnect2 = moore.variable : <l4>
+    %interconnect3 = moore.variable : <l8>
+    %interconnect4 = moore.variable : <l8>
+    %valid = moore.variable : <l1>
+    %ready = moore.variable : <l1>
+    %0 = moore.read %clk_0 : <l1>
+    %1 = moore.read %rst_1 : <l1>
+    %2 = moore.read %in_data_2 : <l4>
+    %u1.data_out = moore.instance "u1" @module1(clk: %0: !moore.l1, rst: %1: !moore.l1, data_in: %2: !moore.l4) -> (data_out: !moore.l4)
+    moore.assign %interconnect1, %u1.data_out : l4
+    %3 = moore.read %clk_0 : <l1>
+    %4 = moore.read %rst_1 : <l1>
+    %5 = moore.read %interconnect1 : <l4>
+    %u2.data_out = moore.instance "u2" @module2(clk: %3: !moore.l1, rst: %4: !moore.l1, data_in: %5: !moore.l4) -> (data_out: !moore.l4)
+    moore.assign %interconnect2, %u2.data_out : l4
+    %6 = moore.read %clk_0 : <l1>
+    %7 = moore.read %rst_1 : <l1>
+    %8 = moore.read %valid : <l1>
+    %9 = moore.constant 0 : i4
+    %10 = moore.read %interconnect2 : <l4>
+    %11 = moore.concat %9, %10 : (!moore.i4, !moore.l4) -> l8
+    %u3.out_data = moore.instance "u3" @module3(clk: %6: !moore.l1, reset: %7: !moore.l1, valid: %8: !moore.l1, in_data: %11: !moore.l8) -> (out_data: !moore.l8)
+    moore.assign %interconnect3, %u3.out_data : l8
+    %12 = moore.read %clk_0 : <l1>
+    %13 = moore.read %rst_1 : <l1>
+    %14 = moore.read %valid : <l1>
+    %15 = moore.read %ready : <l1>
+    %16 = moore.read %interconnect3 : <l8>
+    %u4.out_data, %u4.done = moore.instance "u4" @module4(clk: %12: !moore.l1, reset: %13: !moore.l1, valid: %14: !moore.l1, ready: %15: !moore.l1, in_data: %16: !moore.l8) -> (out_data: !moore.l8, done: !moore.l1)
+    moore.assign %interconnect4, %u4.out_data : l8
+    %17 = moore.read %interconnect4 : <l8>
+    %18 = moore.extract %17 from 0 : l8 -> l4
+    moore.assign %out_data, %18 : l4
+    moore.assign %clk_0, %clk : l1
+    moore.assign %rst_1, %rst : l1
+    moore.assign %in_data_2, %in_data : l4
+    %19 = moore.read %out_data : <l4>
+    moore.output %19 : !moore.l4
+  }
+  moore.module private @module1(in %clk : !moore.l1, in %rst : !moore.l1, in %data_in : !moore.l4, out data_out : !moore.l4) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %rst_1 = moore.variable name "rst" : <l1>
+    %data_in_2 = moore.variable name "data_in" : <l4>
+    %data_out = moore.variable : <l4>
+    moore.procedure always_ff {
+      moore.wait_event {
+        %15 = moore.read %clk_0 : <l1>
+        moore.detect_event posedge %15 : l1
+        %16 = moore.read %rst_1 : <l1>
+        moore.detect_event posedge %16 : l1
+      }
+      %1 = moore.read %rst_1 : <l1>
+      %2 = moore.conversion %1 : !moore.l1 -> i1
+      cf.cond_br %2, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %3 = moore.constant 0 : i4
+      %4 = moore.conversion %3 : !moore.i4 -> !moore.l4
+      moore.nonblocking_assign %data_out, %4 : l4
+      cf.br ^bb3
+    ^bb2:  // pred: ^bb0
+      %5 = moore.read %data_in_2 : <l4>
+      %6 = moore.zext %5 : l4 -> l32
+      %7 = moore.constant 1 : i32
+      %8 = moore.conversion %7 : !moore.i32 -> !moore.l32
+      %9 = moore.add %6, %8 : l32
+      %10 = moore.constant 3 : i4
+      %11 = moore.zext %10 : i4 -> i32
+      %12 = moore.conversion %11 : !moore.i32 -> !moore.l32
+      %13 = moore.xor %9, %12 : l32
+      %14 = moore.trunc %13 : l32 -> l4
+      moore.nonblocking_assign %data_out, %14 : l4
+      cf.br ^bb3
+    ^bb3:  // 2 preds: ^bb1, ^bb2
+      moore.return
+    }
+    moore.assign %clk_0, %clk : l1
+    moore.assign %rst_1, %rst : l1
+    moore.assign %data_in_2, %data_in : l4
+    %0 = moore.read %data_out : <l4>
+    moore.output %0 : !moore.l4
+  }
+  moore.module private @module2(in %clk : !moore.l1, in %rst : !moore.l1, in %data_in : !moore.l4, out data_out : !moore.l4) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %rst_1 = moore.variable name "rst" : <l1>
+    %data_in_2 = moore.variable name "data_in" : <l4>
+    %data_out = moore.variable : <l4>
+    moore.procedure always_ff {
+      moore.wait_event {
+        %11 = moore.read %clk_0 : <l1>
+        moore.detect_event posedge %11 : l1
+        %12 = moore.read %rst_1 : <l1>
+        moore.detect_event posedge %12 : l1
+      }
+      %1 = moore.read %rst_1 : <l1>
+      %2 = moore.conversion %1 : !moore.l1 -> i1
+      cf.cond_br %2, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %3 = moore.constant 0 : i4
+      %4 = moore.conversion %3 : !moore.i4 -> !moore.l4
+      moore.nonblocking_assign %data_out, %4 : l4
+      cf.br ^bb3
+    ^bb2:  // pred: ^bb0
+      %5 = moore.read %data_in_2 : <l4>
+      %6 = moore.constant 1 : i32
+      %7 = moore.shl %5, %6 : l4, i32
+      %8 = moore.constant 1 : i4
+      %9 = moore.conversion %8 : !moore.i4 -> !moore.l4
+      %10 = moore.or %7, %9 : l4
+      moore.nonblocking_assign %data_out, %10 : l4
+      cf.br ^bb3
+    ^bb3:  // 2 preds: ^bb1, ^bb2
+      moore.return
+    }
+    moore.assign %clk_0, %clk : l1
+    moore.assign %rst_1, %rst : l1
+    moore.assign %data_in_2, %data_in : l4
+    %0 = moore.read %data_out : <l4>
+    moore.output %0 : !moore.l4
+  }
+  moore.module private @module3(in %clk : !moore.l1, in %reset : !moore.l1, in %valid : !moore.l1, in %in_data : !moore.l8, out out_data : !moore.l8) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %reset_1 = moore.variable name "reset" : <l1>
+    %valid_2 = moore.variable name "valid" : <l1>
+    %in_data_3 = moore.variable name "in_data" : <l8>
+    %out_data = moore.variable : <l8>
+    moore.procedure always_ff {
+      moore.wait_event {
+        %8 = moore.read %clk_0 : <l1>
+        moore.detect_event posedge %8 : l1
+        %9 = moore.read %reset_1 : <l1>
+        moore.detect_event posedge %9 : l1
+      }
+      %1 = moore.read %reset_1 : <l1>
+      %2 = moore.conversion %1 : !moore.l1 -> i1
+      cf.cond_br %2, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %3 = moore.constant 0 : i8
+      %4 = moore.conversion %3 : !moore.i8 -> !moore.l8
+      moore.nonblocking_assign %out_data, %4 : l8
+      cf.br ^bb5
+    ^bb2:  // pred: ^bb0
+      %5 = moore.read %valid_2 : <l1>
+      %6 = moore.conversion %5 : !moore.l1 -> i1
+      cf.cond_br %6, ^bb3, ^bb4
+    ^bb3:  // pred: ^bb2
+      %7 = moore.read %in_data_3 : <l8>
+      moore.nonblocking_assign %out_data, %7 : l8
+      cf.br ^bb4
+    ^bb4:  // 2 preds: ^bb2, ^bb3
+      cf.br ^bb5
+    ^bb5:  // 2 preds: ^bb1, ^bb4
+      moore.return
+    }
+    moore.assign %clk_0, %clk : l1
+    moore.assign %reset_1, %reset : l1
+    moore.assign %valid_2, %valid : l1
+    moore.assign %in_data_3, %in_data : l8
+    %0 = moore.read %out_data : <l8>
+    moore.output %0 : !moore.l8
+  }
+  moore.module private @module4(in %clk : !moore.l1, in %reset : !moore.l1, in %valid : !moore.l1, in %ready : !moore.l1, in %in_data : !moore.l8, out out_data : !moore.l8, out done : !moore.l1) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %reset_1 = moore.variable name "reset" : <l1>
+    %valid_2 = moore.variable name "valid" : <l1>
+    %ready_3 = moore.variable name "ready" : <l1>
+    %in_data_4 = moore.variable name "in_data" : <l8>
+    %out_data = moore.variable : <l8>
+    %done = moore.variable : <l1>
+    moore.procedure always_ff {
+      moore.wait_event {
+        %17 = moore.read %clk_0 : <l1>
+        moore.detect_event posedge %17 : l1
+        %18 = moore.read %reset_1 : <l1>
+        moore.detect_event posedge %18 : l1
+      }
+      %2 = moore.read %reset_1 : <l1>
+      %3 = moore.conversion %2 : !moore.l1 -> i1
+      cf.cond_br %3, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %4 = moore.constant 0 : i8
+      %5 = moore.conversion %4 : !moore.i8 -> !moore.l8
+      moore.nonblocking_assign %out_data, %5 : l8
+      %6 = moore.constant 0 : i1
+      %7 = moore.conversion %6 : !moore.i1 -> !moore.l1
+      moore.nonblocking_assign %done, %7 : l1
+      cf.br ^bb6
+    ^bb2:  // pred: ^bb0
+      %8 = moore.read %valid_2 : <l1>
+      %9 = moore.read %ready_3 : <l1>
+      %10 = moore.and %8, %9 : l1
+      %11 = moore.conversion %10 : !moore.l1 -> i1
+      cf.cond_br %11, ^bb3, ^bb4
+    ^bb3:  // pred: ^bb2
+      %12 = moore.read %in_data_4 : <l8>
+      moore.nonblocking_assign %out_data, %12 : l8
+      %13 = moore.constant 1 : i1
+      %14 = moore.conversion %13 : !moore.i1 -> !moore.l1
+      moore.nonblocking_assign %done, %14 : l1
+      cf.br ^bb5
+    ^bb4:  // pred: ^bb2
+      %15 = moore.constant 0 : i1
+      %16 = moore.conversion %15 : !moore.i1 -> !moore.l1
+      moore.nonblocking_assign %done, %16 : l1
+      cf.br ^bb5
+    ^bb5:  // 2 preds: ^bb3, ^bb4
+      cf.br ^bb6
+    ^bb6:  // 2 preds: ^bb1, ^bb5
+      moore.return
+    }
+    moore.assign %clk_0, %clk : l1
+    moore.assign %reset_1, %reset : l1
+    moore.assign %valid_2, %valid : l1
+    moore.assign %ready_3, %ready : l1
+    moore.assign %in_data_4, %in_data : l8
+    %0 = moore.read %out_data : <l8>
+    %1 = moore.read %done : <l1>
+    moore.output %0, %1 : !moore.l8, !moore.l1
+  }
+}

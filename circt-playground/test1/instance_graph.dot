@@ -1,0 +1,10 @@
+digraph unnamed {
+
+	Node0x5df60f60dc10 [shape=record,label="{top_module}"];
+	Node0x5df60f60dc10 -> Node0x5df60f5f2c10[label=u1];
+	Node0x5df60f60dc10 -> Node0x5df60f606100[label=u2];
+	Node0x5df60f60dc10 -> Node0x5df60f5ede40[label=u3];
+	Node0x5df60f5f2c10 [shape=record,label="{module1}"];
+	Node0x5df60f606100 [shape=record,label="{module2}"];
+	Node0x5df60f5ede40 [shape=record,label="{module3}"];
+}

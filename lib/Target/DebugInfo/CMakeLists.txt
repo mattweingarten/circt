@@ -5,11 +5,12 @@ add_circt_translation_library(CIRCTTargetDebugInfo
 
   LINK_COMPONENTS
   Core
-
   LINK_LIBS PUBLIC
   CIRCTComb
   CIRCTDebug
   CIRCTDebugAnalysis
+  CIRCTToyAnalysis
+  CIRCTEmit
   CIRCTHW
   CIRCTOM
   CIRCTSeq
