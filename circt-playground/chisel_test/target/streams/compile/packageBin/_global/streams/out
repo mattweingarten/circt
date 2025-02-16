@@ -1,0 +1,21 @@
+[0m[[0m[0mdebug[0m] [0m[0mPackaging /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/-name-_2.13-0.1.0.jar ...[0m
+[0m[[0m[0mdebug[0m] [0m[0mInput file mappings:[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module1$$anon$1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module1$$anon$1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module2$$anon$2.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module2$$anon$2.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module3.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module3.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/TopModule.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/TopModule.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/TopModule$$anon$4.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/TopModule$$anon$4.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module3$$anon$3.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module3$$anon$3.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module2.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module2.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	example/Module1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/matt/Workspace/riscv/circt/circt-playground/chisel_test/target/scala-2.13/classes/example/Module1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0mDone packaging.[0m

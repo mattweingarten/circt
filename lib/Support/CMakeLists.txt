@@ -9,6 +9,7 @@ add_circt_library(CIRCTSupport
   APInt.cpp
   BackedgeBuilder.cpp
   CustomDirectiveImpl.cpp
+  CallGraph.cpp
   Debug.cpp
   FVInt.cpp
   FieldRef.cpp

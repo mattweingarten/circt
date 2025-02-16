@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "circt/Analysis/DebugAnalysis.h"
+#include "circt/Analysis/ToyAnalysis.h"
 #include "circt/Analysis/DependenceAnalysis.h"
 #include "circt/Analysis/FIRRTLInstanceInfo.h"
 #include "circt/Analysis/OpCountAnalysis.h"
@@ -58,6 +59,36 @@ void TestDebugAnalysisPass::runOnOperation() {
   }
 }
 
+
+
+//===----------------------------------------------------------------------===//
+// ToyAnalysis
+//===----------------------------------------------------------------------===//
+
+namespace {
+struct TestToyAnalysisPass
+    : public PassWrapper<TestToyAnalysisPass, OperationPass<mlir::ModuleOp>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TestToyAnalysisPass)
+
+  void runOnOperation() override;
+  StringRef getArgument() const override { return "test-toy-analysis"; }
+  StringRef getDescription() const override {
+    return "Perform toy analysis and emit results as attributes";
+  }
+};
+} // namespace
+
+
+void TestToyAnalysisPass::runOnOperation() {
+  auto *context = &getContext();
+  auto &analysis = getAnalysis<ToyAnalysis>();
+  for (auto *op : analysis.toyOps) {
+    op->setAttr("toy.only", UnitAttr::get(context));
+  }
+}
+
+
+
 //===----------------------------------------------------------------------===//
 // DependenceAnalysis
 //===----------------------------------------------------------------------===//
@@ -75,6 +106,8 @@ struct TestDependenceAnalysisPass
   }
 };
 } // namespace
+
+
 
 void TestDependenceAnalysisPass::runOnOperation() {
   MLIRContext *context = &getContext();
@@ -278,6 +311,9 @@ void registerAnalysisTestPasses() {
   });
   registerPass([]() -> std::unique_ptr<Pass> {
     return std::make_unique<TestDebugAnalysisPass>();
+  });
+  registerPass([]() -> std::unique_ptr<Pass> {
+    return std::make_unique<TestToyAnalysisPass>();
   });
   registerPass([]() -> std::unique_ptr<Pass> {
     return std::make_unique<InferTopModulePass>();

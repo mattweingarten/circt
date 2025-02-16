@@ -1,0 +1,238 @@
+module {
+  hw.module @top_module(in %clk : i1, in %rst : i1, in %in_data : i4, out out_data : i4) {
+    %false = hw.constant false
+    %clk_0 = llhd.sig name "clk" %false : i1
+    %false_1 = hw.constant false
+    %rst_2 = llhd.sig name "rst" %false_1 : i1
+    %c0_i4 = hw.constant 0 : i4
+    %in_data_3 = llhd.sig name "in_data" %c0_i4 : i4
+    %c0_i4_4 = hw.constant 0 : i4
+    %out_data = llhd.sig %c0_i4_4 : i4
+    %c0_i4_5 = hw.constant 0 : i4
+    %interconnect1 = llhd.sig %c0_i4_5 : i4
+    %c0_i4_6 = hw.constant 0 : i4
+    %interconnect2 = llhd.sig %c0_i4_6 : i4
+    %0 = llhd.prb %clk_0 : !hw.inout<i1>
+    %1 = llhd.prb %rst_2 : !hw.inout<i1>
+    %2 = llhd.prb %in_data_3 : !hw.inout<i4>
+    %u1.data_out = hw.instance "u1" @module1(clk: %0: i1, rst: %1: i1, data_in: %2: i4) -> (data_out: i4)
+    %3 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %interconnect1, %u1.data_out after %3 : !hw.inout<i4>
+    %4 = llhd.prb %clk_0 : !hw.inout<i1>
+    %5 = llhd.prb %rst_2 : !hw.inout<i1>
+    %6 = llhd.prb %interconnect1 : !hw.inout<i4>
+    %u2.data_out = hw.instance "u2" @module2(clk: %4: i1, rst: %5: i1, data_in: %6: i4) -> (data_out: i4)
+    %7 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %interconnect2, %u2.data_out after %7 : !hw.inout<i4>
+    %8 = llhd.prb %clk_0 : !hw.inout<i1>
+    %9 = llhd.prb %rst_2 : !hw.inout<i1>
+    %10 = llhd.prb %interconnect2 : !hw.inout<i4>
+    %u3.data_out = hw.instance "u3" @module3(clk: %8: i1, rst: %9: i1, data_in: %10: i4) -> (data_out: i4)
+    %11 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %out_data, %u3.data_out after %11 : !hw.inout<i4>
+    %12 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %clk_0, %clk after %12 : !hw.inout<i1>
+    %13 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %rst_2, %rst after %13 : !hw.inout<i1>
+    %14 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %in_data_3, %in_data after %14 : !hw.inout<i4>
+    %15 = llhd.prb %out_data : !hw.inout<i4>
+    hw.output %15 : i4
+  }
+  hw.module private @module1(in %clk : i1, in %rst : i1, in %data_in : i4, out data_out : i4) {
+    %false = hw.constant false
+    %clk_0 = llhd.sig name "clk" %false : i1
+    %0 = llhd.prb %clk_0 : !hw.inout<i1>
+    %false_1 = hw.constant false
+    %rst_2 = llhd.sig name "rst" %false_1 : i1
+    %1 = llhd.prb %rst_2 : !hw.inout<i1>
+    %c0_i4 = hw.constant 0 : i4
+    %data_in_3 = llhd.sig name "data_in" %c0_i4 : i4
+    %c0_i4_4 = hw.constant 0 : i4
+    %data_out = llhd.sig %c0_i4_4 : i4
+    llhd.process {
+      cf.br ^bb1
+    ^bb1:  // 2 preds: ^bb0, ^bb7
+      cf.br ^bb2
+    ^bb2:  // 2 preds: ^bb1, ^bb3
+      %6 = llhd.prb %clk_0 : !hw.inout<i1>
+      %7 = llhd.prb %rst_2 : !hw.inout<i1>
+      llhd.wait (%0, %1 : i1, i1), ^bb3
+    ^bb3:  // pred: ^bb2
+      %8 = llhd.prb %clk_0 : !hw.inout<i1>
+      %true = hw.constant true
+      %9 = comb.xor bin %6, %true : i1
+      %10 = comb.and bin %9, %8 : i1
+      %11 = llhd.prb %rst_2 : !hw.inout<i1>
+      %true_5 = hw.constant true
+      %12 = comb.xor bin %7, %true_5 : i1
+      %13 = comb.and bin %12, %11 : i1
+      %14 = comb.or bin %10, %13 : i1
+      cf.cond_br %14, ^bb4, ^bb2
+    ^bb4:  // pred: ^bb3
+      %15 = llhd.prb %rst_2 : !hw.inout<i1>
+      cf.cond_br %15, ^bb5, ^bb6
+    ^bb5:  // pred: ^bb4
+      %c0_i4_6 = hw.constant 0 : i4
+      %c0_i4_7 = hw.constant 0 : i4
+      %16 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %c0_i4_7 after %16 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb6:  // pred: ^bb4
+      %17 = llhd.prb %data_in_3 : !hw.inout<i4>
+      %c0_i28 = hw.constant 0 : i28
+      %18 = comb.concat %c0_i28, %17 : i28, i4
+      %c1_i32 = hw.constant 1 : i32
+      %c1_i32_8 = hw.constant 1 : i32
+      %19 = comb.add %18, %c1_i32_8 : i32
+      %c3_i4 = hw.constant 3 : i4
+      %c0_i28_9 = hw.constant 0 : i28
+      %20 = comb.concat %c0_i28_9, %c3_i4 : i28, i4
+      %21 = comb.xor %19, %20 : i32
+      %22 = comb.extract %21 from 0 : (i32) -> i4
+      %23 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %22 after %23 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb7:  // 2 preds: ^bb5, ^bb6
+      cf.br ^bb1
+    }
+    %2 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %clk_0, %clk after %2 : !hw.inout<i1>
+    %3 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %rst_2, %rst after %3 : !hw.inout<i1>
+    %4 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %data_in_3, %data_in after %4 : !hw.inout<i4>
+    %5 = llhd.prb %data_out : !hw.inout<i4>
+    hw.output %5 : i4
+  }
+  hw.module private @module2(in %clk : i1, in %rst : i1, in %data_in : i4, out data_out : i4) {
+    %false = hw.constant false
+    %clk_0 = llhd.sig name "clk" %false : i1
+    %0 = llhd.prb %clk_0 : !hw.inout<i1>
+    %false_1 = hw.constant false
+    %rst_2 = llhd.sig name "rst" %false_1 : i1
+    %1 = llhd.prb %rst_2 : !hw.inout<i1>
+    %c0_i4 = hw.constant 0 : i4
+    %data_in_3 = llhd.sig name "data_in" %c0_i4 : i4
+    %c0_i4_4 = hw.constant 0 : i4
+    %data_out = llhd.sig %c0_i4_4 : i4
+    llhd.process {
+      cf.br ^bb1
+    ^bb1:  // 2 preds: ^bb0, ^bb7
+      cf.br ^bb2
+    ^bb2:  // 2 preds: ^bb1, ^bb3
+      %6 = llhd.prb %clk_0 : !hw.inout<i1>
+      %7 = llhd.prb %rst_2 : !hw.inout<i1>
+      llhd.wait (%0, %1 : i1, i1), ^bb3
+    ^bb3:  // pred: ^bb2
+      %8 = llhd.prb %clk_0 : !hw.inout<i1>
+      %true = hw.constant true
+      %9 = comb.xor bin %6, %true : i1
+      %10 = comb.and bin %9, %8 : i1
+      %11 = llhd.prb %rst_2 : !hw.inout<i1>
+      %true_5 = hw.constant true
+      %12 = comb.xor bin %7, %true_5 : i1
+      %13 = comb.and bin %12, %11 : i1
+      %14 = comb.or bin %10, %13 : i1
+      cf.cond_br %14, ^bb4, ^bb2
+    ^bb4:  // pred: ^bb3
+      %15 = llhd.prb %rst_2 : !hw.inout<i1>
+      cf.cond_br %15, ^bb5, ^bb6
+    ^bb5:  // pred: ^bb4
+      %c0_i4_6 = hw.constant 0 : i4
+      %c0_i4_7 = hw.constant 0 : i4
+      %16 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %c0_i4_7 after %16 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb6:  // pred: ^bb4
+      %17 = llhd.prb %data_in_3 : !hw.inout<i4>
+      %c1_i32 = hw.constant 1 : i32
+      %18 = comb.extract %c1_i32 from 4 : (i32) -> i28
+      %c0_i28 = hw.constant 0 : i28
+      %19 = comb.icmp eq %18, %c0_i28 : i28
+      %20 = comb.extract %c1_i32 from 0 : (i32) -> i4
+      %c-1_i4 = hw.constant -1 : i4
+      %21 = comb.mux %19, %20, %c-1_i4 : i4
+      %22 = comb.shl %17, %21 : i4
+      %c1_i4 = hw.constant 1 : i4
+      %c1_i4_8 = hw.constant 1 : i4
+      %23 = comb.or %22, %c1_i4_8 : i4
+      %24 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %23 after %24 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb7:  // 2 preds: ^bb5, ^bb6
+      cf.br ^bb1
+    }
+    %2 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %clk_0, %clk after %2 : !hw.inout<i1>
+    %3 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %rst_2, %rst after %3 : !hw.inout<i1>
+    %4 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %data_in_3, %data_in after %4 : !hw.inout<i4>
+    %5 = llhd.prb %data_out : !hw.inout<i4>
+    hw.output %5 : i4
+  }
+  hw.module private @module3(in %clk : i1, in %rst : i1, in %data_in : i4, out data_out : i4) {
+    %false = hw.constant false
+    %clk_0 = llhd.sig name "clk" %false : i1
+    %0 = llhd.prb %clk_0 : !hw.inout<i1>
+    %false_1 = hw.constant false
+    %rst_2 = llhd.sig name "rst" %false_1 : i1
+    %1 = llhd.prb %rst_2 : !hw.inout<i1>
+    %c0_i4 = hw.constant 0 : i4
+    %data_in_3 = llhd.sig name "data_in" %c0_i4 : i4
+    %c0_i4_4 = hw.constant 0 : i4
+    %data_out = llhd.sig %c0_i4_4 : i4
+    llhd.process {
+      cf.br ^bb1
+    ^bb1:  // 2 preds: ^bb0, ^bb7
+      cf.br ^bb2
+    ^bb2:  // 2 preds: ^bb1, ^bb3
+      %6 = llhd.prb %clk_0 : !hw.inout<i1>
+      %7 = llhd.prb %rst_2 : !hw.inout<i1>
+      llhd.wait (%0, %1 : i1, i1), ^bb3
+    ^bb3:  // pred: ^bb2
+      %8 = llhd.prb %clk_0 : !hw.inout<i1>
+      %true = hw.constant true
+      %9 = comb.xor bin %6, %true : i1
+      %10 = comb.and bin %9, %8 : i1
+      %11 = llhd.prb %rst_2 : !hw.inout<i1>
+      %true_5 = hw.constant true
+      %12 = comb.xor bin %7, %true_5 : i1
+      %13 = comb.and bin %12, %11 : i1
+      %14 = comb.or bin %10, %13 : i1
+      cf.cond_br %14, ^bb4, ^bb2
+    ^bb4:  // pred: ^bb3
+      %15 = llhd.prb %rst_2 : !hw.inout<i1>
+      cf.cond_br %15, ^bb5, ^bb6
+    ^bb5:  // pred: ^bb4
+      %c0_i4_6 = hw.constant 0 : i4
+      %c0_i4_7 = hw.constant 0 : i4
+      %16 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %c0_i4_7 after %16 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb6:  // pred: ^bb4
+      %17 = llhd.prb %data_in_3 : !hw.inout<i4>
+      %c-6_i4 = hw.constant -6 : i4
+      %c-6_i4_8 = hw.constant -6 : i4
+      %18 = comb.xor %17, %c-6_i4_8 : i4
+      %c3_i4 = hw.constant 3 : i4
+      %c3_i4_9 = hw.constant 3 : i4
+      %19 = comb.add %18, %c3_i4_9 : i4
+      %20 = llhd.constant_time <0ns, 1d, 0e>
+      llhd.drv %data_out, %19 after %20 : !hw.inout<i4>
+      cf.br ^bb7
+    ^bb7:  // 2 preds: ^bb5, ^bb6
+      cf.br ^bb1
+    }
+    %2 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %clk_0, %clk after %2 : !hw.inout<i1>
+    %3 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %rst_2, %rst after %3 : !hw.inout<i1>
+    %4 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %data_in_3, %data_in after %4 : !hw.inout<i4>
+    %5 = llhd.prb %data_out : !hw.inout<i4>
+    hw.output %5 : i4
+  }
+}
+
