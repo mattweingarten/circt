@@ -28,10 +28,13 @@ public:
   void addChild(std::unique_ptr<CallGraphNode> child);
 
 private:
+   // TODO: Make StringRef
   // TODO: more useful fields, such as size of this node, some prelimiary
   // analysis caches, etc...
   ModuleOp *module;
   // Maybe we want to represent the CallGraph with an Edge the same way LLVM
+
+
   // CallGraph does? This would allow us to represent edges to unkown areas of
   // the code? --> I think this is a good idea for the future.
   llvm::SmallVector<std::unique_ptr<CallGraphNode>> children;

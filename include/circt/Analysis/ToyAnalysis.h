@@ -16,14 +16,16 @@
 namespace mlir {
 class Operation;
 class OpOperand;
+class AnalysisManager;
 } // namespace mlir
 
 namespace circt {
 
 /// Perform a toy analysis to track specific operations and values.
 struct ToyAnalysis {
-  ToyAnalysis(Operation *op);
+  ToyAnalysis(Operation *op, mlir::AnalysisManager &am);
   DenseSet<Operation *> toyOps;
+
 
 };
 
