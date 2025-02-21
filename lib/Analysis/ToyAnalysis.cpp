@@ -6,11 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "circt/Dialect/HW/HWInstanceGraph.h"
+#include "circt/Dialect/HW/HWPasses.h"
+
 #include "circt/Analysis/ToyAnalysis.h"
 #include "circt/Dialect/Comb/CombOps.h"
 #include "circt/Dialect/Debug/DebugOps.h"
 #include "circt/Dialect/HW/HWOps.h"
 #include "circt/Support/CallGraph.h"
+#include "mlir/Pass/AnalysisManager.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Support/Debug.h"
 
@@ -20,19 +24,25 @@ using namespace mlir;
 
 namespace {
 struct ToyAnalysisBuilder {
-  ToyAnalysisBuilder(Operation *rootOp) : rootOp(rootOp) {}
+  ToyAnalysisBuilder(Operation *rootOp, mlir::AnalysisManager &am)
+      : rootOp(rootOp) {}
   Operation *rootOp;
   DenseSet<Operation *> toyOps;
+  DenseMap<Operation *, Operation *> instanceToModule;
 
-  void run();
+  void run(mlir::AnalysisManager &am);
 };
 } // namespace
 
-void ToyAnalysisBuilder::run() {
+void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
+  auto &instanceGraph = am.getAnalysis<hw::InstanceGraph>();
 
   llvm::errs() << "RootOp: \n";
   rootOp->dumpPretty();
 
+  auto ctxt = rootOp->getContext();
+
+  llvm::errs() << "Finding interesting points: \n";
   rootOp->walk([&](Operation *op) {
     if (isa<::circt::hw::InstanceOp>(op)) {
       circt::hw::InstanceOp instance = dyn_cast<circt::hw::InstanceOp>(op);
@@ -62,10 +72,33 @@ void ToyAnalysisBuilder::run() {
       toyOps.insert(op);
     }
   });
+
+  llvm::errs() << "Building whole program callgraph: \n";
+  rootOp->walk([&](Operation *op) {
+    if (isa<::circt::hw::InstanceOp>(op)) {
+      circt::hw::InstanceOp instance = dyn_cast<circt::hw::InstanceOp>(op);
+      llvm::errs() << "Hello we found you: ";
+      // instance
+      auto attrName = instance.getReferencedModuleNameAttr();
+      llvm::errs() << attrName << "\n";
+      circt::igraph::InstanceGraphNode *node =
+          instanceGraph.lookupOrNull(attrName);
+      if (node) {
+        auto module = dyn_cast_or_null<circt::hw::HWModuleOp>(
+            node->getModule().getOperation());
+        if (module) {
+          llvm::errs() << "Found module code: " << attrName << "\n";
+          Operation *module_op = (Operation *)module;
+          instanceToModule.insert({op, module_op});
+          // module_op->dumpPretty();
+        }
+      }
+    }
+  });
 }
 
-ToyAnalysis::ToyAnalysis(Operation *op) {
-  ToyAnalysisBuilder builder(op);
-  builder.run();
+ToyAnalysis::ToyAnalysis(Operation *op, mlir::AnalysisManager &am) {
+  ToyAnalysisBuilder builder(op, am);
+  builder.run(am);
   toyOps = std::move(builder.toyOps);
 }
