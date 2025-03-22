@@ -10,6 +10,7 @@ module {
     %interconnect4 = moore.variable : <l8>
     %valid = moore.variable : <l1>
     %ready = moore.variable : <l1>
+    %interconnect5 = moore.net wire : <l1>
     %0 = moore.read %clk_0 : <l1>
     %1 = moore.read %rst_1 : <l1>
     %2 = moore.read %in_data_2 : <l4>

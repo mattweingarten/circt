@@ -6,9 +6,11 @@ module top_module (
     output logic [3:0] out_data
 );
     
-    logic [3:0] interconnect1, interconnect2;
-    logic [7:0] interconnect3, interconnect4;
-    logic valid, ready;
+    reg [3:0] interconnect1, interconnect2;
+    reg [7:0] interconnect3, interconnect4;
+    reg valid, ready;
+
+    wire interconnect5;
     
     module1 u1 (
         .clk(clk),

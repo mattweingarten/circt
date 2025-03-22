@@ -478,6 +478,8 @@ static LogicalResult flattenOpsOfType(ModuleOp module, bool recursive,
 template <typename... TOps>
 static bool flattenIO(ModuleOp module, bool recursive,
                       StringSet<> &externModules, char joinChar) {
+  llvm::errs() << "Pass driver: " << "Recursive: " << recursive
+               << " joinChar: " << joinChar << "\n";
   return (failed(flattenOpsOfType<TOps>(module, recursive, externModules,
                                         joinChar)) ||
           ...);
@@ -495,6 +497,9 @@ public:
 
   void runOnOperation() override {
     ModuleOp module = getOperation();
+    llvm::errs() << "Running Hw flatten IO with " << recursive << " and "
+                 << flattenExtern << " and joinChar " << joinChar
+                 << " on module: " << module.getName() << "\n";
     if (!flattenExtern) {
       // Record the extern modules, donot flatten them.
       for (auto m : module.getOps<hw::HWModuleExternOp>())

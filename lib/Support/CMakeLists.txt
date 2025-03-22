@@ -12,6 +12,8 @@ add_circt_library(CIRCTSupport
   CallGraph.cpp
   Debug.cpp
   FieldRef.cpp
+  InstanceGraph.cpp
+  PetriNet.cpp
   JSON.cpp
   LoweringOptions.cpp
   Naming.cpp

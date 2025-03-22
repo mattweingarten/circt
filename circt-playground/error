@@ -1,0 +1,45 @@
+Transition to transition arc not supported
+  t3 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t3", width=0, height=3];
+//%699 = comb.and bin %693, %io_dmem_s2_xcpt_ma_ld : i1
+//%693 = comb.and bin %wb_reg_valid, %wb_ctrl_mem : i1
+//%695 = comb.and bin %693, %io_dmem_s2_xcpt_pf_ld : i1
+//%700 = comb.or bin %wb_reg_xcpt, %694, %695, %696, %697, %698, %699 {sv.namehint = "wb_xcpt"} : i1
+//%694 = comb.and bin %693, %io_dmem_s2_xcpt_pf_st : i1
+//%726 = comb.xor bin %700, %true {sv.namehint = "_rocc_blocked_T"} : i1
+//%696 = comb.and bin %693, %io_dmem_s2_xcpt_ae_st : i1
+//%true = hw.constant true
+//%698 = comb.and bin %693, %io_dmem_s2_xcpt_ma_st : i1
+//%697 = comb.and bin %693, %io_dmem_s2_xcpt_ae_ld : i1
+  t6 [shape=record, label="<f0>", xlabel="t6", width=0, height=1];
+//%847 = comb.or bin %846, %ibuf.io_inst_0_bits_replay, %1, %845, %csr.io_interrupt {sv.namehint = "ctrl_killd"} : i1
+//%163 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %159, %72, %73, %74, %75, %42, %160, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_116"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+//%404 = comb.mux bin %847, %ex_ctrl_mem, %209 : i1
+//%ibuf.io_imem_ready, %ibuf.io_pc, %ibuf.io_inst_0_valid, %ibuf.io_inst_0_bits_xcpt0_pf_inst, %ibuf.io_inst_0_bits_xcpt0_gf_inst, %ibuf.io_inst_0_bits_xcpt0_ae_inst, %ibuf.io_inst_0_bits_xcpt1_pf_inst, %ibuf.io_inst_0_bits_xcpt1_gf_inst, %ibuf.io_inst_0_bits_xcpt1_ae_inst, %ibuf.io_inst_0_bits_replay, %ibuf.io_inst_0_bits_rvc, %ibuf.io_inst_0_bits_inst_bits, %ibuf.io_inst_0_bits_inst_rd, %ibuf.io_inst_0_bits_inst_rs1, %ibuf.io_inst_0_bits_inst_rs2, %ibuf.io_inst_0_bits_raw = hw.instance "ibuf" @IBuf(clock: %clock: !seq.clock, reset: %reset: i1, io_imem_valid: %io_imem_resp_valid: i1, io_imem_bits_pc: %io_imem_resp_bits_pc: i32, io_imem_bits_data: %io_imem_resp_bits_data: i32, io_imem_bits_xcpt_pf_inst: %io_imem_resp_bits_xcpt_pf_inst: i1, io_imem_bits_xcpt_gf_inst: %io_imem_resp_bits_xcpt_gf_inst: i1, io_imem_bits_xcpt_ae_inst: %io_imem_resp_bits_xcpt_ae_inst: i1, io_imem_bits_replay: %io_imem_resp_bits_replay: i1, io_kill: %1: i1, io_inst_0_ready: %856: i1) -> (io_imem_ready: i1, io_pc: i32, io_inst_0_valid: i1, io_inst_0_bits_xcpt0_pf_inst: i1, io_inst_0_bits_xcpt0_gf_inst: i1, io_inst_0_bits_xcpt0_ae_inst: i1, io_inst_0_bits_xcpt1_pf_inst: i1, io_inst_0_bits_xcpt1_gf_inst: i1, io_inst_0_bits_xcpt1_ae_inst: i1, io_inst_0_bits_replay: i1, io_inst_0_bits_rvc: i1, io_inst_0_bits_inst_bits: i32, io_inst_0_bits_inst_rd: i5, io_inst_0_bits_inst_rs1: i5, io_inst_0_bits_inst_rs2: i5, io_inst_0_bits_raw: i32) {sv.namehint = "id_waddr"}
+//%8 = comb.extract %3 from 2 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_4"} : (i30) -> i1
+//%95 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 13 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_24"} : (i32) -> i1
+//%17 = comb.extract %3 from 12 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_8"} : (i30) -> i1
+//%13 = comb.icmp bin eq %12, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_1"} : i8
+//%208 = comb.concat %13, %19, %23, %101, %158, %164 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_18"} : i1, i1, i1, i1, i1, i1
+//%48 = comb.extract %3 from 28 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_26"} : (i30) -> i1
+//%c0_i6 = hw.constant 0 : i6
+//%5 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 1 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_1"} : (i32) -> i1
+//%74 = comb.extract %3 from 21 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_19"} : (i30) -> i1
+//%19 = comb.icmp bin eq %18, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_5"} : i8
+//%42 = comb.extract %3 from 25 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_12"} : (i30) -> i1
+//%158 = comb.icmp bin eq %157, %c-1_i14 {sv.namehint = "_id_ctrl_decoder_decoded_T_113"} : i14
+//%1 = comb.or bin %713, %542 {sv.namehint = "ibuf.io_kill"} : i1
+//%845 = comb.or bin %812, %822, %831, %783, %790, %797, %838, %839, %844, %301, %csr.io_csr_stall, %id_reg_pause {sv.namehint = "_ctrl_stalld_T_32"} : i1
+//%75 = comb.extract %3 from 22 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_20"} : (i30) -> i1
+//%72 = comb.extract %3 from 19 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_17"} : (i30) -> i1
+//%159 = comb.extract %3 from 18 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_54"} : (i30) -> i1
+//%856 = comb.xor bin %845, %true {sv.namehint = "ibuf.io_inst_0_ready"} : i1
+//%44 = comb.extract %3 from 27 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_14"} : (i30) -> i1
+//%c-1_i30 = hw.constant -1 : i30
+//%4 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 0 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_0"} : (i32) -> i1
+//%23 = comb.icmp bin eq %22, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_9"} : i8
+//%209 = comb.icmp bin ne %208, %c0_i6 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_19"} : i6
+//%164 = comb.icmp bin eq %163, %c-1_i20 {sv.namehint = "_id_ctrl_decoder_decoded_T_117"} : i20
+//%101 = comb.icmp bin eq %100, %c-1_i12 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_17"} : i12
+//%25 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 3 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_3_5"} : (i32) -> i1
+//%2 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 2 : (i32) -> i30
+//

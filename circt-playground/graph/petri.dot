@@ -1,0 +1,60 @@
+digraph PetriNet {
+    rankdir=LR;
+
+    // Places (marked places have a filled circle inside)
+    p1 [shape=circle, label="", xlabel="p1", style=filled, fillcolor="#a58484"];
+    p2 [shape=circle, label="⬤", xlabel="p2", peripheries=2];
+    p3 [shape=circle, label="", xlabel="p3"];
+    p4 [shape=circle, label="", xlabel="p4"];
+    p5 [shape=circle, label="", xlabel="p5", style=filled, fillcolor=white];
+    p6 [shape=circle, label="", xlabel="p6"];
+    p7 [shape=circle, label="", xlabel="p7", style=filled, fillcolor=white];
+
+    // Transitions (rectangles)
+    t1 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t1"];
+    t2 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t2"];
+    t3 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t3"];
+    t4 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t4"];
+    t5 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t5"];
+    t6 [shape=rectangle, label="", width=0.1, height=0.5, xlabel="t6"];
+
+    // Arcs
+    p1 -> t1;
+    t1 -> p2;
+    p2 -> t2;
+    t2 -> p3;
+
+    p3 -> t3;
+    t3 -> p4;
+    p4 -> t4;
+    t4 -> p5;
+
+    p3 -> t5 [arrowhead=odot];
+    t5 -> p6;
+    p6 -> t6;
+    t6 -> p7;
+
+    p7 -> t5; // Loop for p6 and p7
+
+    p7 -> eggs;
+    subgraph cluster_food {
+        eggs; chicken; ham;
+        label="Food";
+        graph[style=dashed];
+
+        subgraph cluster_food {
+        eggs; chicken; ham;
+        label="Food";
+        graph[style=dashed, color=red];
+    };
+
+    };
+
+
+    subgraph cluster_trash {
+        wasted; useful;
+        label="Builtin";
+        graph[style=dashed];
+    };
+
+}

@@ -1,0 +1,16 @@
+digraph G {
+  pack=true;
+  packmode="array_c3";  // 3 columns, column-major
+  subgraph array_A0 {
+    node [shape=box];
+    a1; a2; a3;
+  }
+  subgraph array_A1 {
+    node [shape=circle];
+    b1; b2; b3;
+  }
+  subgraph array_A2 {
+    node [shape=diamond];
+    c1; c2; c3;
+  }
+}

@@ -1,0 +1,22 @@
+module {
+  moore.module @simple_sequential(in %in_data : !moore.l1, out out_data : !moore.l1) {
+    %in_data_0 = moore.variable name "in_data" : <l1>
+    %out_data = moore.variable : <l1>
+    %intermediate_value = moore.variable : <l1>
+    moore.procedure always_comb {
+      %1 = moore.read %in_data_0 : <l1>
+      %2 = moore.zext %1 : l1 -> l32
+      %3 = moore.constant 1 : i32
+      %4 = moore.conversion %3 : !moore.i32 -> !moore.l32
+      %5 = moore.add %2, %4 : l32
+      %6 = moore.trunc %5 : l32 -> l1
+      moore.blocking_assign %intermediate_value, %6 : l1
+      %7 = moore.read %intermediate_value : <l1>
+      moore.blocking_assign %out_data, %7 : l1
+      moore.return
+    }
+    moore.assign %in_data_0, %in_data : l1
+    %0 = moore.read %out_data : <l1>
+    moore.output %0 : !moore.l1
+  }
+}
