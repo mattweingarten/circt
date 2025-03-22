@@ -14,6 +14,7 @@ add_circt_library(CIRCTSupport
   FVInt.cpp
   FieldRef.cpp
   InstanceGraph.cpp
+  PetriNet.cpp
   JSON.cpp
   LoweringOptions.cpp
   Naming.cpp

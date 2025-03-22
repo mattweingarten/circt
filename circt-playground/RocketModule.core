@@ -1,0 +1,1071 @@
+hw.module private @Rocket(in %clock : !seq.clock, in %reset : i1, in %io_interrupts_debug : i1, in %io_interrupts_mtip : i1, in %io_interrupts_msip : i1, in %io_interrupts_meip : i1, out io_imem_might_request : i1, out io_imem_req_valid : i1, out io_imem_req_bits_pc : i32, out io_imem_req_bits_speculative : i1, out io_imem_resp_ready : i1, in %io_imem_resp_valid : i1, in %io_imem_resp_bits_pc : i32, in %io_imem_resp_bits_data : i32, in %io_imem_resp_bits_xcpt_pf_inst : i1, in %io_imem_resp_bits_xcpt_gf_inst : i1, in %io_imem_resp_bits_xcpt_ae_inst : i1, in %io_imem_resp_bits_replay : i1, out io_imem_btb_update_valid : i1, out io_imem_bht_update_valid : i1, out io_imem_flush_icache : i1, in %io_dmem_req_ready : i1, out io_dmem_req_valid : i1, out io_dmem_req_bits_addr : i32, out io_dmem_req_bits_tag : i7, out io_dmem_req_bits_cmd : i5, out io_dmem_req_bits_size : i2, out io_dmem_req_bits_signed : i1, out io_dmem_s1_kill : i1, out io_dmem_s1_data_data : i32, in %io_dmem_s2_nack : i1, in %io_dmem_resp_valid : i1, in %io_dmem_resp_bits_tag : i7, in %io_dmem_resp_bits_data : i32, in %io_dmem_resp_bits_replay : i1, in %io_dmem_resp_bits_has_data : i1, in %io_dmem_resp_bits_data_word_bypass : i32, in %io_dmem_replay_next : i1, in %io_dmem_s2_xcpt_ma_ld : i1, in %io_dmem_s2_xcpt_ma_st : i1, in %io_dmem_s2_xcpt_pf_ld : i1, in %io_dmem_s2_xcpt_pf_st : i1, in %io_dmem_s2_xcpt_ae_ld : i1, in %io_dmem_s2_xcpt_ae_st : i1, in %io_dmem_ordered : i1, in %io_dmem_perf_grant : i1, out io_ptw_status_debug : i1, out io_ptw_pmp_0_cfg_l : i1, out io_ptw_pmp_0_cfg_a : i2, out io_ptw_pmp_0_cfg_x : i1, out io_ptw_pmp_0_cfg_w : i1, out io_ptw_pmp_0_cfg_r : i1, out io_ptw_pmp_0_addr : i30, out io_ptw_pmp_0_mask : i32, out io_ptw_pmp_1_cfg_l : i1, out io_ptw_pmp_1_cfg_a : i2, out io_ptw_pmp_1_cfg_x : i1, out io_ptw_pmp_1_cfg_w : i1, out io_ptw_pmp_1_cfg_r : i1, out io_ptw_pmp_1_addr : i30, out io_ptw_pmp_1_mask : i32, out io_ptw_pmp_2_cfg_l : i1, out io_ptw_pmp_2_cfg_a : i2, out io_ptw_pmp_2_cfg_x : i1, out io_ptw_pmp_2_cfg_w : i1, out io_ptw_pmp_2_cfg_r : i1, out io_ptw_pmp_2_addr : i30, out io_ptw_pmp_2_mask : i32, out io_ptw_pmp_3_cfg_l : i1, out io_ptw_pmp_3_cfg_a : i2, out io_ptw_pmp_3_cfg_x : i1, out io_ptw_pmp_3_cfg_w : i1, out io_ptw_pmp_3_cfg_r : i1, out io_ptw_pmp_3_addr : i30, out io_ptw_pmp_3_mask : i32, out io_ptw_pmp_4_cfg_l : i1, out io_ptw_pmp_4_cfg_a : i2, out io_ptw_pmp_4_cfg_x : i1, out io_ptw_pmp_4_cfg_w : i1, out io_ptw_pmp_4_cfg_r : i1, out io_ptw_pmp_4_addr : i30, out io_ptw_pmp_4_mask : i32, out io_ptw_pmp_5_cfg_l : i1, out io_ptw_pmp_5_cfg_a : i2, out io_ptw_pmp_5_cfg_x : i1, out io_ptw_pmp_5_cfg_w : i1, out io_ptw_pmp_5_cfg_r : i1, out io_ptw_pmp_5_addr : i30, out io_ptw_pmp_5_mask : i32, out io_ptw_pmp_6_cfg_l : i1, out io_ptw_pmp_6_cfg_a : i2, out io_ptw_pmp_6_cfg_x : i1, out io_ptw_pmp_6_cfg_w : i1, out io_ptw_pmp_6_cfg_r : i1, out io_ptw_pmp_6_addr : i30, out io_ptw_pmp_6_mask : i32, out io_ptw_pmp_7_cfg_l : i1, out io_ptw_pmp_7_cfg_a : i2, out io_ptw_pmp_7_cfg_x : i1, out io_ptw_pmp_7_cfg_w : i1, out io_ptw_pmp_7_cfg_r : i1, out io_ptw_pmp_7_addr : i30, out io_ptw_pmp_7_mask : i32, out io_ptw_customCSRs_csrs_0_value : i32, out io_wfi : i1) {
+    %c-1_i2 = hw.constant -1 : i2
+    %c5_i4 = hw.constant 5 : i4
+    %c-1_i30 = hw.constant -1 : i30
+    %c2_i32 = hw.constant 2 : i32
+    %c20_i32 = hw.constant 20 : i32
+    %c12_i32 = hw.constant 12 : i32
+    %c1_i32 = hw.constant 1 : i32
+    %c3_i32 = hw.constant 3 : i32
+    %c8_i5 = hw.constant 8 : i5
+    %c11_i5 = hw.constant 11 : i5
+    %c10_i5 = hw.constant 10 : i5
+    %c9_i5 = hw.constant 9 : i5
+    %c4_i5 = hw.constant 4 : i5
+    %c6_i5 = hw.constant 6 : i5
+    %c7_i5 = hw.constant 7 : i5
+    %false = hw.constant false {sv.namehint = "id_ctrl_dp"}
+    %c0_i32 = hw.constant 0 : i32
+    %true = hw.constant true
+    %c0_i2 = hw.constant 0 : i2
+    %c0_i6 = hw.constant 0 : i6
+    %c0_i5 = hw.constant 0 : i5
+    %c15_i5 = hw.constant 15 : i5
+    %c13_i5 = hw.constant 13 : i5
+    %c3_i4 = hw.constant 3 : i4
+    %c-2_i32 = hw.constant -2 : i32
+    %c2_i4 = hw.constant 2 : i4
+    %c4_i4 = hw.constant 4 : i4
+    %c14_i5 = hw.constant 14 : i5
+    %c3_i5 = hw.constant 3 : i5
+    %c12_i5 = hw.constant 12 : i5
+    %c1_i5 = hw.constant 1 : i5
+    %c2_i5 = hw.constant 2 : i5
+    %c0_i4 = hw.constant 0 : i4
+    %c0_i3 = hw.constant 0 : i3
+    %c-15_i5 = hw.constant -15 : i5
+    %c-16_i5 = hw.constant -16 : i5
+    %c1_i2 = hw.constant 1 : i2
+    %c-2_i4 = hw.constant -2 : i4
+    %c-12_i5 = hw.constant -12 : i5
+    %c-2_i2 = hw.constant -2 : i2
+    %c-10_i5 = hw.constant -10 : i5
+    %c-1_i3 = hw.constant -1 : i3
+    %c-2_i3 = hw.constant -2 : i3
+    %c-4_i3 = hw.constant -4 : i3
+    %c1_i3 = hw.constant 1 : i3
+    %c2_i3 = hw.constant 2 : i3
+    %c-3_i3 = hw.constant -3 : i3
+    %c3_i3 = hw.constant 3 : i3
+    %c-1_i32 = hw.constant -1 : i32
+    %c-1_i8 = hw.constant -1 : i8
+    %c-1_i9 = hw.constant -1 : i9
+    %c-1_i6 = hw.constant -1 : i6
+    %c-1_i7 = hw.constant -1 : i7
+    %c-1_i16 = hw.constant -1 : i16
+    %c-1_i13 = hw.constant -1 : i13
+    %c-1_i10 = hw.constant -1 : i10
+    %c-1_i28 = hw.constant -1 : i28
+    %c-1_i31 = hw.constant -1 : i31
+    %c-1_i15 = hw.constant -1 : i15
+    %c-1_i12 = hw.constant -1 : i12
+    %c-1_i14 = hw.constant -1 : i14
+    %c-1_i17 = hw.constant -1 : i17
+    %c-1_i20 = hw.constant -1 : i20
+    %c0_i16 = hw.constant 0 : i16
+    %c0_i7 = hw.constant 0 : i7
+    %c0_i9 = hw.constant 0 : i9
+    %c0_i12 = hw.constant 0 : i12
+    %c0_i14 = hw.constant 0 : i14
+    %c0_i23 = hw.constant 0 : i23
+    %c-1_i5 = hw.constant -1 : i5
+    %c0_i27 = hw.constant 0 : i27
+    %c0_i28 = hw.constant 0 : i28
+    %0 = seq.from_clock %clock
+    %id_reg_pause = seq.firreg %871 clock %clock {firrtl.random_init_start = 2 : ui64} : i1
+    %imem_might_request_reg = seq.firreg %854 clock %clock {firrtl.random_init_start = 3 : ui64, sv.namehint = "io_imem_might_request"} : i1
+    %ex_ctrl_fp = seq.firreg %397 clock %clock {firrtl.random_init_start = 5 : ui64} : i1
+    %ex_ctrl_rocc = seq.firreg %398 clock %clock {firrtl.random_init_start = 6 : ui64} : i1
+    %ex_ctrl_branch = seq.firreg %399 clock %clock {firrtl.random_init_start = 7 : ui64} : i1
+    %ex_ctrl_jal = seq.firreg %400 clock %clock {firrtl.random_init_start = 8 : ui64} : i1
+    %ex_ctrl_jalr = seq.firreg %401 clock %clock {firrtl.random_init_start = 9 : ui64} : i1
+    %ex_ctrl_rxs2 = seq.firreg %402 clock %clock {firrtl.random_init_start = 10 : ui64} : i1
+    %ex_ctrl_sel_alu2 = seq.firreg %432 clock %clock {firrtl.random_init_start = 12 : ui64} : i3
+    %ex_ctrl_sel_alu1 = seq.firreg %429 clock %clock {firrtl.random_init_start = 15 : ui64} : i2
+    %ex_ctrl_sel_imm = seq.firreg %403 clock %clock {firrtl.random_init_start = 17 : ui64} : i3
+    %ex_ctrl_alu_fn = seq.firreg %416 clock %clock {firrtl.random_init_start = 21 : ui64, sv.namehint = "ex_ctrl_alu_fn"} : i5
+    %ex_ctrl_mem = seq.firreg %404 clock %clock {firrtl.random_init_start = 26 : ui64} : i1
+    %ex_ctrl_mem_cmd = seq.firreg %444 clock %clock {firrtl.random_init_start = 27 : ui64, sv.namehint = "ex_ctrl_mem_cmd"} : i5
+    %ex_ctrl_mul = seq.firreg %405 clock %clock {firrtl.random_init_start = 36 : ui64} : i1
+    %ex_ctrl_div = seq.firreg %406 clock %clock {firrtl.random_init_start = 37 : ui64} : i1
+    %ex_ctrl_wxd = seq.firreg %407 clock %clock {firrtl.random_init_start = 38 : ui64} : i1
+    %ex_ctrl_csr = seq.firreg %409 clock %clock {firrtl.random_init_start = 39 : ui64} : i3
+    %ex_ctrl_fence_i = seq.firreg %408 clock %clock {firrtl.random_init_start = 42 : ui64} : i1
+    %mem_ctrl_fp = seq.firreg %550 clock %clock {firrtl.random_init_start = 48 : ui64} : i1
+    %mem_ctrl_rocc = seq.firreg %553 clock %clock {firrtl.random_init_start = 49 : ui64} : i1
+    %mem_ctrl_branch = seq.firreg %556 clock %clock {firrtl.random_init_start = 50 : ui64} : i1
+    %mem_ctrl_jal = seq.firreg %559 clock %clock {firrtl.random_init_start = 51 : ui64} : i1
+    %mem_ctrl_jalr = seq.firreg %562 clock %clock {firrtl.random_init_start = 52 : ui64} : i1
+    %mem_ctrl_mem = seq.firreg %565 clock %clock {firrtl.random_init_start = 69 : ui64} : i1
+    %mem_ctrl_mul = seq.firreg %568 clock %clock {firrtl.random_init_start = 79 : ui64} : i1
+    %mem_ctrl_div = seq.firreg %571 clock %clock {firrtl.random_init_start = 80 : ui64} : i1
+    %mem_ctrl_wxd = seq.firreg %574 clock %clock {firrtl.random_init_start = 81 : ui64} : i1
+    %mem_ctrl_csr = seq.firreg %577 clock %clock {firrtl.random_init_start = 82 : ui64} : i3
+    %mem_ctrl_fence_i = seq.firreg %648 clock %clock {firrtl.random_init_start = 85 : ui64} : i1
+    %mem_ctrl_vec = seq.firreg %580 clock %clock {firrtl.random_init_start = 89 : ui64} : i1
+    %wb_ctrl_rocc = seq.firreg %679 clock %clock {firrtl.random_init_start = 92 : ui64} : i1
+    %wb_ctrl_mem = seq.firreg %680 clock %clock {firrtl.random_init_start = 112 : ui64} : i1
+    %wb_ctrl_div = seq.firreg %681 clock %clock {firrtl.random_init_start = 123 : ui64} : i1
+    %wb_ctrl_wxd = seq.firreg %682 clock %clock {firrtl.random_init_start = 124 : ui64} : i1
+    %wb_ctrl_csr = seq.firreg %683 clock %clock {firrtl.random_init_start = 125 : ui64} : i3
+    %wb_ctrl_fence_i = seq.firreg %684 clock %clock {firrtl.random_init_start = 128 : ui64} : i1
+    %wb_ctrl_vec = seq.firreg %685 clock %clock {firrtl.random_init_start = 132 : ui64} : i1
+    %ex_reg_xcpt_interrupt = seq.firreg %396 clock %clock {firrtl.random_init_start = 133 : ui64} : i1
+    %ex_reg_valid = seq.firreg %392 clock %clock {firrtl.random_init_start = 134 : ui64} : i1
+    %ex_reg_rvc = seq.firreg %422 clock %clock {firrtl.random_init_start = 135 : ui64} : i1
+    %ex_reg_xcpt = seq.firreg %395 clock %clock {firrtl.random_init_start = 184 : ui64} : i1
+    %ex_reg_flush_pipe = seq.firreg %434 clock %clock {firrtl.random_init_start = 185 : ui64} : i1
+    %ex_reg_load_use = seq.firreg %435 clock %clock {firrtl.random_init_start = 186 : ui64} : i1
+    %ex_reg_cause = seq.firreg %484 clock %clock {firrtl.random_init_start = 187 : ui64, sv.namehint = "ex_cause"} : i32
+    %ex_reg_replay = seq.firreg %394 clock %clock {firrtl.random_init_start = 219 : ui64} : i1
+    %ex_reg_pc = seq.firreg %486 clock %clock {firrtl.random_init_start = 220 : ui64} : i32
+    %ex_reg_mem_size = seq.firreg %443 clock %clock {firrtl.random_init_start = 252 : ui64, sv.namehint = "ex_reg_mem_size"} : i2
+    %ex_reg_inst = seq.firreg %485 clock %clock {firrtl.random_init_start = 255 : ui64} : i32
+    %mem_reg_xcpt_interrupt = seq.firreg %546 clock %clock {firrtl.random_init_start = 321 : ui64} : i1
+    %mem_reg_valid = seq.firreg %543 clock %clock {firrtl.random_init_start = 322 : ui64} : i1
+    %mem_reg_rvc = seq.firreg %583 clock %clock {firrtl.random_init_start = 323 : ui64} : i1
+    %mem_reg_xcpt = seq.firreg %545 clock %clock {firrtl.random_init_start = 372 : ui64} : i1
+    %mem_reg_replay = seq.firreg %544 clock %clock {firrtl.random_init_start = 373 : ui64} : i1
+    %mem_reg_flush_pipe = seq.firreg %652 clock %clock {firrtl.random_init_start = 374 : ui64} : i1
+    %mem_reg_cause = seq.firreg %613 clock %clock {firrtl.random_init_start = 375 : ui64} : i32
+    %mem_mem_cmd_bh = seq.firreg %610 clock %clock {firrtl.random_init_start = 407 : ui64} : i1
+    %mem_reg_load = seq.firreg %600 clock %clock {firrtl.random_init_start = 408 : ui64} : i1
+    %mem_reg_store = seq.firreg %607 clock %clock {firrtl.random_init_start = 409 : ui64} : i1
+    %mem_reg_pc = seq.firreg %622 clock %clock {firrtl.random_init_start = 412 : ui64} : i32
+    %mem_reg_inst = seq.firreg %616 clock %clock {firrtl.random_init_start = 444 : ui64} : i32
+    %mem_reg_hls_or_dv = seq.firreg %619 clock %clock {firrtl.random_init_start = 478 : ui64} : i1
+    %mem_reg_wdata = seq.firreg %625 clock %clock {firrtl.random_init_start = 511 : ui64, sv.namehint = "bpu.io_ea"} : i32
+    %mem_reg_rs2 = seq.firreg %643 clock %clock {firrtl.random_init_start = 543 : ui64, sv.namehint = "mem_reg_rs2"} : i32
+    %mem_br_taken = seq.firreg %628 clock %clock {firrtl.random_init_start = 575 : ui64} : i1
+    %wb_reg_valid = seq.firreg %674 clock %clock {firrtl.random_init_start = 577 : ui64} : i1
+    %wb_reg_xcpt = seq.firreg %677 clock %clock {firrtl.random_init_start = 578 : ui64} : i1
+    %wb_reg_replay = seq.firreg %676 clock %clock {firrtl.random_init_start = 579 : ui64} : i1
+    %wb_reg_flush_pipe = seq.firreg %678 clock %clock {firrtl.random_init_start = 580 : ui64} : i1
+    %wb_reg_cause = seq.firreg %689 clock %clock {firrtl.random_init_start = 581 : ui64} : i32
+    %wb_reg_pc = seq.firreg %692 clock %clock {firrtl.random_init_start = 615 : ui64, sv.namehint = "csr.io_pc"} : i32
+    %wb_reg_hls_or_dv = seq.firreg %691 clock %clock {firrtl.random_init_start = 649 : ui64} : i1
+    %wb_reg_inst = seq.firreg %690 clock %clock {firrtl.random_init_start = 652 : ui64} : i32
+    %wb_reg_wdata = seq.firreg %688 clock %clock {firrtl.random_init_start = 716 : ui64, sv.namehint = "wb_reg_wdata"} : i32
+    %1 = comb.or bin %713, %542 {sv.namehint = "ibuf.io_kill"} : i1
+    %ibuf.io_imem_ready, %ibuf.io_pc, %ibuf.io_inst_0_valid, %ibuf.io_inst_0_bits_xcpt0_pf_inst, %ibuf.io_inst_0_bits_xcpt0_gf_inst, %ibuf.io_inst_0_bits_xcpt0_ae_inst, %ibuf.io_inst_0_bits_xcpt1_pf_inst, %ibuf.io_inst_0_bits_xcpt1_gf_inst, %ibuf.io_inst_0_bits_xcpt1_ae_inst, %ibuf.io_inst_0_bits_replay, %ibuf.io_inst_0_bits_rvc, %ibuf.io_inst_0_bits_inst_bits, %ibuf.io_inst_0_bits_inst_rd, %ibuf.io_inst_0_bits_inst_rs1, %ibuf.io_inst_0_bits_inst_rs2, %ibuf.io_inst_0_bits_raw = hw.instance "ibuf" @IBuf(clock: %clock: !seq.clock, reset: %reset: i1, io_imem_valid: %io_imem_resp_valid: i1, io_imem_bits_pc: %io_imem_resp_bits_pc: i32, io_imem_bits_data: %io_imem_resp_bits_data: i32, io_imem_bits_xcpt_pf_inst: %io_imem_resp_bits_xcpt_pf_inst: i1, io_imem_bits_xcpt_gf_inst: %io_imem_resp_bits_xcpt_gf_inst: i1, io_imem_bits_xcpt_ae_inst: %io_imem_resp_bits_xcpt_ae_inst: i1, io_imem_bits_replay: %io_imem_resp_bits_replay: i1, io_kill: %1: i1, io_inst_0_ready: %856: i1) -> (io_imem_ready: i1, io_pc: i32, io_inst_0_valid: i1, io_inst_0_bits_xcpt0_pf_inst: i1, io_inst_0_bits_xcpt0_gf_inst: i1, io_inst_0_bits_xcpt0_ae_inst: i1, io_inst_0_bits_xcpt1_pf_inst: i1, io_inst_0_bits_xcpt1_gf_inst: i1, io_inst_0_bits_xcpt1_ae_inst: i1, io_inst_0_bits_replay: i1, io_inst_0_bits_rvc: i1, io_inst_0_bits_inst_bits: i32, io_inst_0_bits_inst_rd: i5, io_inst_0_bits_inst_rs1: i5, io_inst_0_bits_inst_rs2: i5, io_inst_0_bits_raw: i32) {sv.namehint = "id_waddr"}
+    %2 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 2 : (i32) -> i30
+    %3 = comb.xor bin %2, %c-1_i30 {sv.namehint = "id_ctrl_decoder_decoded_invInputs"} : i30
+    %4 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 0 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_0"} : (i32) -> i1
+    %5 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 1 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_1"} : (i32) -> i1
+    %6 = comb.extract %3 from 0 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_2"} : (i30) -> i1
+    %7 = comb.extract %3 from 1 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_3"} : (i30) -> i1
+    %8 = comb.extract %3 from 2 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_4"} : (i30) -> i1
+    %9 = comb.extract %3 from 3 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_5"} : (i30) -> i1
+    %10 = comb.extract %3 from 4 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_6"} : (i30) -> i1
+    %11 = comb.extract %3 from 11 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7"} : (i30) -> i1
+    %12 = comb.concat %4, %5, %6, %7, %8, %9, %10, %11 {sv.namehint = "_id_ctrl_decoder_decoded_T"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %13 = comb.icmp bin eq %12, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_1"} : i8
+    %14 = comb.extract %3 from 10 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_6_1"} : (i30) -> i1
+    %15 = comb.concat %4, %5, %6, %7, %9, %10, %14, %11 {sv.namehint = "_id_ctrl_decoder_decoded_T_2"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %16 = comb.icmp bin eq %15, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_3"} : i8
+    %17 = comb.extract %3 from 12 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_8"} : (i30) -> i1
+    %18 = comb.concat %4, %5, %6, %7, %8, %10, %14, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_4"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %19 = comb.icmp bin eq %18, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_5"} : i8
+    %20 = comb.concat %4, %5, %6, %7, %9, %10, %14, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_6"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %21 = comb.icmp bin eq %20, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_7"} : i8
+    %22 = comb.concat %4, %5, %6, %7, %8, %10, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_8"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %23 = comb.icmp bin eq %22, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_9"} : i8
+    %24 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 2 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_2_5"} : (i32) -> i1
+    %25 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 3 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_3_5"} : (i32) -> i1
+    %26 = comb.concat %4, %5, %24, %25, %8, %9, %10, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_10"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %27 = comb.icmp bin eq %26, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_2"} : i9
+    %28 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 4 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_4_6"} : (i32) -> i1
+    %29 = comb.concat %4, %5, %24, %7, %28, %10 {sv.namehint = "_id_ctrl_decoder_decoded_T_12"} : i1, i1, i1, i1, i1, i1
+    %30 = comb.icmp bin eq %29, %c-1_i6 {sv.namehint = "_id_ctrl_decoder_decoded_T_13"} : i6
+    %31 = comb.concat %4, %5, %24, %7, %28, %9, %10 {sv.namehint = "_id_ctrl_decoder_decoded_T_14"} : i1, i1, i1, i1, i1, i1, i1
+    %32 = comb.icmp bin eq %31, %c-1_i7 {sv.namehint = "_id_ctrl_decoder_decoded_T_15"} : i7
+    %33 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 5 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_5_8"} : (i32) -> i1
+    %34 = comb.concat %4, %5, %6, %7, %8, %33, %10, %14, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_16"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %35 = comb.icmp bin eq %34, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_17"} : i9
+    %36 = comb.concat %4, %5, %6, %7, %8, %33, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_18"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %37 = comb.icmp bin eq %36, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_19"} : i8
+    %38 = comb.concat %4, %5, %6, %7, %8, %33, %10, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_20"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %39 = comb.icmp bin eq %38, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_21"} : i9
+    %40 = comb.extract %3 from 23 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_10"} : (i30) -> i1
+    %41 = comb.extract %3 from 24 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_11"} : (i30) -> i1
+    %42 = comb.extract %3 from 25 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_12"} : (i30) -> i1
+    %43 = comb.extract %3 from 26 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_13"} : (i30) -> i1
+    %44 = comb.extract %3 from 27 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_14"} : (i30) -> i1
+    %45 = comb.extract %3 from 29 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_15"} : (i30) -> i1
+    %46 = comb.concat %4, %5, %6, %7, %28, %33, %10, %14, %11, %17, %40, %41, %42, %43, %44, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_22"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %47 = comb.icmp bin eq %46, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_23"} : i16
+    %48 = comb.extract %3 from 28 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_26"} : (i30) -> i1
+    %49 = comb.concat %4, %5, %6, %7, %28, %33, %10, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_24"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %50 = comb.icmp bin eq %49, %c-1_i13 {sv.namehint = "_id_ctrl_decoder_decoded_T_25"} : i13
+    %51 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 6 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_6_12"} : (i32) -> i1
+    %52 = comb.concat %4, %5, %6, %7, %8, %33, %51, %11 {sv.namehint = "_id_ctrl_decoder_decoded_T_26"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %53 = comb.icmp bin eq %52, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_27"} : i8
+    %54 = comb.concat %4, %5, %6, %7, %8, %33, %51, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_28"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %55 = comb.icmp bin eq %54, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_29"} : i9
+    %56 = comb.concat %4, %5, %7, %8, %33, %51, %14, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_30"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %57 = comb.icmp bin eq %56, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_31"} : i9
+    %58 = comb.concat %4, %5, %24, %7, %8, %33, %51, %14, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_32"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %59 = comb.icmp bin eq %58, %c-1_i10 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_48"} : i10
+    %60 = comb.concat %4, %5, %24, %25, %8, %33, %51 {sv.namehint = "_id_ctrl_decoder_decoded_T_34"} : i1, i1, i1, i1, i1, i1, i1
+    %61 = comb.icmp bin eq %60, %c-1_i7 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_49"} : i7
+    %62 = comb.extract %3 from 5 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_4_18"} : (i30) -> i1
+    %63 = comb.extract %3 from 6 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_8_9"} : (i30) -> i1
+    %64 = comb.extract %3 from 7 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_9_4"} : (i30) -> i1
+    %65 = comb.extract %3 from 8 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_15"} : (i30) -> i1
+    %66 = comb.extract %3 from 9 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_8_8"} : (i30) -> i1
+    %67 = comb.extract %3 from 13 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_12_2"} : (i30) -> i1
+    %68 = comb.extract %3 from 14 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_13_1"} : (i30) -> i1
+    %69 = comb.extract %3 from 15 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_14_1"} : (i30) -> i1
+    %70 = comb.extract %3 from 16 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_15_1"} : (i30) -> i1
+    %71 = comb.extract %3 from 17 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_16"} : (i30) -> i1
+    %72 = comb.extract %3 from 19 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_17"} : (i30) -> i1
+    %73 = comb.extract %3 from 20 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_18"} : (i30) -> i1
+    %74 = comb.extract %3 from 21 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_19"} : (i30) -> i1
+    %75 = comb.extract %3 from 22 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_20"} : (i30) -> i1
+    %76 = comb.concat %4, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %72, %73, %74, %75, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_36"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %77 = comb.icmp bin eq %76, %c-1_i28 {sv.namehint = "_id_ctrl_decoder_decoded_T_37"} : i28
+    %78 = comb.concat %4, %5, %6, %7, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %72, %73, %74, %75, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_38"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %79 = comb.icmp bin eq %78, %c-1_i31 {sv.namehint = "_id_ctrl_decoder_decoded_T_39"} : i31
+    %80 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 12 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_17"} : (i32) -> i1
+    %81 = comb.concat %4, %5, %24, %25, %8, %9, %10, %80, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_40"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %82 = comb.icmp bin eq %81, %c-1_i10 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_3"} : i10
+    %83 = comb.concat %4, %5, %6, %7, %28, %10, %80, %11, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_42"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %84 = comb.icmp bin eq %83, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_43"} : i15
+    %85 = comb.concat %4, %5, %6, %7, %28, %9, %10, %80, %11, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_44"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %86 = comb.icmp bin eq %85, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_45"} : i16
+    %87 = comb.concat %4, %5, %6, %7, %33, %51, %80, %11 {sv.namehint = "_id_ctrl_decoder_decoded_T_46"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %88 = comb.icmp bin eq %87, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_47"} : i8
+    %89 = comb.concat %4, %5, %6, %7, %8, %33, %51, %80, %11 {sv.namehint = "_id_ctrl_decoder_decoded_T_48"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %90 = comb.icmp bin eq %89, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_49"} : i9
+    %91 = comb.concat %4, %5, %6, %7, %33, %51, %80, %11, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_50"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %92 = comb.icmp bin eq %91, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_51"} : i9
+    %93 = comb.concat %4, %5, %6, %7, %28, %33, %51, %80 {sv.namehint = "_id_ctrl_decoder_decoded_T_52"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %94 = comb.icmp bin eq %93, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_4"} : i8
+    %95 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 13 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_24"} : (i32) -> i1
+    %96 = comb.concat %4, %5, %6, %7, %28, %9, %10, %95 {sv.namehint = "_id_ctrl_decoder_decoded_T_54"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %97 = comb.icmp bin eq %96, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_55"} : i8
+    %98 = comb.concat %4, %5, %6, %7, %28, %9, %10, %95, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_56"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %99 = comb.icmp bin eq %98, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_57"} : i9
+    %100 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %42, %43 {sv.namehint = "_id_ctrl_decoder_decoded_T_58"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %101 = comb.icmp bin eq %100, %c-1_i12 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_17"} : i12
+    %102 = comb.concat %4, %5, %6, %7, %28, %33, %10, %95, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_60"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %103 = comb.icmp bin eq %102, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_61"} : i15
+    %104 = comb.concat %4, %5, %6, %7, %28, %33, %10, %95, %17, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_62"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %105 = comb.icmp bin eq %104, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_63"} : i16
+    %106 = comb.concat %4, %5, %6, %7, %28, %33, %51, %95 {sv.namehint = "_id_ctrl_decoder_decoded_T_64"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %107 = comb.icmp bin eq %106, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_5"} : i8
+    %108 = comb.concat %4, %5, %6, %7, %28, %33, %51, %95, %17 {sv.namehint = "_id_ctrl_decoder_decoded_T_66"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %109 = comb.icmp bin eq %108, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_67"} : i9
+    %110 = comb.concat %4, %5, %6, %7, %28, %9, %10, %80, %95 {sv.namehint = "_id_ctrl_decoder_decoded_T_68"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %111 = comb.icmp bin eq %110, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_69"} : i9
+    %112 = comb.concat %4, %5, %6, %7, %28, %33, %10, %80, %95, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_70"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %113 = comb.icmp bin eq %112, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_71"} : i15
+    %114 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 14 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_8_22"} : (i32) -> i1
+    %115 = comb.concat %4, %5, %6, %7, %28, %9, %10, %14, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_72"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %116 = comb.icmp bin eq %115, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_73"} : i9
+    %117 = comb.concat %4, %5, %6, %7, %28, %33, %10, %114, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_74"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %118 = comb.icmp bin eq %117, %c-1_i14 {sv.namehint = "_id_ctrl_decoder_decoded_T_75"} : i14
+    %119 = comb.concat %4, %5, %6, %7, %8, %33, %51, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_76"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %120 = comb.icmp bin eq %119, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_77"} : i8
+    %121 = comb.concat %4, %5, %6, %7, %28, %10, %80, %11, %114, %40, %41, %42, %43, %44, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_78"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %122 = comb.icmp bin eq %121, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_79"} : i15
+    %123 = comb.concat %4, %5, %6, %7, %28, %9, %10, %80, %11, %114, %40, %41, %42, %43, %44, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_80"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %124 = comb.icmp bin eq %123, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_81"} : i16
+    %125 = comb.concat %4, %5, %6, %7, %28, %10, %80, %11, %114, %40, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_82"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %126 = comb.icmp bin eq %125, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_83"} : i16
+    %127 = comb.concat %4, %5, %6, %7, %28, %33, %10, %80, %11, %114, %40, %41, %42, %43, %44, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_84"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %128 = comb.icmp bin eq %127, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_85"} : i16
+    %129 = comb.concat %4, %5, %6, %7, %28, %33, %10, %80, %114, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_86"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %130 = comb.icmp bin eq %129, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_87"} : i15
+    %131 = comb.concat %4, %5, %6, %7, %33, %51, %80, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_88"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %132 = comb.icmp bin eq %131, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_89"} : i8
+    %133 = comb.concat %4, %5, %6, %7, %8, %33, %51, %80, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_90"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %134 = comb.icmp bin eq %133, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_91"} : i9
+    %135 = comb.concat %4, %5, %6, %7, %28, %33, %51, %80, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_92"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %136 = comb.icmp bin eq %135, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_93"} : i9
+    %137 = comb.concat %4, %5, %6, %7, %28, %9, %10, %95, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_94"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %138 = comb.icmp bin eq %137, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_95"} : i9
+    %139 = comb.concat %4, %5, %6, %7, %28, %33, %10, %95, %114, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_96"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %140 = comb.icmp bin eq %139, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_97"} : i15
+    %141 = comb.concat %4, %5, %6, %7, %33, %51, %95, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_98"} : i1, i1, i1, i1, i1, i1, i1, i1
+    %142 = comb.icmp bin eq %141, %c-1_i8 {sv.namehint = "_id_ctrl_decoder_decoded_T_99"} : i8
+    %143 = comb.concat %4, %5, %6, %7, %8, %33, %51, %95, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_100"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %144 = comb.icmp bin eq %143, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_101"} : i9
+    %145 = comb.concat %4, %5, %6, %7, %28, %33, %51, %95, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_102"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %146 = comb.icmp bin eq %145, %c-1_i9 {sv.namehint = "_id_ctrl_decoder_decoded_T_103"} : i9
+    %147 = comb.concat %4, %5, %6, %7, %28, %9, %10, %80, %95, %114 {sv.namehint = "_id_ctrl_decoder_decoded_T_104"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %148 = comb.icmp bin eq %147, %c-1_i10 {sv.namehint = "_id_ctrl_decoder_decoded_T_105"} : i10
+    %149 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 25 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_50"} : (i32) -> i1
+    %150 = comb.concat %4, %5, %6, %7, %28, %33, %10, %149, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_106"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %151 = comb.icmp bin eq %150, %c-1_i14 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_10"} : i14
+    %152 = comb.concat %4, %5, %6, %7, %28, %33, %10, %80, %149, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_108"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %153 = comb.icmp bin eq %152, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_109"} : i15
+    %154 = comb.concat %4, %5, %6, %7, %28, %33, %10, %95, %149, %41, %42, %43, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_110"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %155 = comb.icmp bin eq %154, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_111"} : i15
+    %156 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 27 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_23_6"} : (i32) -> i1
+    %157 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %156, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_112"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %158 = comb.icmp bin eq %157, %c-1_i14 {sv.namehint = "_id_ctrl_decoder_decoded_T_113"} : i14
+    %159 = comb.extract %3 from 18 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_7_54"} : (i30) -> i1
+    %160 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 28 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_16_3"} : (i32) -> i1
+    %161 = comb.concat %4, %5, %24, %25, %8, %33, %10, %159, %72, %73, %74, %75, %42, %160, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_114"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %162 = comb.icmp bin eq %161, %c-1_i17 {sv.namehint = "_id_ctrl_decoder_decoded_T_115"} : i17
+    %163 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %159, %72, %73, %74, %75, %42, %160, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_116"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %164 = comb.icmp bin eq %163, %c-1_i20 {sv.namehint = "_id_ctrl_decoder_decoded_T_117"} : i20
+    %165 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 20 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_17_3"} : (i32) -> i1
+    %166 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 22 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_19_3"} : (i32) -> i1
+    %167 = comb.concat %4, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %165, %72, %166, %74, %75, %40, %41, %42, %160, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_118"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %168 = comb.icmp bin eq %167, %c-1_i28 {sv.namehint = "_id_ctrl_decoder_decoded_T_119"} : i28
+    %169 = comb.concat %4, %5, %6, %7, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %165, %72, %166, %74, %75, %40, %41, %42, %160, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_120"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %170 = comb.icmp bin eq %169, %c-1_i31 {sv.namehint = "_id_ctrl_decoder_decoded_T_121"} : i31
+    %171 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %156, %160, %44, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_122"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %172 = comb.icmp bin eq %171, %c-1_i15 {sv.namehint = "_id_ctrl_decoder_decoded_T_123"} : i15
+    %173 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 29 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_25_4"} : (i32) -> i1
+    %174 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %42, %43, %173 {sv.namehint = "_id_ctrl_decoder_decoded_T_124"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %175 = comb.icmp bin eq %174, %c-1_i13 {sv.namehint = "_id_ctrl_decoder_decoded_T_125"} : i13
+    %176 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 21 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_17_5"} : (i32) -> i1
+    %177 = comb.concat %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %159, %176, %73, %74, %75, %40, %41, %42, %160, %173, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_126"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %178 = comb.icmp bin eq %177, %c-1_i28 {sv.namehint = "_id_ctrl_decoder_decoded_T_127"} : i28
+    %179 = comb.concat %4, %5, %6, %7, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %159, %176, %73, %74, %75, %40, %41, %42, %160, %173, %48, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_128"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %180 = comb.icmp bin eq %179, %c-1_i32 {sv.namehint = "_id_ctrl_decoder_decoded_T_129"} : i32
+    %181 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 30 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_26_6"} : (i32) -> i1
+    %182 = comb.concat %4, %5, %6, %7, %28, %33, %10, %14, %11, %17, %40, %41, %42, %43, %44, %181, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_130"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %183 = comb.icmp bin eq %182, %c-1_i17 {sv.namehint = "_id_ctrl_decoder_decoded_T_131"} : i17
+    %184 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %42, %43, %181 {sv.namehint = "_id_ctrl_decoder_decoded_T_132"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %185 = comb.icmp bin eq %184, %c-1_i13 {sv.namehint = "_id_ctrl_decoder_decoded_T_133"} : i13
+    %186 = comb.concat %4, %5, %6, %7, %28, %10, %80, %11, %114, %40, %41, %42, %43, %44, %181, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_134"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %187 = comb.icmp bin eq %186, %c-1_i16 {sv.namehint = "_id_ctrl_decoder_decoded_T_135"} : i16
+    %188 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 24 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_20_6"} : (i32) -> i1
+    %189 = comb.concat %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %159, %176, %73, %74, %188, %149, %41, %156, %160, %173, %181, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_136"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %190 = comb.icmp bin eq %189, %c-1_i28 {sv.namehint = "_id_ctrl_decoder_decoded_T_137"} : i28
+    %191 = comb.concat %4, %5, %6, %7, %28, %33, %51, %62, %63, %64, %65, %66, %14, %11, %17, %67, %68, %69, %70, %71, %159, %176, %73, %74, %188, %149, %41, %156, %160, %173, %181, %45 {sv.namehint = "_id_ctrl_decoder_decoded_T_138"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %192 = comb.icmp bin eq %191, %c-1_i32 {sv.namehint = "_id_ctrl_decoder_decoded_T_139"} : i32
+    %193 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 31 {sv.namehint = "id_ctrl_decoder_decoded_andMatrixInput_12_33"} : (i32) -> i1
+    %194 = comb.concat %4, %5, %24, %25, %8, %33, %10, %14, %95, %17, %42, %43, %193 {sv.namehint = "_id_ctrl_decoder_decoded_T_140"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %195 = comb.icmp bin eq %194, %c-1_i13 {sv.namehint = "_id_ctrl_decoder_decoded_T_141"} : i13
+    %196 = comb.concat %101, %158, %162 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T"} : i1, i1, i1
+    %197 = comb.icmp bin ne %196, %c0_i3 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_1"} : i3
+    %198 = comb.concat %77, %94, %107, %168, %178, %190 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_6"} : i1, i1, i1, i1, i1, i1
+    %199 = comb.icmp bin ne %198, %c0_i6 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_7"} : i6
+    %200 = comb.concat %13, %16, %21, %30, %47, %50, %59, %61, %84, %94, %97, %101, %107, %122, %158, %162 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_8"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %201 = comb.icmp bin ne %200, %c0_i16 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_9"} : i16
+    %202 = comb.concat %35, %39, %172, %175 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_11"} : i1, i1, i1, i1
+    %203 = comb.icmp bin ne %202, %c0_i4 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_12"} : i4
+    %204 = comb.concat %162, %172, %185 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_13"} : i1, i1, i1
+    %205 = comb.icmp bin ne %204, %c0_i3 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_14"} : i3
+    %206 = comb.concat %158, %162, %195 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_15"} : i1, i1, i1
+    %207 = comb.icmp bin ne %206, %c0_i3 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_16"} : i3
+    %208 = comb.concat %13, %19, %23, %101, %158, %164 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_18"} : i1, i1, i1, i1, i1, i1
+    %209 = comb.icmp bin ne %208, %c0_i6 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_19"} : i6
+    %210 = comb.concat %84, %90, %122, %130, %134, %148, %153 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_20"} : i1, i1, i1, i1, i1, i1, i1
+    %211 = comb.icmp bin ne %210, %c0_i7 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_21"} : i7
+    %212 = comb.concat %55, %111, %113, %138, %140, %144, %155, %183, %187 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_22"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %213 = comb.icmp bin ne %212, %c0_i9 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_23"} : i9
+    %214 = comb.concat %97, %103, %116, %118, %120, %126 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_24"} : i1, i1, i1, i1, i1, i1
+    %215 = comb.icmp bin ne %214, %c0_i6 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_25"} : i6
+    %216 = comb.concat %99, %105, %120, %183, %187 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_26"} : i1, i1, i1, i1, i1
+    %217 = comb.icmp bin ne %216, %c0_i5 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_27"} : i5
+    %218 = comb.concat %53, %61, %132, %142 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_30"} : i1, i1, i1, i1
+    %219 = comb.icmp bin ne %218, %c0_i4 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_31"} : i4
+    %220 = comb.concat %30, %61 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_32"} : i1, i1
+    %221 = comb.icmp bin ne %220, %c0_i2 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_33"} : i2
+    %222 = comb.concat %13, %16, %21, %59, %86, %97, %124, %136, %146 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_34"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %223 = comb.icmp bin ne %222, %c0_i9 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_35"} : i9
+    %224 = comb.concat %13, %16, %19, %23, %47, %50, %57, %84, %92, %97, %101, %109, %120, %122, %158, %162 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_36"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %225 = comb.icmp bin ne %224, %c0_i16 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_37"} : i16
+    %226 = comb.concat %32, %61 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_38"} : i1, i1
+    %227 = comb.icmp bin ne %226, %c0_i2 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_39"} : i2
+    %228 = comb.concat %13, %16, %19, %23, %30, %59, %61, %86, %97, %124, %136, %146 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_40"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %229 = comb.icmp bin ne %228, %c0_i12 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_41"} : i12
+    %230 = comb.concat %13, %16, %19, %23, %30, %47, %50, %53, %57, %84, %97, %122, %132, %142 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_42"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %231 = comb.icmp bin ne %230, %c0_i14 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_43"} : i14
+    %232 = comb.concat %13, %16, %19, %23, %47, %50, %57, %84, %92, %97, %101, %109, %120, %122, %158, %162 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_44"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %233 = comb.icmp bin ne %232, %c0_i16 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_45"} : i16
+    %234 = comb.concat %35, %37, %47, %50, %101, %120, %128, %158, %162 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_46"} : i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %235 = comb.icmp bin ne %234, %c0_i9 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_47"} : i9
+    %236 = comb.concat %53, %120 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_50"} : i1, i1
+    %237 = comb.icmp bin ne %236, %c0_i2 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_51"} : i2
+    %238 = comb.concat %13, %16, %19, %23, %27, %30, %47, %50, %57, %61, %79, %84, %88, %97, %101, %107, %120, %122, %158, %164, %170, %180, %192 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_52"} : i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1, i1
+    %239 = comb.icmp bin ne %238, %c0_i23 {sv.namehint = "_id_ctrl_decoder_decoded_orMatrixOutputs_T_53"} : i23
+    %240 = comb.concat %false, %231, %229 {sv.namehint = "id_ctrl_sel_alu2"} : i1, i1, i1
+    %241 = comb.concat %227, %225 {sv.namehint = "id_ctrl_sel_alu1"} : i1, i1
+    %242 = comb.concat %223, %221, %219 {sv.namehint = "id_ctrl_sel_imm"} : i1, i1, i1
+    %243 = comb.concat %false, %217, %215, %213, %211 {sv.namehint = "id_ctrl_alu_fn"} : i1, i1, i1, i1, i1
+    %244 = comb.concat %false, %101, %207, %205, %203 {sv.namehint = "id_ctrl_mem_cmd"} : i1, i1, i1, i1, i1
+    %245 = comb.concat %199, %107, %94 {sv.namehint = "id_ctrl_csr"} : i1, i1, i1
+    %id_reg_fence = seq.firreg %414 clock %clock reset sync %reset, %false {firrtl.random_init_start = 782 : ui64} : i1
+    %rf = seq.firmem 0, 1, undefined, port_order : <31 x 32>
+    seq.firmem.write_port %rf[%737] = %735, clock %clock enable %738 : <31 x 32>
+    %246 = seq.firmem.read_port %rf[%250], clock %clock : <31 x 32>
+    %247 = seq.firmem.read_port %rf[%253], clock %clock : <31 x 32>
+    %248 = comb.icmp bin ne %ibuf.io_inst_0_bits_inst_rs1, %c0_i5 : i5
+    %249 = comb.xor bin %248, %true {sv.namehint = "id_bypass_src_0_0"} : i1
+    %250 = comb.xor bin %ibuf.io_inst_0_bits_inst_rs1, %c-1_i5 {sv.namehint = "_id_rs_T_3"} : i5
+    %251 = comb.icmp bin ne %ibuf.io_inst_0_bits_inst_rs2, %c0_i5 : i5
+    %252 = comb.xor bin %251, %true {sv.namehint = "id_bypass_src_1_0"} : i1
+    %253 = comb.xor bin %ibuf.io_inst_0_bits_inst_rs2, %c-1_i5 {sv.namehint = "_id_rs_T_8"} : i5
+    %csr.io_rw_rdata, %csr.io_decode_0_read_illegal, %csr.io_decode_0_write_illegal, %csr.io_decode_0_write_flush, %csr.io_decode_0_system_illegal, %csr.io_decode_0_virtual_access_illegal, %csr.io_decode_0_virtual_system_illegal, %csr.io_csr_stall, %csr.io_eret, %csr.io_singleStep, %csr.io_status_debug, %csr.io_status_wfi, %csr.io_status_isa, %csr.io_status_dv, %csr.io_status_v, %csr.io_evec, %csr.io_time, %csr.io_interrupt, %csr.io_interrupt_cause, %csr.io_bp_0_control_action, %csr.io_bp_0_control_tmatch, %csr.io_bp_0_control_x, %csr.io_bp_0_control_w, %csr.io_bp_0_control_r, %csr.io_bp_0_address, %csr.io_pmp_0_cfg_l, %csr.io_pmp_0_cfg_a, %csr.io_pmp_0_cfg_x, %csr.io_pmp_0_cfg_w, %csr.io_pmp_0_cfg_r, %csr.io_pmp_0_addr, %csr.io_pmp_0_mask, %csr.io_pmp_1_cfg_l, %csr.io_pmp_1_cfg_a, %csr.io_pmp_1_cfg_x, %csr.io_pmp_1_cfg_w, %csr.io_pmp_1_cfg_r, %csr.io_pmp_1_addr, %csr.io_pmp_1_mask, %csr.io_pmp_2_cfg_l, %csr.io_pmp_2_cfg_a, %csr.io_pmp_2_cfg_x, %csr.io_pmp_2_cfg_w, %csr.io_pmp_2_cfg_r, %csr.io_pmp_2_addr, %csr.io_pmp_2_mask, %csr.io_pmp_3_cfg_l, %csr.io_pmp_3_cfg_a, %csr.io_pmp_3_cfg_x, %csr.io_pmp_3_cfg_w, %csr.io_pmp_3_cfg_r, %csr.io_pmp_3_addr, %csr.io_pmp_3_mask, %csr.io_pmp_4_cfg_l, %csr.io_pmp_4_cfg_a, %csr.io_pmp_4_cfg_x, %csr.io_pmp_4_cfg_w, %csr.io_pmp_4_cfg_r, %csr.io_pmp_4_addr, %csr.io_pmp_4_mask, %csr.io_pmp_5_cfg_l, %csr.io_pmp_5_cfg_a, %csr.io_pmp_5_cfg_x, %csr.io_pmp_5_cfg_w, %csr.io_pmp_5_cfg_r, %csr.io_pmp_5_addr, %csr.io_pmp_5_mask, %csr.io_pmp_6_cfg_l, %csr.io_pmp_6_cfg_a, %csr.io_pmp_6_cfg_x, %csr.io_pmp_6_cfg_w, %csr.io_pmp_6_cfg_r, %csr.io_pmp_6_addr, %csr.io_pmp_6_mask, %csr.io_pmp_7_cfg_l, %csr.io_pmp_7_cfg_a, %csr.io_pmp_7_cfg_x, %csr.io_pmp_7_cfg_w, %csr.io_pmp_7_cfg_r, %csr.io_pmp_7_addr, %csr.io_pmp_7_mask, %csr.io_inhibit_cycle, %csr.io_customCSRs_0_value = hw.instance "csr" @CSRFile(clock: %clock: !seq.clock, reset: %reset: i1, io_ungated_clock: %clock: !seq.clock, io_interrupts_debug: %io_interrupts_debug: i1, io_interrupts_mtip: %io_interrupts_mtip: i1, io_interrupts_msip: %io_interrupts_msip: i1, io_interrupts_meip: %io_interrupts_meip: i1, io_rw_addr: %762: i12, io_rw_cmd: %764: i3, io_rw_wdata: %wb_reg_wdata: i32, io_decode_0_inst: %ibuf.io_inst_0_bits_inst_bits: i32, io_exception: %700: i1, io_retire: %727: i1, io_cause: %708: i32, io_pc: %wb_reg_pc: i32, io_tval: %758: i32, io_gva: %757: i1) -> (io_rw_rdata: i32, io_decode_0_read_illegal: i1, io_decode_0_write_illegal: i1, io_decode_0_write_flush: i1, io_decode_0_system_illegal: i1, io_decode_0_virtual_access_illegal: i1, io_decode_0_virtual_system_illegal: i1, io_csr_stall: i1, io_eret: i1, io_singleStep: i1, io_status_debug: i1, io_status_wfi: i1, io_status_isa: i32, io_status_dv: i1, io_status_v: i1, io_evec: i32, io_time: i32, io_interrupt: i1, io_interrupt_cause: i32, io_bp_0_control_action: i1, io_bp_0_control_tmatch: i2, io_bp_0_control_x: i1, io_bp_0_control_w: i1, io_bp_0_control_r: i1, io_bp_0_address: i32, io_pmp_0_cfg_l: i1, io_pmp_0_cfg_a: i2, io_pmp_0_cfg_x: i1, io_pmp_0_cfg_w: i1, io_pmp_0_cfg_r: i1, io_pmp_0_addr: i30, io_pmp_0_mask: i32, io_pmp_1_cfg_l: i1, io_pmp_1_cfg_a: i2, io_pmp_1_cfg_x: i1, io_pmp_1_cfg_w: i1, io_pmp_1_cfg_r: i1, io_pmp_1_addr: i30, io_pmp_1_mask: i32, io_pmp_2_cfg_l: i1, io_pmp_2_cfg_a: i2, io_pmp_2_cfg_x: i1, io_pmp_2_cfg_w: i1, io_pmp_2_cfg_r: i1, io_pmp_2_addr: i30, io_pmp_2_mask: i32, io_pmp_3_cfg_l: i1, io_pmp_3_cfg_a: i2, io_pmp_3_cfg_x: i1, io_pmp_3_cfg_w: i1, io_pmp_3_cfg_r: i1, io_pmp_3_addr: i30, io_pmp_3_mask: i32, io_pmp_4_cfg_l: i1, io_pmp_4_cfg_a: i2, io_pmp_4_cfg_x: i1, io_pmp_4_cfg_w: i1, io_pmp_4_cfg_r: i1, io_pmp_4_addr: i30, io_pmp_4_mask: i32, io_pmp_5_cfg_l: i1, io_pmp_5_cfg_a: i2, io_pmp_5_cfg_x: i1, io_pmp_5_cfg_w: i1, io_pmp_5_cfg_r: i1, io_pmp_5_addr: i30, io_pmp_5_mask: i32, io_pmp_6_cfg_l: i1, io_pmp_6_cfg_a: i2, io_pmp_6_cfg_x: i1, io_pmp_6_cfg_w: i1, io_pmp_6_cfg_r: i1, io_pmp_6_addr: i30, io_pmp_6_mask: i32, io_pmp_7_cfg_l: i1, io_pmp_7_cfg_a: i2, io_pmp_7_cfg_x: i1, io_pmp_7_cfg_w: i1, io_pmp_7_cfg_r: i1, io_pmp_7_addr: i30, io_pmp_7_mask: i32, io_inhibit_cycle: i1, io_customCSRs_0_value: i32) {sv.namehint = "csr.io_time"}
+    %254 = comb.icmp bin eq %245, %c-2_i3 {sv.namehint = "_id_csr_ren_T"} : i3
+    %255 = comb.icmp bin eq %245, %c-1_i3 {sv.namehint = "_id_csr_ren_T_1"} : i3
+    %256 = comb.icmp bin eq %245, %c-3_i3 {sv.namehint = "_id_csr_en_T_2"} : i3
+    %257 = comb.or bin %254, %255, %256 {sv.namehint = "id_csr_en"} : i1
+    %258 = comb.icmp bin eq %245, %c-4_i3 {sv.namehint = "id_system_insn"} : i3
+    %259 = comb.or bin %254, %255 {sv.namehint = "_id_csr_ren_T_2"} : i1
+    %260 = comb.xor bin %248, %true {sv.namehint = "_id_csr_ren_T_3"} : i1
+    %261 = comb.and bin %259, %260 {sv.namehint = "id_csr_ren"} : i1
+    %262 = comb.and bin %258, %209 {sv.namehint = "_id_csr_T"} : i1
+    %263 = comb.mux bin %261, %c2_i3, %245 {sv.namehint = "_id_csr_T_1"} : i3
+    %264 = comb.mux bin %262, %c0_i3, %263 {sv.namehint = "id_csr"} : i3
+    %265 = comb.xor bin %261, %true {sv.namehint = "_id_csr_rocc_write_T_1"} : i1
+    %266 = comb.and bin %257, %265, %csr.io_decode_0_write_flush {sv.namehint = "_id_csr_flush_T_2"} : i1
+    %267 = comb.xor bin %239, %true {sv.namehint = "_id_illegal_insn_T"} : i1
+    %268 = comb.extract %csr.io_status_isa from 12 {sv.namehint = "_id_illegal_insn_T_2"} : (i32) -> i1
+    %269 = comb.xor bin %268, %true {sv.namehint = "_id_illegal_insn_T_3"} : i1
+    %270 = comb.and bin %151, %269 {sv.namehint = "_id_illegal_insn_T_4"} : i1
+    %271 = comb.extract %csr.io_status_isa from 0 {sv.namehint = "_id_illegal_insn_T_6"} : (i32) -> i1
+    %272 = comb.xor bin %271, %true {sv.namehint = "_id_illegal_insn_T_7"} : i1
+    %273 = comb.and bin %197, %272 {sv.namehint = "_id_illegal_insn_T_8"} : i1
+    %274 = comb.extract %csr.io_status_isa from 2 {sv.namehint = "_mem_npc_misaligned_T"} : (i32) -> i1
+    %275 = comb.xor bin %274, %true {sv.namehint = "_id_illegal_insn_T_25"} : i1
+    %276 = comb.and bin %ibuf.io_inst_0_bits_rvc, %275 {sv.namehint = "_id_illegal_insn_T_26"} : i1
+    %277 = comb.and bin %265, %csr.io_decode_0_write_illegal {sv.namehint = "_id_illegal_insn_T_37"} : i1
+    %278 = comb.or bin %csr.io_decode_0_read_illegal, %277 {sv.namehint = "_id_illegal_insn_T_38"} : i1
+    %279 = comb.and bin %257, %278 {sv.namehint = "_id_illegal_insn_T_39"} : i1
+    %280 = comb.xor bin %ibuf.io_inst_0_bits_rvc, %true {sv.namehint = "_id_virtual_insn_T_5"} : i1
+    %281 = comb.and bin %280, %258, %csr.io_decode_0_system_illegal {sv.namehint = "_id_illegal_insn_T_43"} : i1
+    %282 = comb.or bin %267, %270, %273, %276, %279, %281 {sv.namehint = "id_illegal_insn"} : i1
+    %283 = comb.and bin %265, %csr.io_decode_0_write_illegal {sv.namehint = "_id_virtual_insn_T_1"} : i1
+    %284 = comb.xor bin %283, %true {sv.namehint = "_id_virtual_insn_T_2"} : i1
+    %285 = comb.and bin %257, %284, %csr.io_decode_0_virtual_access_illegal {sv.namehint = "_id_virtual_insn_T_4"} : i1
+    %286 = comb.and bin %280, %258, %csr.io_decode_0_virtual_system_illegal {sv.namehint = "_id_virtual_insn_T_7"} : i1
+    %287 = comb.or bin %285, %286 {sv.namehint = "_id_virtual_insn_T_8"} : i1
+    %288 = comb.and bin %239, %287 {sv.namehint = "id_virtual_insn"} : i1
+    %289 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 26 {sv.namehint = "id_amo_aq"} : (i32) -> i1
+    %290 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 25 {sv.namehint = "id_amo_rl"} : (i32) -> i1
+    %291 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 20 {sv.namehint = "id_fence_succ"} : (i32) -> i4
+    %292 = comb.and bin %197, %289 {sv.namehint = "_id_fence_next_T"} : i1
+    %293 = comb.or bin %27, %292 {sv.namehint = "id_fence_next"} : i1
+    %294 = comb.xor bin %io_dmem_ordered, %true {sv.namehint = "_id_mem_busy_T"} : i1
+    %295 = comb.or bin %294, %861 {sv.namehint = "id_mem_busy"} : i1
+    %296 = comb.and %295, %id_reg_fence : i1
+    %297 = comb.and bin %wb_reg_valid, %wb_ctrl_rocc {sv.namehint = "_io_rocc_cmd_valid_T"} : i1
+    %298 = comb.and bin %197, %290 {sv.namehint = "_id_do_fence_T_4"} : i1
+    %299 = comb.and bin %id_reg_fence, %209 {sv.namehint = "_id_do_fence_T_7"} : i1
+    %300 = comb.or bin %298, %82, %299 {sv.namehint = "_id_do_fence_T_8"} : i1
+    %301 = comb.and bin %295, %300 {sv.namehint = "id_do_fence"} : i1
+    %bpu.io_xcpt_if, %bpu.io_xcpt_ld, %bpu.io_xcpt_st, %bpu.io_debug_if, %bpu.io_debug_ld, %bpu.io_debug_st = hw.instance "bpu" @BreakpointUnit(io_status_debug: %csr.io_status_debug: i1, io_bp_0_control_action: %csr.io_bp_0_control_action: i1, io_bp_0_control_tmatch: %csr.io_bp_0_control_tmatch: i2, io_bp_0_control_x: %csr.io_bp_0_control_x: i1, io_bp_0_control_w: %csr.io_bp_0_control_w: i1, io_bp_0_control_r: %csr.io_bp_0_control_r: i1, io_bp_0_address: %csr.io_bp_0_address: i32, io_pc: %ibuf.io_pc: i32, io_ea: %mem_reg_wdata: i32) -> (io_xcpt_if: i1, io_xcpt_ld: i1, io_xcpt_st: i1, io_debug_if: i1, io_debug_ld: i1, io_debug_st: i1) {sv.namehint = "bpu.io_xcpt_st"}
+    %302 = comb.or bin %csr.io_interrupt, %bpu.io_debug_if, %bpu.io_xcpt_if, %ibuf.io_inst_0_bits_xcpt0_pf_inst, %ibuf.io_inst_0_bits_xcpt0_gf_inst, %ibuf.io_inst_0_bits_xcpt0_ae_inst, %ibuf.io_inst_0_bits_xcpt1_pf_inst, %ibuf.io_inst_0_bits_xcpt1_gf_inst, %ibuf.io_inst_0_bits_xcpt1_ae_inst, %288, %282 {sv.namehint = "id_xcpt"} : i1
+    %303 = comb.mux bin %288, %c-10_i5, %c2_i5 : i5
+    %304 = comb.mux bin %ibuf.io_inst_0_bits_xcpt1_ae_inst, %c1_i5, %303 : i5
+    %305 = comb.mux bin %ibuf.io_inst_0_bits_xcpt1_gf_inst, %c-12_i5, %304 : i5
+    %306 = comb.mux bin %ibuf.io_inst_0_bits_xcpt1_pf_inst, %c12_i5, %305 : i5
+    %307 = comb.mux bin %ibuf.io_inst_0_bits_xcpt0_ae_inst, %c1_i5, %306 : i5
+    %308 = comb.mux bin %ibuf.io_inst_0_bits_xcpt0_gf_inst, %c-12_i5, %307 : i5
+    %309 = comb.mux bin %ibuf.io_inst_0_bits_xcpt0_pf_inst, %c12_i5, %308 : i5
+    %310 = comb.mux bin %bpu.io_xcpt_if, %c3_i5, %309 : i5
+    %311 = comb.mux bin %bpu.io_debug_if, %c14_i5, %310 : i5
+    %312 = comb.concat %c0_i27, %311 : i27, i5
+    %313 = comb.mux bin %csr.io_interrupt, %csr.io_interrupt_cause, %312 {sv.namehint = "id_cause"} : i32
+    %314 = comb.extract %ex_reg_inst from 7 {sv.namehint = "ex_waddr"} : (i32) -> i5
+    %315 = comb.extract %mem_reg_inst from 7 {sv.namehint = "mem_waddr"} : (i32) -> i5
+    %316 = comb.extract %wb_reg_inst from 7 {sv.namehint = "wb_waddr"} : (i32) -> i5
+    %317 = comb.and bin %ex_reg_valid, %ex_ctrl_wxd : i1
+    %318 = comb.and bin %mem_reg_valid, %mem_ctrl_wxd {sv.namehint = "_dcache_kill_mem_T"} : i1
+    %319 = comb.xor bin %mem_ctrl_mem, %true : i1
+    %320 = comb.and bin %318, %319 : i1
+    %321 = comb.icmp bin eq %314, %ibuf.io_inst_0_bits_inst_rs1 {sv.namehint = "_fp_data_hazard_ex_T_1"} : i5
+    %322 = comb.and bin %317, %321 {sv.namehint = "id_bypass_src_0_1"} : i1
+    %323 = comb.icmp bin eq %315, %ibuf.io_inst_0_bits_inst_rs1 {sv.namehint = "_fp_data_hazard_mem_T_1"} : i5
+    %324 = comb.and bin %320, %323 {sv.namehint = "id_bypass_src_0_2"} : i1
+    %325 = comb.and bin %318, %323 {sv.namehint = "id_bypass_src_0_3"} : i1
+    %326 = comb.icmp bin eq %314, %ibuf.io_inst_0_bits_inst_rs2 {sv.namehint = "_fp_data_hazard_ex_T_3"} : i5
+    %327 = comb.and bin %317, %326 {sv.namehint = "id_bypass_src_1_1"} : i1
+    %328 = comb.icmp bin eq %315, %ibuf.io_inst_0_bits_inst_rs2 {sv.namehint = "_fp_data_hazard_mem_T_3"} : i5
+    %329 = comb.and bin %320, %328 {sv.namehint = "id_bypass_src_1_2"} : i1
+    %330 = comb.and bin %318, %328 {sv.namehint = "id_bypass_src_1_3"} : i1
+    %ex_reg_rs_bypass_0 = seq.firreg %476 clock %clock {firrtl.random_init_start = 783 : ui64} : i1
+    %ex_reg_rs_bypass_1 = seq.firreg %461 clock %clock {firrtl.random_init_start = 784 : ui64} : i1
+    %ex_reg_rs_lsb_0 = seq.firreg %479 clock %clock {firrtl.random_init_start = 785 : ui64} : i2
+    %ex_reg_rs_lsb_1 = seq.firreg %466 clock %clock {firrtl.random_init_start = 787 : ui64} : i2
+    %ex_reg_rs_msb_0 = seq.firreg %482 clock %clock {firrtl.random_init_start = 789 : ui64} : i30
+    %ex_reg_rs_msb_1 = seq.firreg %469 clock %clock {firrtl.random_init_start = 819 : ui64} : i30
+    %331 = hw.array_create %io_dmem_resp_bits_data_word_bypass, %wb_reg_wdata, %mem_reg_wdata, %c0_i32 : i32
+    %332 = hw.array_get %331[%ex_reg_rs_lsb_0] {sv.namehint = "_ex_rs_T_5"} : !hw.array<4xi32>, i2
+    %333 = comb.concat %ex_reg_rs_msb_0, %ex_reg_rs_lsb_0 {sv.namehint = "_ex_rs_T_6"} : i30, i2
+    %334 = comb.mux bin %ex_reg_rs_bypass_0, %332, %333 {sv.namehint = "ex_rs_0"} : i32
+    %335 = hw.array_create %io_dmem_resp_bits_data_word_bypass, %wb_reg_wdata, %mem_reg_wdata, %c0_i32 : i32
+    %336 = hw.array_get %335[%ex_reg_rs_lsb_1] {sv.namehint = "_ex_rs_T_12"} : !hw.array<4xi32>, i2
+    %337 = comb.concat %ex_reg_rs_msb_1, %ex_reg_rs_lsb_1 {sv.namehint = "_ex_rs_T_13"} : i30, i2
+    %338 = comb.mux bin %ex_reg_rs_bypass_1, %336, %337 {sv.namehint = "ex_rs_1"} : i32
+    %339 = comb.icmp bin eq %ex_ctrl_sel_imm, %c-3_i3 {sv.namehint = "_ex_imm_b0_T_4"} : i3
+    %340 = comb.extract %ex_reg_inst from 31 {sv.namehint = "_ex_imm_sign_T_1"} : (i32) -> i1
+    %341 = comb.xor %339, %true : i1
+    %342 = comb.and %341, %340 {sv.namehint = "ex_imm_sign"} : i1
+    %343 = comb.icmp bin eq %ex_ctrl_sel_imm, %c2_i3 {sv.namehint = "_ex_imm_b4_1_T"} : i3
+    %344 = comb.extract %ex_reg_inst from 20 {sv.namehint = "_ex_imm_b30_20_T_1"} : (i32) -> i11
+    %345 = comb.replicate %342 : (i1) -> i11
+    %346 = comb.mux bin %343, %344, %345 {sv.namehint = "ex_imm_b30_20"} : i11
+    %347 = comb.icmp bin ne %ex_ctrl_sel_imm, %c2_i3 {sv.namehint = "_ex_imm_b19_12_T"} : i3
+    %348 = comb.icmp bin ne %ex_ctrl_sel_imm, %c3_i3 {sv.namehint = "_ex_imm_b19_12_T_1"} : i3
+    %349 = comb.and bin %347, %348 {sv.namehint = "_ex_imm_b19_12_T_2"} : i1
+    %350 = comb.extract %ex_reg_inst from 12 {sv.namehint = "_ex_imm_b19_12_T_3"} : (i32) -> i8
+    %351 = comb.replicate %342 : (i1) -> i8
+    %352 = comb.mux bin %349, %351, %350 {sv.namehint = "ex_imm_b19_12"} : i8
+    %353 = comb.or bin %343, %339 {sv.namehint = "_ex_imm_b11_T_2"} : i1
+    %354 = comb.icmp bin eq %ex_ctrl_sel_imm, %c3_i3 {sv.namehint = "_ex_imm_b11_T_3"} : i3
+    %355 = comb.extract %ex_reg_inst from 20 {sv.namehint = "_io_dmem_req_bits_signed_T"} : (i32) -> i1
+    %356 = comb.icmp bin eq %ex_ctrl_sel_imm, %c1_i3 {sv.namehint = "_ex_imm_b4_1_T_2"} : i3
+    %357 = comb.extract %ex_reg_inst from 7 {sv.namehint = "_ex_imm_b0_T_1"} : (i32) -> i1
+    %358 = comb.mux bin %356, %357, %342 {sv.namehint = "_ex_imm_b11_T_9"} : i1
+    %359 = comb.mux bin %354, %355, %358 {sv.namehint = "_ex_imm_b11_T_10"} : i1
+    %360 = comb.xor %353, %true : i1
+    %361 = comb.and %360, %359 {sv.namehint = "ex_imm_b11"} : i1
+    %362 = comb.or bin %343, %339 {sv.namehint = "_ex_imm_b10_5_T_2"} : i1
+    %363 = comb.extract %ex_reg_inst from 25 {sv.namehint = "_ex_imm_b10_5_T_3"} : (i32) -> i6
+    %364 = comb.mux bin %362, %c0_i6, %363 {sv.namehint = "ex_imm_b10_5"} : i6
+    %365 = comb.icmp bin eq %ex_ctrl_sel_imm, %c0_i3 {sv.namehint = "_ex_imm_b0_T"} : i3
+    %366 = comb.or bin %365, %356 {sv.namehint = "_ex_imm_b4_1_T_3"} : i1
+    %367 = comb.extract %ex_reg_inst from 8 {sv.namehint = "_ex_imm_b4_1_T_4"} : (i32) -> i4
+    %368 = comb.extract %ex_reg_inst from 16 {sv.namehint = "_ex_imm_b4_1_T_6"} : (i32) -> i4
+    %369 = comb.extract %ex_reg_inst from 21 {sv.namehint = "_ex_imm_b4_1_T_7"} : (i32) -> i4
+    %370 = comb.mux bin %339, %368, %369 {sv.namehint = "_ex_imm_b4_1_T_8"} : i4
+    %371 = comb.mux bin %366, %367, %370 {sv.namehint = "_ex_imm_b4_1_T_9"} : i4
+    %372 = comb.mux bin %343, %c0_i4, %371 {sv.namehint = "ex_imm_b4_1"} : i4
+    %373 = comb.icmp bin eq %ex_ctrl_sel_imm, %c-4_i3 {sv.namehint = "_ex_imm_b0_T_2"} : i3
+    %374 = comb.extract %ex_reg_inst from 15 {sv.namehint = "_ex_imm_b0_T_5"} : (i32) -> i1
+    %375 = comb.and %339, %374 {sv.namehint = "_ex_imm_b0_T_6"} : i1
+    %376 = comb.mux bin %373, %355, %375 {sv.namehint = "_ex_imm_b0_T_7"} : i1
+    %377 = comb.mux bin %365, %357, %376 {sv.namehint = "ex_imm_b0"} : i1
+    %378 = comb.concat %342, %346, %352, %361, %364, %372, %377 {sv.namehint = "_ex_imm_T"} : i1, i11, i8, i1, i6, i4, i1
+    %379 = hw.array_create %c0_i32, %ex_reg_pc, %334, %c0_i32 : i32
+    %380 = hw.array_get %379[%ex_ctrl_sel_alu1] {sv.namehint = "ex_op1"} : !hw.array<4xi32>, i2
+    %381 = comb.mux bin %ex_reg_rvc, %c2_i4, %c4_i4 {sv.namehint = "_ex_op2_T_1"} : i4
+    %382 = comb.icmp bin eq %ex_ctrl_sel_alu2, %c2_i3 {sv.namehint = "_ex_op2_T_2"} : i3
+    %383 = comb.mux bin %382, %338, %c0_i32 {sv.namehint = "_ex_op2_T_3"} : i32
+    %384 = comb.icmp bin eq %ex_ctrl_sel_alu2, %c3_i3 {sv.namehint = "_ex_op2_T_4"} : i3
+    %385 = comb.mux bin %384, %378, %383 {sv.namehint = "_ex_op2_T_5"} : i32
+    %386 = comb.icmp bin eq %ex_ctrl_sel_alu2, %c1_i3 {sv.namehint = "_ex_op2_T_6"} : i3
+    %387 = comb.extract %381 from 3 : (i4) -> i1
+    %388 = comb.replicate %387 : (i1) -> i28
+    %389 = comb.concat %388, %381 : i28, i4
+    %390 = comb.mux bin %386, %389, %385 {sv.namehint = "ex_op2"} : i32
+    %alu.io_out, %alu.io_adder_out, %alu.io_cmp_out = hw.instance "alu" @RocketALU(io_fn: %ex_ctrl_alu_fn: i5, io_in2: %390: i32, io_in1: %380: i32) -> (io_out: i32, io_adder_out: i32, io_cmp_out: i1) {sv.namehint = "alu.io_out"}
+    %div.io_req_ready, %div.io_resp_valid, %div.io_resp_bits_data, %div.io_resp_bits_tag = hw.instance "div" @MulDiv(clock: %clock: !seq.clock, reset: %reset: i1, io_req_valid: %391: i1, io_req_bits_fn: %ex_ctrl_alu_fn: i5, io_req_bits_in1: %334: i32, io_req_bits_in2: %338: i32, io_req_bits_tag: %314: i5, io_kill: %672: i1, io_resp_ready: %ll_arb.io_in_0_ready: i1) -> (io_req_ready: i1, io_resp_valid: i1, io_resp_bits_data: i32, io_resp_bits_tag: i5) {sv.namehint = "div.io_req_ready"}
+    %391 = comb.and bin %ex_reg_valid, %ex_ctrl_div {sv.namehint = "div.io_req_valid"} : i1
+    %392 = comb.xor bin %847, %true {sv.namehint = "_io_fpu_valid_T"} : i1
+    %393 = comb.xor bin %1, %true {sv.namehint = "_mem_reg_xcpt_interrupt_T"} : i1
+    %394 = comb.and bin %393, %ibuf.io_inst_0_valid, %ibuf.io_inst_0_bits_replay {sv.namehint = "_ex_reg_replay_T_2"} : i1
+    %395 = comb.and bin %392, %302 {sv.namehint = "_ex_reg_xcpt_T_1"} : i1
+    %396 = comb.and bin %393, %ibuf.io_inst_0_valid, %csr.io_interrupt {sv.namehint = "_ex_reg_xcpt_interrupt_T_2"} : i1
+    %397 = comb.and %847, %ex_ctrl_fp : i1
+    %398 = comb.and %847, %ex_ctrl_rocc : i1
+    %399 = comb.mux bin %847, %ex_ctrl_branch, %237 : i1
+    %400 = comb.mux bin %847, %ex_ctrl_jal, %61 : i1
+    %401 = comb.mux bin %847, %ex_ctrl_jalr, %59 : i1
+    %402 = comb.mux bin %847, %ex_ctrl_rxs2, %235 : i1
+    %403 = comb.mux bin %847, %ex_ctrl_sel_imm, %242 : i3
+    %404 = comb.mux bin %847, %ex_ctrl_mem, %209 : i1
+    %405 = comb.and %847, %ex_ctrl_mul : i1
+    %406 = comb.mux bin %847, %ex_ctrl_div, %151 : i1
+    %407 = comb.mux bin %847, %ex_ctrl_wxd, %201 : i1
+    %408 = comb.mux bin %847, %ex_ctrl_fence_i, %82 : i1
+    %409 = comb.mux bin %847, %ex_ctrl_csr, %264 : i3
+    %410 = comb.icmp bin eq %291, %c0_i4 : i4
+    %411 = comb.and bin %392, %27, %410 : i1
+    %412 = comb.or %411, %id_reg_pause : i1
+    %413 = comb.and bin %392, %293 : i1
+    %414 = comb.or %413, %296 : i1
+    %415 = comb.mux bin %302, %c0_i5, %243 : i5
+    %416 = comb.mux bin %847, %ex_ctrl_alu_fn, %415 : i5
+    %417 = comb.concat %ibuf.io_inst_0_bits_xcpt1_pf_inst, %ibuf.io_inst_0_bits_xcpt1_gf_inst, %ibuf.io_inst_0_bits_xcpt1_ae_inst : i1, i1, i1
+    %418 = comb.icmp bin ne %417, %c0_i3 : i3
+    %419 = comb.concat %c0_i2, %418 : i2, i1
+    %420 = comb.and bin %302, %418 : i1
+    %421 = comb.or %420, %ibuf.io_inst_0_bits_rvc : i1
+    %422 = comb.mux bin %847, %ex_reg_rvc, %421 : i1
+    %423 = comb.concat %bpu.io_xcpt_if, %ibuf.io_inst_0_bits_xcpt0_pf_inst, %ibuf.io_inst_0_bits_xcpt0_gf_inst, %ibuf.io_inst_0_bits_xcpt0_ae_inst : i1, i1, i1, i1
+    %424 = comb.icmp bin ne %423, %c0_i4 : i4
+    %425 = comb.concat %bpu.io_xcpt_if, %ibuf.io_inst_0_bits_xcpt0_pf_inst, %ibuf.io_inst_0_bits_xcpt0_gf_inst, %ibuf.io_inst_0_bits_xcpt0_ae_inst, %ibuf.io_inst_0_bits_xcpt1_pf_inst, %ibuf.io_inst_0_bits_xcpt1_gf_inst, %ibuf.io_inst_0_bits_xcpt1_ae_inst : i1, i1, i1, i1, i1, i1, i1
+    %426 = comb.icmp bin ne %425, %c0_i7 : i7
+    %427 = comb.mux bin %426, %c-2_i2, %c1_i2 : i2
+    %428 = comb.mux bin %302, %427, %241 : i2
+    %429 = comb.mux bin %847, %ex_ctrl_sel_alu1, %428 : i2
+    %430 = comb.mux bin %424, %c0_i3, %419 : i3
+    %431 = comb.mux bin %302, %430, %240 : i3
+    %432 = comb.mux bin %847, %ex_ctrl_sel_alu2, %431 : i3
+    %433 = comb.or bin %82, %258, %266 {sv.namehint = "_ex_reg_flush_pipe_T"} : i1
+    %434 = comb.mux bin %847, %ex_reg_flush_pipe, %433 : i1
+    %435 = comb.mux bin %847, %ex_reg_load_use, %823 : i1
+    %436 = comb.extract %ibuf.io_inst_0_bits_inst_bits from 12 {sv.namehint = "_ex_reg_mem_size_T_3"} : (i32) -> i2
+    %437 = comb.concat %101, %207, %205, %203 : i1, i1, i1, i1
+    %438 = comb.icmp bin eq %437, %c5_i4 : i4
+    %439 = comb.icmp bin ne %ibuf.io_inst_0_bits_inst_rs2, %c0_i5 {sv.namehint = "_ex_reg_mem_size_T_4"} : i5
+    %440 = comb.icmp bin ne %ibuf.io_inst_0_bits_inst_rs1, %c0_i5 {sv.namehint = "_ex_reg_mem_size_T_5"} : i5
+    %441 = comb.concat %439, %440 {sv.namehint = "_ex_reg_mem_size_T_6"} : i1, i1
+    %442 = comb.mux bin %438, %441, %436 : i2
+    %443 = comb.mux bin %847, %ex_reg_mem_size, %442 : i2
+    %444 = comb.mux bin %847, %ex_ctrl_mem_cmd, %244 : i5
+    %445 = comb.or bin %249, %322, %324, %325 {sv.namehint = "do_bypass"} : i1
+    %446 = comb.xor %324, %true : i1
+    %447 = comb.concat %true, %446 {sv.namehint = "_bypass_src_T"} : i1, i1
+    %448 = comb.mux bin %322, %c1_i2, %447 {sv.namehint = "_bypass_src_T_1"} : i2
+    %449 = comb.mux bin %248, %448, %c0_i2 {sv.namehint = "bypass_src"} : i2
+    %450 = comb.xor bin %445, %true : i1
+    %451 = comb.and bin %233, %450 : i1
+    %452 = comb.extract %741 from 0 {sv.namehint = "_ex_reg_rs_lsb_0_T"} : (i32) -> i2
+    %453 = comb.mux bin %451, %452, %449 : i2
+    %454 = comb.extract %741 from 2 {sv.namehint = "_ex_reg_rs_msb_0_T"} : (i32) -> i30
+    %455 = comb.mux bin %451, %454, %ex_reg_rs_msb_0 : i30
+    %456 = comb.or bin %252, %327, %329, %330 {sv.namehint = "do_bypass_1"} : i1
+    %457 = comb.xor %329, %true : i1
+    %458 = comb.concat %true, %457 {sv.namehint = "_bypass_src_T_2"} : i1, i1
+    %459 = comb.mux bin %327, %c1_i2, %458 {sv.namehint = "_bypass_src_T_3"} : i2
+    %460 = comb.mux bin %251, %459, %c0_i2 {sv.namehint = "bypass_src_1"} : i2
+    %461 = comb.mux bin %847, %ex_reg_rs_bypass_1, %456 : i1
+    %462 = comb.xor bin %456, %true : i1
+    %463 = comb.and bin %235, %462 : i1
+    %464 = comb.extract %744 from 0 {sv.namehint = "_ex_reg_rs_lsb_1_T"} : (i32) -> i2
+    %465 = comb.mux bin %463, %464, %460 : i2
+    %466 = comb.mux bin %847, %ex_reg_rs_lsb_1, %465 : i2
+    %467 = comb.extract %744 from 2 {sv.namehint = "_ex_reg_rs_msb_1_T"} : (i32) -> i30
+    %468 = comb.and bin %392, %463 : i1
+    %469 = comb.mux bin %468, %467, %ex_reg_rs_msb_1 : i30
+    %470 = comb.or bin %282, %288 : i1
+    %471 = comb.extract %ibuf.io_inst_0_bits_raw from 0 {sv.namehint = "_inst_T"} : (i32) -> i16
+    %472 = comb.concat %c0_i16, %471 : i16, i16
+    %473 = comb.mux bin %ibuf.io_inst_0_bits_rvc, %472, %ibuf.io_inst_0_bits_raw {sv.namehint = "inst"} : i32
+    %474 = comb.xor %470, %true : i1
+    %475 = comb.and %474, %445 : i1
+    %476 = comb.mux bin %847, %ex_reg_rs_bypass_0, %475 : i1
+    %477 = comb.extract %473 from 0 {sv.namehint = "_ex_reg_rs_lsb_0_T_1"} : (i32) -> i2
+    %478 = comb.mux bin %470, %477, %453 : i2
+    %479 = comb.mux bin %847, %ex_reg_rs_lsb_0, %478 : i2
+    %480 = comb.extract %473 from 2 {sv.namehint = "_ex_reg_rs_msb_0_T_1"} : (i32) -> i30
+    %481 = comb.mux bin %470, %480, %455 : i30
+    %482 = comb.mux bin %847, %ex_reg_rs_msb_0, %481 : i30
+    %483 = comb.or bin %392, %csr.io_interrupt, %ibuf.io_inst_0_bits_replay : i1
+    %484 = comb.mux bin %483, %313, %ex_reg_cause : i32
+    %485 = comb.mux bin %483, %ibuf.io_inst_0_bits_inst_bits, %ex_reg_inst : i32
+    %486 = comb.mux bin %483, %ibuf.io_pc, %ex_reg_pc : i32
+    %487 = comb.or bin %ex_reg_valid, %ex_reg_replay, %ex_reg_xcpt_interrupt {sv.namehint = "ex_pc_valid"} : i1
+    %488 = comb.xor bin %io_dmem_resp_valid, %true {sv.namehint = "_wb_dcache_miss_T"} : i1
+    %489 = comb.and bin %wb_ctrl_mem, %488 {sv.namehint = "wb_dcache_miss"} : i1
+    %490 = comb.xor bin %io_dmem_req_ready, %true {sv.namehint = "_dcache_blocked_blocked_T"} : i1
+    %491 = comb.and bin %ex_ctrl_mem, %490 {sv.namehint = "_replay_ex_structural_T_1"} : i1
+    %492 = comb.xor bin %div.io_req_ready, %true {sv.namehint = "_replay_ex_structural_T_2"} : i1
+    %493 = comb.and bin %ex_ctrl_div, %492 {sv.namehint = "_replay_ex_structural_T_3"} : i1
+    %494 = comb.and bin %489, %ex_reg_load_use {sv.namehint = "replay_ex_load_use"} : i1
+    %495 = comb.or bin %491, %493, %494 {sv.namehint = "_replay_ex_T"} : i1
+    %496 = comb.and bin %ex_reg_valid, %495 {sv.namehint = "_replay_ex_T_1"} : i1
+    %497 = comb.or bin %ex_reg_replay, %496 {sv.namehint = "replay_ex"} : i1
+    %498 = comb.xor bin %ex_reg_valid, %true {sv.namehint = "_ctrl_killx_T_1"} : i1
+    %499 = comb.or bin %1, %497, %498 {sv.namehint = "ctrl_killx"} : i1
+    %500 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c7_i5 {sv.namehint = "_io_dmem_req_bits_no_resp_T_3"} : i5
+    %501 = comb.extract %ex_reg_mem_size from 1 : (i2) -> i1
+    %502 = comb.xor bin %501, %true {sv.namehint = "_ex_slow_bypass_T_1"} : i1
+    %503 = comb.or bin %500, %502 {sv.namehint = "ex_slow_bypass"} : i1
+    %504 = comb.or bin %ex_reg_xcpt_interrupt, %ex_reg_xcpt {sv.namehint = "ex_xcpt"} : i1
+    %505 = comb.or bin %mem_reg_valid, %mem_reg_replay, %mem_reg_xcpt_interrupt {sv.namehint = "mem_pc_valid"} : i1
+    %506 = comb.and bin %mem_ctrl_branch, %mem_br_taken {sv.namehint = "_mem_cfi_taken_T"} : i1
+    %507 = comb.extract %mem_reg_inst from 31 {sv.namehint = "mem_br_target_hi_hi_hi"} : (i32) -> i1
+    %508 = comb.extract %mem_reg_inst from 12 {sv.namehint = "mem_br_target_hi_lo_hi_1"} : (i32) -> i8
+    %509 = comb.extract %mem_reg_inst from 20 {sv.namehint = "mem_br_target_hi_lo_lo_1"} : (i32) -> i1
+    %510 = comb.extract %mem_reg_inst from 7 {sv.namehint = "mem_br_target_hi_lo_lo"} : (i32) -> i1
+    %511 = comb.extract %mem_reg_inst from 25 {sv.namehint = "mem_br_target_b10_5"} : (i32) -> i6
+    %512 = comb.extract %mem_reg_inst from 8 {sv.namehint = "mem_br_target_b4_1"} : (i32) -> i4
+    %513 = comb.replicate %507 : (i1) -> i20
+    %514 = comb.concat %513, %510, %511, %512, %false {sv.namehint = "_mem_br_target_T_2"} : i20, i1, i6, i4, i1
+    %515 = comb.extract %mem_reg_inst from 21 {sv.namehint = "mem_br_target_lo_hi_1"} : (i32) -> i10
+    %516 = comb.replicate %507 {sv.namehint = "mem_br_target_hi_hi_1"} : (i1) -> i12
+    %517 = comb.concat %516, %508, %509, %515, %false {sv.namehint = "_mem_br_target_T_4"} : i12, i8, i1, i10, i1
+    %518 = comb.mux bin %mem_reg_rvc, %c2_i4, %c4_i4 {sv.namehint = "_mem_br_target_T_6"} : i4
+    %519 = comb.extract %518 from 3 : (i4) -> i1
+    %520 = comb.replicate %519 : (i1) -> i28
+    %521 = comb.concat %520, %518 : i28, i4
+    %522 = comb.mux bin %mem_ctrl_jal, %517, %521 {sv.namehint = "_mem_br_target_T_7"} : i32
+    %523 = comb.mux bin %506, %514, %522 {sv.namehint = "_mem_br_target_T_8"} : i32
+    %524 = comb.add bin %mem_reg_pc, %523 {sv.namehint = "_mem_br_target_T_9"} : i32
+    %525 = comb.mux bin %mem_ctrl_jalr, %mem_reg_wdata, %524 {sv.namehint = "_mem_npc_T_2"} : i32
+    %526 = comb.and bin %525, %c-2_i32 {sv.namehint = "mem_npc"} : i32
+    %527 = comb.icmp bin ne %526, %ex_reg_pc {sv.namehint = "_mem_wrong_npc_T"} : i32
+    %528 = comb.or bin %ibuf.io_inst_0_valid, %io_imem_resp_valid {sv.namehint = "_mem_wrong_npc_T_1"} : i1
+    %529 = comb.icmp bin ne %526, %ibuf.io_pc {sv.namehint = "_mem_wrong_npc_T_2"} : i32
+    %530 = comb.xor %528, %true : i1
+    %531 = comb.or %530, %529 {sv.namehint = "_mem_wrong_npc_T_3"} : i1
+    %532 = comb.mux bin %487, %527, %531 {sv.namehint = "mem_wrong_npc"} : i1
+    %533 = comb.xor bin %274, %true {sv.namehint = "_mem_npc_misaligned_T_1"} : i1
+    %534 = comb.extract %525 from 1 {sv.namehint = "_mem_npc_misaligned_T_2"} : (i32) -> i1
+    %535 = comb.and bin %533, %534 {sv.namehint = "_mem_npc_misaligned_T_3"} : i1
+    %536 = comb.xor bin %mem_reg_xcpt, %true {sv.namehint = "_wb_reg_wdata_T"} : i1
+    %537 = comb.xor bin %mem_ctrl_jalr, %535 {sv.namehint = "_mem_int_wdata_T_1"} : i1
+    %538 = comb.and bin %536, %537 {sv.namehint = "_mem_int_wdata_T_2"} : i1
+    %539 = comb.mux bin %538, %524, %mem_reg_wdata {sv.namehint = "_mem_int_wdata_T_4"} : i32
+    %540 = comb.or bin %mem_ctrl_branch, %mem_ctrl_jalr, %mem_ctrl_jal {sv.namehint = "mem_cfi"} : i1
+    %541 = comb.or bin %506, %mem_ctrl_jalr, %mem_ctrl_jal {sv.namehint = "mem_cfi_taken"} : i1
+    %542 = comb.and bin %mem_reg_valid, %536, %541 {sv.namehint = "take_pc_mem"} : i1
+    %543 = comb.xor bin %499, %true {sv.namehint = "_mem_reg_xcpt_T"} : i1
+    %544 = comb.and bin %393, %497 {sv.namehint = "_mem_reg_replay_T_1"} : i1
+    %545 = comb.and bin %543, %504 {sv.namehint = "_mem_reg_xcpt_T_1"} : i1
+    %546 = comb.and bin %393, %ex_reg_xcpt_interrupt {sv.namehint = "_mem_reg_xcpt_interrupt_T_1"} : i1
+    %547 = comb.and bin %mem_reg_valid, %mem_reg_flush_pipe : i1
+    %548 = comb.xor %487, %true : i1
+    %549 = comb.or %547, %548 : i1
+    %550 = comb.mux bin %549, %mem_ctrl_fp, %ex_ctrl_fp : i1
+    %551 = comb.xor %487, %true : i1
+    %552 = comb.or %547, %551 : i1
+    %553 = comb.mux bin %552, %mem_ctrl_rocc, %ex_ctrl_rocc : i1
+    %554 = comb.xor %487, %true : i1
+    %555 = comb.or %547, %554 : i1
+    %556 = comb.mux bin %555, %mem_ctrl_branch, %ex_ctrl_branch : i1
+    %557 = comb.xor %487, %true : i1
+    %558 = comb.or %547, %557 : i1
+    %559 = comb.mux bin %558, %mem_ctrl_jal, %ex_ctrl_jal : i1
+    %560 = comb.xor %487, %true : i1
+    %561 = comb.or %547, %560 : i1
+    %562 = comb.mux bin %561, %mem_ctrl_jalr, %ex_ctrl_jalr : i1
+    %563 = comb.xor %487, %true : i1
+    %564 = comb.or %547, %563 : i1
+    %565 = comb.mux bin %564, %mem_ctrl_mem, %ex_ctrl_mem : i1
+    %566 = comb.xor %487, %true : i1
+    %567 = comb.or %547, %566 : i1
+    %568 = comb.mux bin %567, %mem_ctrl_mul, %ex_ctrl_mul : i1
+    %569 = comb.xor %487, %true : i1
+    %570 = comb.or %547, %569 : i1
+    %571 = comb.mux bin %570, %mem_ctrl_div, %ex_ctrl_div : i1
+    %572 = comb.xor %487, %true : i1
+    %573 = comb.or %547, %572 : i1
+    %574 = comb.mux bin %573, %mem_ctrl_wxd, %ex_ctrl_wxd : i1
+    %575 = comb.xor %487, %true : i1
+    %576 = comb.or %547, %575 : i1
+    %577 = comb.mux bin %576, %mem_ctrl_csr, %ex_ctrl_csr : i3
+    %578 = comb.xor %487, %true : i1
+    %579 = comb.or %547, %578 : i1
+    %580 = comb.and %579, %mem_ctrl_vec : i1
+    %581 = comb.xor %487, %true : i1
+    %582 = comb.or %547, %581 : i1
+    %583 = comb.mux bin %582, %mem_reg_rvc, %ex_reg_rvc : i1
+    %584 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c0_i5 {sv.namehint = "_mem_reg_load_T"} : i5
+    %585 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c-16_i5 {sv.namehint = "_mem_reg_load_T_1"} : i5
+    %586 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c6_i5 {sv.namehint = "_mem_reg_load_T_2"} : i5
+    %587 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c4_i5 {sv.namehint = "_mem_reg_store_T_5"} : i5
+    %588 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c9_i5 {sv.namehint = "_mem_reg_store_T_6"} : i5
+    %589 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c10_i5 {sv.namehint = "_mem_reg_store_T_7"} : i5
+    %590 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c11_i5 {sv.namehint = "_mem_reg_store_T_8"} : i5
+    %591 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c8_i5 {sv.namehint = "_mem_reg_store_T_12"} : i5
+    %592 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c12_i5 {sv.namehint = "_mem_reg_store_T_13"} : i5
+    %593 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c13_i5 {sv.namehint = "_mem_reg_store_T_14"} : i5
+    %594 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c14_i5 {sv.namehint = "_mem_reg_store_T_15"} : i5
+    %595 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c15_i5 {sv.namehint = "_mem_reg_store_T_16"} : i5
+    %596 = comb.or bin %584, %585, %586, %500, %587, %588, %589, %590, %591, %592, %593, %594, %595 {sv.namehint = "_mem_reg_load_T_24"} : i1
+    %597 = comb.and bin %ex_ctrl_mem, %596 {sv.namehint = "_mem_reg_load_T_25"} : i1
+    %598 = comb.xor %487, %true : i1
+    %599 = comb.or %547, %598 : i1
+    %600 = comb.mux bin %599, %mem_reg_load, %597 : i1
+    %601 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c1_i5 {sv.namehint = "_mem_reg_store_T"} : i5
+    %602 = comb.icmp bin eq %ex_ctrl_mem_cmd, %c-15_i5 {sv.namehint = "_mem_reg_store_T_1"} : i5
+    %603 = comb.or bin %601, %602, %500, %587, %588, %589, %590, %591, %592, %593, %594, %595 {sv.namehint = "_mem_reg_store_T_22"} : i1
+    %604 = comb.and bin %ex_ctrl_mem, %603 {sv.namehint = "_mem_reg_store_T_23"} : i1
+    %605 = comb.xor %487, %true : i1
+    %606 = comb.or %547, %605 : i1
+    %607 = comb.mux bin %606, %mem_reg_store, %604 : i1
+    %608 = comb.xor %487, %true : i1
+    %609 = comb.or %547, %608 : i1
+    %610 = comb.mux bin %609, %mem_mem_cmd_bh, %503 : i1
+    %611 = comb.xor %487, %true : i1
+    %612 = comb.or %547, %611 : i1
+    %613 = comb.mux bin %612, %mem_reg_cause, %ex_reg_cause : i32
+    %614 = comb.xor %487, %true : i1
+    %615 = comb.or %547, %614 : i1
+    %616 = comb.mux bin %615, %mem_reg_inst, %ex_reg_inst : i32
+    %617 = comb.xor %487, %true : i1
+    %618 = comb.or %547, %617 : i1
+    %619 = comb.mux bin %618, %mem_reg_hls_or_dv, %csr.io_status_dv : i1
+    %620 = comb.xor %487, %true : i1
+    %621 = comb.or %547, %620 : i1
+    %622 = comb.mux bin %621, %mem_reg_pc, %ex_reg_pc : i32
+    %623 = comb.xor %487, %true : i1
+    %624 = comb.or %547, %623 : i1
+    %625 = comb.mux bin %624, %mem_reg_wdata, %alu.io_out : i32
+    %626 = comb.xor %487, %true : i1
+    %627 = comb.or %547, %626 : i1
+    %628 = comb.mux bin %627, %mem_br_taken, %alu.io_cmp_out : i1
+    %629 = comb.or bin %ex_ctrl_mem, %ex_ctrl_rocc : i1
+    %630 = comb.mux bin %ex_ctrl_rocc, %c-2_i2, %ex_reg_mem_size {sv.namehint = "size"} : i2
+    %631 = comb.icmp bin eq %630, %c0_i2 {sv.namehint = "_mem_reg_rs2_T"} : i2
+    %632 = comb.extract %338 from 0 {sv.namehint = "_mem_reg_rs2_T_1"} : (i32) -> i8
+    %633 = comb.replicate %632 {sv.namehint = "_mem_reg_rs2_T_2"} : (i8) -> i16
+    %634 = comb.replicate %633 {sv.namehint = "_mem_reg_rs2_T_3"} : (i16) -> i32
+    %635 = comb.icmp bin eq %630, %c1_i2 {sv.namehint = "_mem_reg_rs2_T_4"} : i2
+    %636 = comb.extract %338 from 0 {sv.namehint = "_mem_reg_rs2_T_5"} : (i32) -> i16
+    %637 = comb.replicate %636 {sv.namehint = "_mem_reg_rs2_T_6"} : (i16) -> i32
+    %638 = comb.mux bin %635, %637, %338 {sv.namehint = "_mem_reg_rs2_T_7"} : i32
+    %639 = comb.mux bin %631, %634, %638 {sv.namehint = "_mem_reg_rs2_T_8"} : i32
+    %640 = comb.and bin %487, %ex_ctrl_rxs2, %629 : i1
+    %641 = comb.xor %640, %true : i1
+    %642 = comb.or %547, %641 : i1
+    %643 = comb.mux bin %642, %mem_reg_rs2, %639 : i32
+    %644 = comb.and bin %ex_ctrl_jalr, %csr.io_status_debug : i1
+    %645 = comb.or %644, %ex_ctrl_fence_i : i1
+    %646 = comb.xor %487, %true : i1
+    %647 = comb.or %547, %646 : i1
+    %648 = comb.mux bin %647, %mem_ctrl_fence_i, %645 : i1
+    %649 = comb.or %644, %ex_reg_flush_pipe : i1
+    %650 = comb.xor %487, %true : i1
+    %651 = comb.or %547, %650 : i1
+    %652 = comb.mux bin %651, %mem_reg_flush_pipe, %649 : i1
+    %653 = comb.and bin %mem_reg_load, %bpu.io_xcpt_ld {sv.namehint = "_mem_breakpoint_T"} : i1
+    %654 = comb.and bin %mem_reg_store, %bpu.io_xcpt_st {sv.namehint = "_mem_breakpoint_T_1"} : i1
+    %655 = comb.and bin %mem_reg_load, %bpu.io_debug_ld {sv.namehint = "_mem_debug_breakpoint_T"} : i1
+    %656 = comb.and bin %mem_reg_store, %bpu.io_debug_st {sv.namehint = "_mem_debug_breakpoint_T_1"} : i1
+    %657 = comb.or bin %655, %656 {sv.namehint = "mem_debug_breakpoint"} : i1
+    %658 = comb.or bin %657, %653, %654 {sv.namehint = "mem_ldst_xcpt"} : i1
+    %659 = comb.mux bin %657, %c-2_i4, %c3_i4 {sv.namehint = "mem_ldst_cause"} : i4
+    %660 = comb.or bin %mem_reg_xcpt_interrupt, %mem_reg_xcpt : i1
+    %661 = comb.and bin %mem_reg_valid, %535 : i1
+    %662 = comb.and bin %mem_reg_valid, %658 : i1
+    %663 = comb.or bin %660, %661, %662 {sv.namehint = "mem_xcpt"} : i1
+    %664 = comb.mux bin %661, %c0_i4, %659 : i4
+    %665 = comb.concat %c0_i28, %664 : i28, i4
+    %666 = comb.mux bin %660, %mem_reg_cause, %665 {sv.namehint = "mem_cause"} : i32
+    %667 = comb.and bin %318, %io_dmem_replay_next {sv.namehint = "dcache_kill_mem"} : i1
+    %668 = comb.or bin %667, %mem_reg_replay {sv.namehint = "_replay_mem_T"} : i1
+    %669 = comb.xor bin %mem_reg_valid, %true {sv.namehint = "_killm_common_T_2"} : i1
+    %670 = comb.or bin %667, %713, %mem_reg_xcpt, %669 {sv.namehint = "killm_common"} : i1
+    %671 = comb.and bin %div.io_req_ready, %391 {sv.namehint = "_div_io_kill_T"} : i1
+    %div_io_kill_REG = seq.firreg %671 clock %clock {firrtl.random_init_start = 849 : ui64} : i1
+    %672 = comb.and bin %670, %div_io_kill_REG {sv.namehint = "div.io_kill"} : i1
+    %673 = comb.or bin %670, %663 {sv.namehint = "_ctrl_killm_T"} : i1
+    %674 = comb.xor bin %673, %true {sv.namehint = "_wb_reg_flush_pipe_T"} : i1
+    %675 = comb.xor bin %713, %true {sv.namehint = "io_imem_req_bits_speculative"} : i1
+    %676 = comb.and bin %668, %675 {sv.namehint = "_wb_reg_replay_T_1"} : i1
+    %677 = comb.and bin %663, %675 {sv.namehint = "_wb_reg_xcpt_T_3"} : i1
+    %678 = comb.and bin %674, %mem_reg_flush_pipe {sv.namehint = "_wb_reg_flush_pipe_T_1"} : i1
+    %679 = comb.mux bin %505, %mem_ctrl_rocc, %wb_ctrl_rocc : i1
+    %680 = comb.mux bin %505, %mem_ctrl_mem, %wb_ctrl_mem : i1
+    %681 = comb.mux bin %505, %mem_ctrl_div, %wb_ctrl_div : i1
+    %682 = comb.mux bin %505, %mem_ctrl_wxd, %wb_ctrl_wxd : i1
+    %683 = comb.mux bin %505, %mem_ctrl_csr, %wb_ctrl_csr : i3
+    %684 = comb.mux bin %505, %mem_ctrl_fence_i, %wb_ctrl_fence_i : i1
+    %685 = comb.mux bin %505, %mem_ctrl_vec, %wb_ctrl_vec : i1
+    %686 = comb.and bin %536, %mem_ctrl_fp, %mem_ctrl_wxd {sv.namehint = "_wb_reg_wdata_T_2"} : i1
+    %687 = comb.mux bin %686, %c0_i32, %539 {sv.namehint = "_wb_reg_wdata_T_3"} : i32
+    %688 = comb.mux bin %505, %687, %wb_reg_wdata : i32
+    %689 = comb.mux bin %505, %666, %wb_reg_cause : i32
+    %690 = comb.mux bin %505, %mem_reg_inst, %wb_reg_inst : i32
+    %691 = comb.mux bin %505, %mem_reg_hls_or_dv, %wb_reg_hls_or_dv : i1
+    %692 = comb.mux bin %505, %mem_reg_pc, %wb_reg_pc : i32
+    %693 = comb.and bin %wb_reg_valid, %wb_ctrl_mem : i1
+    %694 = comb.and bin %693, %io_dmem_s2_xcpt_pf_st : i1
+    %695 = comb.and bin %693, %io_dmem_s2_xcpt_pf_ld : i1
+    %696 = comb.and bin %693, %io_dmem_s2_xcpt_ae_st : i1
+    %697 = comb.and bin %693, %io_dmem_s2_xcpt_ae_ld : i1
+    %698 = comb.and bin %693, %io_dmem_s2_xcpt_ma_st : i1
+    %699 = comb.and bin %693, %io_dmem_s2_xcpt_ma_ld : i1
+    %700 = comb.or bin %wb_reg_xcpt, %694, %695, %696, %697, %698, %699 {sv.namehint = "wb_xcpt"} : i1
+    %701 = comb.concat %true, %698, %false : i1, i1, i1
+    %702 = comb.mux bin %697, %c-3_i3, %701 : i3
+    %703 = comb.mux bin %696, %c-1_i3, %702 : i3
+    %704 = comb.concat %c0_i2, %703 : i2, i3
+    %705 = comb.mux bin %695, %c13_i5, %704 : i5
+    %706 = comb.mux bin %694, %c15_i5, %705 : i5
+    %707 = comb.concat %c0_i27, %706 : i27, i5
+    %708 = comb.mux bin %wb_reg_xcpt, %wb_reg_cause, %707 {sv.namehint = "wb_cause"} : i32
+    %709 = comb.and bin %wb_reg_valid, %wb_ctrl_wxd {sv.namehint = "wb_wxd"} : i1
+    %710 = comb.or bin %wb_ctrl_div, %489, %wb_ctrl_rocc, %wb_ctrl_vec {sv.namehint = "wb_set_sboard"} : i1
+    %711 = comb.or bin %io_dmem_s2_nack, %wb_reg_replay {sv.namehint = "replay_wb_common"} : i1
+    %712 = comb.or bin %711, %297 {sv.namehint = "_replay_wb_T"} : i1
+    %713 = comb.or bin %712, %700, %csr.io_eret, %wb_reg_flush_pipe {sv.namehint = "take_pc_wb"} : i1
+    %714 = comb.extract %io_dmem_resp_bits_tag from 0 {sv.namehint = "dmem_resp_fpu"} : (i7) -> i1
+    %715 = comb.xor bin %714, %true {sv.namehint = "dmem_resp_xpu"} : i1
+    %716 = comb.extract %io_dmem_resp_bits_tag from 1 {sv.namehint = "dmem_resp_waddr"} : (i7) -> i5
+    %717 = comb.and bin %io_dmem_resp_valid, %io_dmem_resp_bits_has_data {sv.namehint = "dmem_resp_valid"} : i1
+    %ll_arb.io_in_0_ready, %ll_arb.io_out_valid, %ll_arb.io_out_bits_data, %ll_arb.io_out_bits_tag = hw.instance "ll_arb" @Arbiter3_LLWB(io_in_0_valid: %div.io_resp_valid: i1, io_in_0_bits_data: %div.io_resp_bits_data: i32, io_in_0_bits_tag: %div.io_resp_bits_tag: i5, io_out_ready: %722: i1) -> (io_in_0_ready: i1, io_out_valid: i1, io_out_bits_data: i32, io_out_bits_tag: i5) {sv.namehint = "ll_wdata"}
+    %718 = comb.and bin %722, %ll_arb.io_out_valid {sv.namehint = "_ll_wen_T"} : i1
+    %719 = comb.xor bin %709, %true {sv.namehint = "_ctrl_stalld_T_21"} : i1
+    %720 = comb.and bin %717, %io_dmem_resp_bits_replay, %715 : i1
+    %721 = comb.xor %720, %true : i1
+    %722 = comb.and %721, %719 {sv.namehint = "ll_arb.io_out_ready"} : i1
+    %723 = comb.mux bin %720, %716, %ll_arb.io_out_bits_tag {sv.namehint = "ll_waddr"} : i5
+    %724 = comb.or %720, %718 {sv.namehint = "ll_wen"} : i1
+    %725 = comb.xor bin %712, %true {sv.namehint = "_wb_valid_T"} : i1
+    %726 = comb.xor bin %700, %true {sv.namehint = "_rocc_blocked_T"} : i1
+    %727 = comb.and bin %wb_reg_valid, %725, %726 {sv.namehint = "wb_valid"} : i1
+    %728 = comb.and bin %727, %wb_ctrl_wxd {sv.namehint = "wb_wen"} : i1
+    %729 = comb.or bin %728, %724 {sv.namehint = "rf_wen"} : i1
+    %730 = comb.mux bin %724, %723, %316 {sv.namehint = "rf_waddr"} : i5
+    %731 = comb.and bin %717, %715 {sv.namehint = "_rf_wdata_T"} : i1
+    %732 = comb.icmp bin ne %wb_ctrl_csr, %c0_i3 {sv.namehint = "_rf_wdata_T_2"} : i3
+    %733 = comb.mux bin %732, %csr.io_rw_rdata, %wb_reg_wdata {sv.namehint = "_rf_wdata_T_4"} : i32
+    %734 = comb.mux bin %724, %ll_arb.io_out_bits_data, %733 {sv.namehint = "_rf_wdata_T_5"} : i32
+    %735 = comb.mux bin %731, %io_dmem_resp_bits_data, %734 {sv.namehint = "rf_wdata"} : i32
+    %736 = comb.icmp bin ne %730, %c0_i5 : i5
+    %737 = comb.xor bin %730, %c-1_i5 : i5
+    %738 = comb.and %729, %736 : i1
+    %739 = comb.icmp bin eq %730, %ibuf.io_inst_0_bits_inst_rs1 : i5
+    %740 = comb.and bin %729, %736, %739 : i1
+    %741 = comb.mux bin %740, %735, %246 {sv.namehint = "id_rs_0"} : i32
+    %742 = comb.icmp bin eq %730, %ibuf.io_inst_0_bits_inst_rs2 : i5
+    %743 = comb.and bin %729, %736, %742 : i1
+    %744 = comb.mux bin %743, %735, %247 {sv.namehint = "id_rs_1"} : i32
+    %745 = comb.xor bin %wb_reg_xcpt, %true {sv.namehint = "tval_dmem_addr"} : i1
+    %746 = comb.icmp bin eq %wb_reg_cause, %c3_i32 {sv.namehint = "_tval_any_addr_T"} : i32
+    %747 = comb.icmp bin eq %wb_reg_cause, %c1_i32 {sv.namehint = "_tval_any_addr_T_1"} : i32
+    %748 = comb.icmp bin eq %wb_reg_cause, %c12_i32 {sv.namehint = "_tval_any_addr_T_2"} : i32
+    %749 = comb.icmp bin eq %wb_reg_cause, %c20_i32 {sv.namehint = "_htval_valid_imem_T"} : i32
+    %750 = comb.or bin %745, %746, %747, %748, %749 {sv.namehint = "tval_any_addr"} : i1
+    %751 = comb.icmp bin eq %wb_reg_cause, %c2_i32 {sv.namehint = "tval_inst"} : i32
+    %752 = comb.or bin %750, %751 {sv.namehint = "_tval_valid_T"} : i1
+    %753 = comb.and bin %700, %752 {sv.namehint = "tval_valid"} : i1
+    %754 = comb.and bin %750, %csr.io_status_v {sv.namehint = "_csr_io_gva_T"} : i1
+    %755 = comb.and bin %745, %wb_reg_hls_or_dv {sv.namehint = "_csr_io_gva_T_1"} : i1
+    %756 = comb.or bin %754, %755 {sv.namehint = "_csr_io_gva_T_2"} : i1
+    %757 = comb.and bin %700, %756 {sv.namehint = "csr.io_gva"} : i1
+    %758 = comb.mux bin %753, %wb_reg_wdata, %c0_i32 {sv.namehint = "csr.io_tval"} : i32
+    %759 = comb.and bin %wb_reg_xcpt, %749 {sv.namehint = "htval_valid_imem"} : i1
+    %760 = comb.xor bin %759, %true : i1
+    %761 = comb.xor bin %reset, %true : i1
+    sv.always posedge %0 {
+      sv.if %761 {
+        sv.assert %760, immediate label "assert__assert"
+      }
+    }
+    %762 = comb.extract %wb_reg_inst from 20 {sv.namehint = "csr.io_rw_addr"} : (i32) -> i12
+    %763 = comb.concat %wb_reg_valid, %c-1_i2 {sv.namehint = "_csr_io_rw_cmd_T_1"} : i1, i2
+    %764 = comb.and bin %wb_ctrl_csr, %763 {sv.namehint = "csr.io_rw_cmd"} : i3
+    %765 = comb.and bin %233, %248 : i1
+    %766 = comb.and bin %235, %251 : i1
+    %767 = comb.icmp bin ne %ibuf.io_inst_0_bits_inst_rd, %c0_i5 : i5
+    %768 = comb.and bin %201, %767 : i1
+    %_r = seq.firreg %804 clock %clock reset sync %reset, %c0_i32 {firrtl.random_init_start = 850 : ui64} : i32
+    %769 = comb.extract %_r from 1 {sv.namehint = "_r_T"} : (i32) -> i31
+    %770 = comb.concat %769, %false {sv.namehint = "r"} : i31, i1
+    %771 = comb.concat %c0_i27, %723 : i27, i5
+    %772 = comb.shl bin %c1_i32, %771 : i32
+    %773 = comb.mux bin %724, %772, %c0_i32 : i32
+    %774 = comb.xor bin %773, %c-1_i32 : i32
+    %775 = comb.and bin %770, %774 : i32
+    %776 = comb.mux bin %724, %775, %_r : i32
+    %777 = comb.concat %c0_i27, %ibuf.io_inst_0_bits_inst_rs1 : i27, i5
+    %778 = comb.shru bin %770, %777 {sv.namehint = "_id_sboard_hazard_T"} : i32
+    %779 = comb.extract %778 from 0 {sv.namehint = "_id_sboard_hazard_T_1"} : (i32) -> i1
+    %780 = comb.icmp bin eq %723, %ibuf.io_inst_0_bits_inst_rs1 {sv.namehint = "_id_sboard_hazard_T_2"} : i5
+    %781 = comb.and bin %724, %780 {sv.namehint = "_id_sboard_hazard_T_3"} : i1
+    %782 = comb.xor bin %781, %true {sv.namehint = "_id_sboard_hazard_T_4"} : i1
+    %783 = comb.and bin %765, %779, %782 {sv.namehint = "_id_sboard_hazard_T_6"} : i1
+    %784 = comb.concat %c0_i27, %ibuf.io_inst_0_bits_inst_rs2 : i27, i5
+    %785 = comb.shru bin %770, %784 {sv.namehint = "_id_sboard_hazard_T_7"} : i32
+    %786 = comb.extract %785 from 0 {sv.namehint = "_id_sboard_hazard_T_8"} : (i32) -> i1
+    %787 = comb.icmp bin eq %723, %ibuf.io_inst_0_bits_inst_rs2 {sv.namehint = "_id_sboard_hazard_T_9"} : i5
+    %788 = comb.and bin %724, %787 {sv.namehint = "_id_sboard_hazard_T_10"} : i1
+    %789 = comb.xor bin %788, %true {sv.namehint = "_id_sboard_hazard_T_11"} : i1
+    %790 = comb.and bin %766, %786, %789 {sv.namehint = "_id_sboard_hazard_T_13"} : i1
+    %791 = comb.concat %c0_i27, %ibuf.io_inst_0_bits_inst_rd : i27, i5
+    %792 = comb.shru bin %770, %791 {sv.namehint = "_id_sboard_hazard_T_14"} : i32
+    %793 = comb.extract %792 from 0 {sv.namehint = "_id_sboard_hazard_T_15"} : (i32) -> i1
+    %794 = comb.icmp bin eq %723, %ibuf.io_inst_0_bits_inst_rd {sv.namehint = "_id_sboard_hazard_T_16"} : i5
+    %795 = comb.and bin %724, %794 {sv.namehint = "_id_sboard_hazard_T_17"} : i1
+    %796 = comb.xor bin %795, %true {sv.namehint = "_id_sboard_hazard_T_18"} : i1
+    %797 = comb.and bin %768, %793, %796 {sv.namehint = "_id_sboard_hazard_T_20"} : i1
+    %798 = comb.and bin %710, %728 : i1
+    %799 = comb.concat %c0_i27, %316 : i27, i5
+    %800 = comb.shl bin %c1_i32, %799 : i32
+    %801 = comb.mux bin %798, %800, %c0_i32 : i32
+    %802 = comb.or bin %775, %801 : i32
+    %803 = comb.or bin %724, %798 : i1
+    %804 = comb.mux bin %803, %802, %776 : i32
+    %805 = comb.icmp bin ne %ex_ctrl_csr, %c0_i3 {sv.namehint = "_ex_cannot_bypass_T"} : i3
+    %806 = comb.or bin %805, %ex_ctrl_jalr, %ex_ctrl_mem, %ex_ctrl_mul, %ex_ctrl_div, %ex_ctrl_fp, %ex_ctrl_rocc {sv.namehint = "_ex_cannot_bypass_T_6"} : i1
+    %807 = comb.and bin %765, %321 {sv.namehint = "_data_hazard_ex_T_1"} : i1
+    %808 = comb.and bin %766, %326 {sv.namehint = "_data_hazard_ex_T_3"} : i1
+    %809 = comb.icmp bin eq %ibuf.io_inst_0_bits_inst_rd, %314 {sv.namehint = "_fp_data_hazard_ex_T_7"} : i5
+    %810 = comb.and bin %768, %809 {sv.namehint = "_data_hazard_ex_T_5"} : i1
+    %811 = comb.or bin %807, %808, %810 {sv.namehint = "_data_hazard_ex_T_7"} : i1
+    %812 = comb.and bin %ex_reg_valid, %ex_ctrl_wxd, %811, %806 {sv.namehint = "id_ex_hazard"} : i1
+    %813 = comb.icmp bin ne %mem_ctrl_csr, %c0_i3 {sv.namehint = "_mem_cannot_bypass_T"} : i3
+    %814 = comb.and bin %mem_ctrl_mem, %mem_mem_cmd_bh {sv.namehint = "_mem_cannot_bypass_T_1"} : i1
+    %815 = comb.or bin %813, %814, %mem_ctrl_mul, %mem_ctrl_div, %mem_ctrl_fp, %mem_ctrl_rocc, %mem_ctrl_vec {sv.namehint = "mem_cannot_bypass"} : i1
+    %816 = comb.and bin %765, %323 {sv.namehint = "_data_hazard_mem_T_1"} : i1
+    %817 = comb.and bin %766, %328 {sv.namehint = "_data_hazard_mem_T_3"} : i1
+    %818 = comb.icmp bin eq %ibuf.io_inst_0_bits_inst_rd, %315 {sv.namehint = "_fp_data_hazard_mem_T_7"} : i5
+    %819 = comb.and bin %768, %818 {sv.namehint = "_data_hazard_mem_T_5"} : i1
+    %820 = comb.or bin %816, %817, %819 {sv.namehint = "_data_hazard_mem_T_7"} : i1
+    %821 = comb.and bin %mem_ctrl_wxd, %820 {sv.namehint = "data_hazard_mem"} : i1
+    %822 = comb.and bin %mem_reg_valid, %821, %815 {sv.namehint = "id_mem_hazard"} : i1
+    %823 = comb.and bin %mem_reg_valid, %821, %mem_ctrl_mem {sv.namehint = "id_load_use"} : i1
+    %824 = comb.icmp bin eq %ibuf.io_inst_0_bits_inst_rs1, %316 {sv.namehint = "_fp_data_hazard_wb_T_1"} : i5
+    %825 = comb.and bin %765, %824 {sv.namehint = "_data_hazard_wb_T_1"} : i1
+    %826 = comb.icmp bin eq %ibuf.io_inst_0_bits_inst_rs2, %316 {sv.namehint = "_fp_data_hazard_wb_T_3"} : i5
+    %827 = comb.and bin %766, %826 {sv.namehint = "_data_hazard_wb_T_3"} : i1
+    %828 = comb.icmp bin eq %ibuf.io_inst_0_bits_inst_rd, %316 {sv.namehint = "_fp_data_hazard_wb_T_7"} : i5
+    %829 = comb.and bin %768, %828 {sv.namehint = "_data_hazard_wb_T_5"} : i1
+    %830 = comb.or bin %825, %827, %829 {sv.namehint = "_data_hazard_wb_T_7"} : i1
+    %831 = comb.and bin %wb_reg_valid, %wb_ctrl_wxd, %830, %710 {sv.namehint = "id_wb_hazard"} : i1
+    %dcache_blocked_blocked = seq.firreg %834 clock %clock {firrtl.random_init_start = 882 : ui64} : i1
+    %832 = comb.xor bin %io_dmem_perf_grant, %true {sv.namehint = "_dcache_blocked_T"} : i1
+    %833 = comb.or bin %dcache_blocked_blocked, %861, %io_dmem_s2_nack {sv.namehint = "_dcache_blocked_blocked_T_5"} : i1
+    %834 = comb.and bin %490, %832, %833 {sv.namehint = "_dcache_blocked_blocked_T_6"} : i1
+    %rocc_blocked = seq.firreg %836 clock %clock {firrtl.random_init_start = 883 : ui64} : i1
+    %835 = comb.or bin %866, %rocc_blocked {sv.namehint = "_rocc_blocked_T_3"} : i1
+    %836 = comb.and bin %726, %835 {sv.namehint = "_rocc_blocked_T_4"} : i1
+    %837 = comb.or bin %ex_reg_valid, %mem_reg_valid, %wb_reg_valid {sv.namehint = "_ctrl_stalld_T_5"} : i1
+    %838 = comb.and bin %csr.io_singleStep, %837 {sv.namehint = "_ctrl_stalld_T_6"} : i1
+    %839 = comb.and bin %209, %dcache_blocked_blocked, %832 {sv.namehint = "_ctrl_stalld_T_17"} : i1
+    %840 = comb.and bin %div.io_resp_valid, %719 {sv.namehint = "_ctrl_stalld_T_22"} : i1
+    %841 = comb.or bin %div.io_req_ready, %840 {sv.namehint = "_ctrl_stalld_T_23"} : i1
+    %842 = comb.xor bin %841, %true {sv.namehint = "_ctrl_stalld_T_24"} : i1
+    %843 = comb.or bin %842, %391 {sv.namehint = "_ctrl_stalld_T_25"} : i1
+    %844 = comb.and bin %151, %843 {sv.namehint = "_ctrl_stalld_T_26"} : i1
+    %845 = comb.or bin %812, %822, %831, %783, %790, %797, %838, %839, %844, %301, %csr.io_csr_stall, %id_reg_pause {sv.namehint = "_ctrl_stalld_T_32"} : i1
+    %846 = comb.xor bin %ibuf.io_inst_0_valid, %true {sv.namehint = "_ctrl_killd_T"} : i1
+    %847 = comb.or bin %846, %ibuf.io_inst_0_bits_replay, %1, %845, %csr.io_interrupt {sv.namehint = "ctrl_killd"} : i1
+    %848 = comb.or bin %700, %csr.io_eret {sv.namehint = "_io_imem_req_bits_pc_T"} : i1
+    %849 = comb.mux bin %712, %wb_reg_pc, %526 {sv.namehint = "_io_imem_req_bits_pc_T_1"} : i32
+    %850 = comb.mux bin %848, %csr.io_evec, %849 {sv.namehint = "io_imem_req_bits_pc"} : i32
+    %851 = comb.xor bin %io_dmem_s2_nack, %true {sv.namehint = "_io_imem_flush_icache_T_1"} : i1
+    %852 = comb.and bin %wb_reg_valid, %wb_ctrl_fence_i, %851 {sv.namehint = "io_imem_flush_icache"} : i1
+    %853 = comb.extract %csr.io_customCSRs_0_value from 1 {sv.namehint = "_io_imem_might_request_imem_might_request_reg_T_1"} : (i32) -> i1
+    %854 = comb.or bin %487, %505, %853 {sv.namehint = "_io_imem_might_request_imem_might_request_reg_T_3"} : i1
+    %855 = comb.xor bin %711, %true {sv.namehint = "_io_rocc_cmd_valid_T_1"} : i1
+    %856 = comb.xor bin %845, %true {sv.namehint = "ibuf.io_inst_0_ready"} : i1
+    %857 = comb.xor bin %540, %true {sv.namehint = "_io_imem_btb_update_valid_T_3"} : i1
+    %858 = comb.or bin %857, %541 {sv.namehint = "_io_imem_btb_update_valid_T_4"} : i1
+    %859 = comb.and bin %mem_reg_valid, %675, %532, %858 {sv.namehint = "io_imem_btb_update_valid"} : i1
+    %860 = comb.and bin %mem_reg_valid, %675 {sv.namehint = "io_imem_bht_update_valid"} : i1
+    %861 = comb.and bin %ex_reg_valid, %ex_ctrl_mem {sv.namehint = "io_dmem_req_valid"} : i1
+    %862 = comb.concat %false, %314, %ex_ctrl_fp {sv.namehint = "io_dmem_req_bits_tag"} : i1, i5, i1
+    %863 = comb.extract %ex_reg_inst from 14 {sv.namehint = "_io_dmem_req_bits_signed_T_1"} : (i32) -> i1
+    %864 = comb.xor bin %863, %true {sv.namehint = "io_dmem_req_bits_signed"} : i1
+    %865 = comb.or bin %670, %658 {sv.namehint = "io_dmem_s1_kill"} : i1
+    %866 = comb.and bin %297, %855 {sv.namehint = "io_rocc_cmd_valid"} : i1
+    %867 = comb.extract %csr.io_time from 0 {sv.namehint = "_unpause_T"} : (i32) -> i5
+    %868 = comb.icmp bin eq %867, %c0_i5 {sv.namehint = "_unpause_T_1"} : i5
+    %869 = comb.or bin %868, %csr.io_inhibit_cycle, %1 {sv.namehint = "unpause"} : i1
+    %870 = comb.xor %869, %true : i1
+    %871 = comb.and %870, %412 : i1
+    hw.instance "PlusArgTimeout" @PlusArgTimeout(clock: %clock: !seq.clock, reset: %reset: i1, io_count: %csr.io_time: i32) -> ()
+    hw.output %imem_might_request_reg, %1, %850, %675, %ibuf.io_imem_ready, %859, %860, %852, %861, %alu.io_adder_out, %862, %ex_ctrl_mem_cmd, %ex_reg_mem_size, %864, %865, %mem_reg_rs2, %csr.io_status_debug, %csr.io_pmp_0_cfg_l, %csr.io_pmp_0_cfg_a, %csr.io_pmp_0_cfg_x, %csr.io_pmp_0_cfg_w, %csr.io_pmp_0_cfg_r, %csr.io_pmp_0_addr, %csr.io_pmp_0_mask, %csr.io_pmp_1_cfg_l, %csr.io_pmp_1_cfg_a, %csr.io_pmp_1_cfg_x, %csr.io_pmp_1_cfg_w, %csr.io_pmp_1_cfg_r, %csr.io_pmp_1_addr, %csr.io_pmp_1_mask, %csr.io_pmp_2_cfg_l, %csr.io_pmp_2_cfg_a, %csr.io_pmp_2_cfg_x, %csr.io_pmp_2_cfg_w, %csr.io_pmp_2_cfg_r, %csr.io_pmp_2_addr, %csr.io_pmp_2_mask, %csr.io_pmp_3_cfg_l, %csr.io_pmp_3_cfg_a, %csr.io_pmp_3_cfg_x, %csr.io_pmp_3_cfg_w, %csr.io_pmp_3_cfg_r, %csr.io_pmp_3_addr, %csr.io_pmp_3_mask, %csr.io_pmp_4_cfg_l, %csr.io_pmp_4_cfg_a, %csr.io_pmp_4_cfg_x, %csr.io_pmp_4_cfg_w, %csr.io_pmp_4_cfg_r, %csr.io_pmp_4_addr, %csr.io_pmp_4_mask, %csr.io_pmp_5_cfg_l, %csr.io_pmp_5_cfg_a, %csr.io_pmp_5_cfg_x, %csr.io_pmp_5_cfg_w, %csr.io_pmp_5_cfg_r, %csr.io_pmp_5_addr, %csr.io_pmp_5_mask, %csr.io_pmp_6_cfg_l, %csr.io_pmp_6_cfg_a, %csr.io_pmp_6_cfg_x, %csr.io_pmp_6_cfg_w, %csr.io_pmp_6_cfg_r, %csr.io_pmp_6_addr, %csr.io_pmp_6_mask, %csr.io_pmp_7_cfg_l, %csr.io_pmp_7_cfg_a, %csr.io_pmp_7_cfg_x, %csr.io_pmp_7_cfg_w, %csr.io_pmp_7_cfg_r, %csr.io_pmp_7_addr, %csr.io_pmp_7_mask, %csr.io_customCSRs_0_value, %csr.io_status_wfi : i1, i1, i32, i1, i1, i1, i1, i1, i1, i32, i7, i5, i2, i1, i1, i32, i1, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i1, i2, i1, i1, i1, i30, i32, i32, i1
+  }
+  hw.module private @RocketTile(in %clock : !seq.clock, in %reset : i1, out auto_buffer_in_a_ready : i1, in %auto_buffer_in_a_valid : i1, in %auto_buffer_in_a_bits_opcode : i3, in %auto_buffer_in_a_bits_param : i3, in %auto_buffer_in_a_bits_size : i3, in %auto_buffer_in_a_bits_source : i5, in %auto_buffer_in_a_bits_address : i32, in %auto_buffer_in_a_bits_mask : i4, in %auto_buffer_in_a_bits_data : i32, in %auto_buffer_in_d_ready : i1, out auto_buffer_in_d_valid : i1, out auto_buffer_in_d_bits_opcode : i3, out auto_buffer_in_d_bits_size : i3, out auto_buffer_in_d_bits_source : i5, out auto_buffer_in_d_bits_data : i32, in %auto_buffer_out_a_ready : i1, out auto_buffer_out_a_valid : i1, out auto_buffer_out_a_bits_opcode : i3, out auto_buffer_out_a_bits_param : i3, out auto_buffer_out_a_bits_size : i4, out auto_buffer_out_a_bits_source : i1, out auto_buffer_out_a_bits_address : i32, out auto_buffer_out_a_bits_user_amba_prot_bufferable : i1, out auto_buffer_out_a_bits_user_amba_prot_modifiable : i1, out auto_buffer_out_a_bits_user_amba_prot_readalloc : i1, out auto_buffer_out_a_bits_user_amba_prot_writealloc : i1, out auto_buffer_out_a_bits_user_amba_prot_privileged : i1, out auto_buffer_out_a_bits_user_amba_prot_secure : i1, out auto_buffer_out_a_bits_user_amba_prot_fetch : i1, out auto_buffer_out_a_bits_mask : i8, out auto_buffer_out_a_bits_data : i64, out auto_buffer_out_d_ready : i1, in %auto_buffer_out_d_valid : i1, in %auto_buffer_out_d_bits_opcode : i3, in %auto_buffer_out_d_bits_param : i2, in %auto_buffer_out_d_bits_size : i4, in %auto_buffer_out_d_bits_source : i1, in %auto_buffer_out_d_bits_sink : i1, in %auto_buffer_out_d_bits_denied : i1, in %auto_buffer_out_d_bits_data : i64, in %auto_buffer_out_d_bits_corrupt : i1, out auto_wfi_out_0 : i1, in %auto_int_local_in_2_0 : i1, in %auto_int_local_in_1_0 : i1, in %auto_int_local_in_1_1 : i1, in %auto_int_local_in_0_0 : i1) {
+    %c-4_i3 = hw.constant -4 : i3
+    %c6_i4 = hw.constant 6 : i4
+    %c-1_i8 = hw.constant -1 : i8
+    %c0_i64 = hw.constant 0 : i64
+    %c0_i3 = hw.constant 0 : i3
+    %true = hw.constant true
+    %false = hw.constant false
+    %tlMasterXbar.auto_anon_in_1_a_ready, %tlMasterXbar.auto_anon_in_1_d_valid, %tlMasterXbar.auto_anon_in_1_d_bits_opcode, %tlMasterXbar.auto_anon_in_1_d_bits_size, %tlMasterXbar.auto_anon_in_1_d_bits_denied, %tlMasterXbar.auto_anon_in_1_d_bits_data, %tlMasterXbar.auto_anon_in_1_d_bits_corrupt, %tlMasterXbar.auto_anon_in_0_a_ready, %tlMasterXbar.auto_anon_in_0_d_valid, %tlMasterXbar.auto_anon_in_0_d_bits_opcode, %tlMasterXbar.auto_anon_in_0_d_bits_size, %tlMasterXbar.auto_anon_in_0_d_bits_denied, %tlMasterXbar.auto_anon_in_0_d_bits_data, %tlMasterXbar.auto_anon_in_0_d_bits_corrupt, %tlMasterXbar.auto_anon_out_a_valid, %tlMasterXbar.auto_anon_out_a_bits_opcode, %tlMasterXbar.auto_anon_out_a_bits_param, %tlMasterXbar.auto_anon_out_a_bits_size, %tlMasterXbar.auto_anon_out_a_bits_source, %tlMasterXbar.auto_anon_out_a_bits_address, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_bufferable, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_modifiable, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_readalloc, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_writealloc, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_privileged, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_secure, %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_fetch, %tlMasterXbar.auto_anon_out_a_bits_mask, %tlMasterXbar.auto_anon_out_a_bits_data, %tlMasterXbar.auto_anon_out_d_ready = hw.instance "tlMasterXbar" @TLXbar_MasterXbar_RocketTile_i2_o1_a32d64s1k1z4u(clock: %clock: !seq.clock, reset: %reset: i1, auto_anon_in_1_a_valid: %widget_1.auto_anon_out_a_valid: i1, auto_anon_in_1_a_bits_opcode: %widget_1.auto_anon_out_a_bits_opcode: i3, auto_anon_in_1_a_bits_param: %widget_1.auto_anon_out_a_bits_param: i3, auto_anon_in_1_a_bits_size: %widget_1.auto_anon_out_a_bits_size: i4, auto_anon_in_1_a_bits_address: %widget_1.auto_anon_out_a_bits_address: i32, auto_anon_in_1_a_bits_user_amba_prot_bufferable: %widget_1.auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_in_1_a_bits_user_amba_prot_modifiable: %widget_1.auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_in_1_a_bits_user_amba_prot_readalloc: %widget_1.auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_in_1_a_bits_user_amba_prot_writealloc: %widget_1.auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_in_1_a_bits_user_amba_prot_privileged: %widget_1.auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_anon_in_1_a_bits_user_amba_prot_fetch: %widget_1.auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_anon_in_1_a_bits_mask: %widget_1.auto_anon_out_a_bits_mask: i8, auto_anon_in_1_a_bits_data: %widget_1.auto_anon_out_a_bits_data: i64, auto_anon_in_1_d_ready: %widget_1.auto_anon_out_d_ready: i1, auto_anon_in_0_a_valid: %widget.auto_anon_out_a_valid: i1, auto_anon_in_0_a_bits_opcode: %widget.auto_anon_out_a_bits_opcode: i3, auto_anon_in_0_a_bits_param: %widget.auto_anon_out_a_bits_param: i3, auto_anon_in_0_a_bits_size: %widget.auto_anon_out_a_bits_size: i4, auto_anon_in_0_a_bits_address: %widget.auto_anon_out_a_bits_address: i32, auto_anon_in_0_a_bits_user_amba_prot_bufferable: %widget.auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_in_0_a_bits_user_amba_prot_modifiable: %widget.auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_in_0_a_bits_user_amba_prot_readalloc: %widget.auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_in_0_a_bits_user_amba_prot_writealloc: %widget.auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_in_0_a_bits_user_amba_prot_privileged: %widget.auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_anon_in_0_a_bits_user_amba_prot_fetch: %widget.auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_anon_in_0_a_bits_mask: %widget.auto_anon_out_a_bits_mask: i8, auto_anon_in_0_a_bits_data: %widget.auto_anon_out_a_bits_data: i64, auto_anon_in_0_d_ready: %widget.auto_anon_out_d_ready: i1, auto_anon_out_a_ready: %buffer.auto_in_a_ready: i1, auto_anon_out_d_valid: %buffer.auto_in_d_valid: i1, auto_anon_out_d_bits_opcode: %buffer.auto_in_d_bits_opcode: i3, auto_anon_out_d_bits_param: %buffer.auto_in_d_bits_param: i2, auto_anon_out_d_bits_size: %buffer.auto_in_d_bits_size: i4, auto_anon_out_d_bits_source: %buffer.auto_in_d_bits_source: i1, auto_anon_out_d_bits_sink: %buffer.auto_in_d_bits_sink: i1, auto_anon_out_d_bits_denied: %buffer.auto_in_d_bits_denied: i1, auto_anon_out_d_bits_data: %buffer.auto_in_d_bits_data: i64, auto_anon_out_d_bits_corrupt: %buffer.auto_in_d_bits_corrupt: i1) -> (auto_anon_in_1_a_ready: i1, auto_anon_in_1_d_valid: i1, auto_anon_in_1_d_bits_opcode: i3, auto_anon_in_1_d_bits_size: i4, auto_anon_in_1_d_bits_denied: i1, auto_anon_in_1_d_bits_data: i64, auto_anon_in_1_d_bits_corrupt: i1, auto_anon_in_0_a_ready: i1, auto_anon_in_0_d_valid: i1, auto_anon_in_0_d_bits_opcode: i3, auto_anon_in_0_d_bits_size: i4, auto_anon_in_0_d_bits_denied: i1, auto_anon_in_0_d_bits_data: i64, auto_anon_in_0_d_bits_corrupt: i1, auto_anon_out_a_valid: i1, auto_anon_out_a_bits_opcode: i3, auto_anon_out_a_bits_param: i3, auto_anon_out_a_bits_size: i4, auto_anon_out_a_bits_source: i1, auto_anon_out_a_bits_address: i32, auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_anon_out_a_bits_user_amba_prot_secure: i1, auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_anon_out_a_bits_mask: i8, auto_anon_out_a_bits_data: i64, auto_anon_out_d_ready: i1) {sv.namehint = "tlOtherMastersNodeIn_d_ready"}
+    %tlSlaveXbar.auto_anon_in_a_ready, %tlSlaveXbar.auto_anon_in_d_valid, %tlSlaveXbar.auto_anon_in_d_bits_opcode, %tlSlaveXbar.auto_anon_in_d_bits_size, %tlSlaveXbar.auto_anon_in_d_bits_source, %tlSlaveXbar.auto_anon_in_d_bits_data, %tlSlaveXbar.auto_anon_out_a_valid, %tlSlaveXbar.auto_anon_out_a_bits_opcode, %tlSlaveXbar.auto_anon_out_a_bits_param, %tlSlaveXbar.auto_anon_out_a_bits_size, %tlSlaveXbar.auto_anon_out_a_bits_source, %tlSlaveXbar.auto_anon_out_a_bits_address, %tlSlaveXbar.auto_anon_out_a_bits_mask, %tlSlaveXbar.auto_anon_out_a_bits_data, %tlSlaveXbar.auto_anon_out_d_ready = hw.instance "tlSlaveXbar" @TLXbar_SlaveXbar_RocketTile_i1_o1_a32d32s5k1z3u(auto_anon_in_a_valid: %buffer_1.auto_out_a_valid: i1, auto_anon_in_a_bits_opcode: %buffer_1.auto_out_a_bits_opcode: i3, auto_anon_in_a_bits_param: %buffer_1.auto_out_a_bits_param: i3, auto_anon_in_a_bits_size: %buffer_1.auto_out_a_bits_size: i3, auto_anon_in_a_bits_source: %buffer_1.auto_out_a_bits_source: i5, auto_anon_in_a_bits_address: %buffer_1.auto_out_a_bits_address: i32, auto_anon_in_a_bits_mask: %buffer_1.auto_out_a_bits_mask: i4, auto_anon_in_a_bits_data: %buffer_1.auto_out_a_bits_data: i32, auto_anon_in_d_ready: %buffer_1.auto_out_d_ready: i1, auto_anon_out_a_ready: %fragmenter_1.auto_anon_in_a_ready: i1, auto_anon_out_d_valid: %fragmenter_1.auto_anon_in_d_valid: i1, auto_anon_out_d_bits_opcode: %fragmenter_1.auto_anon_in_d_bits_opcode: i3, auto_anon_out_d_bits_size: %fragmenter_1.auto_anon_in_d_bits_size: i3, auto_anon_out_d_bits_source: %fragmenter_1.auto_anon_in_d_bits_source: i5, auto_anon_out_d_bits_data: %fragmenter_1.auto_anon_in_d_bits_data: i32) -> (auto_anon_in_a_ready: i1, auto_anon_in_d_valid: i1, auto_anon_in_d_bits_opcode: i3, auto_anon_in_d_bits_size: i3, auto_anon_in_d_bits_source: i5, auto_anon_in_d_bits_data: i32, auto_anon_out_a_valid: i1, auto_anon_out_a_bits_opcode: i3, auto_anon_out_a_bits_param: i3, auto_anon_out_a_bits_size: i3, auto_anon_out_a_bits_source: i5, auto_anon_out_a_bits_address: i32, auto_anon_out_a_bits_mask: i4, auto_anon_out_a_bits_data: i32, auto_anon_out_d_ready: i1) {sv.namehint = "slaveNodeIn_d_valid"}
+    %intXbar.auto_anon_out_0, %intXbar.auto_anon_out_1, %intXbar.auto_anon_out_2, %intXbar.auto_anon_out_3 = hw.instance "intXbar" @IntXbar_i3_o1(auto_anon_in_2_0: %auto_int_local_in_2_0: i1, auto_anon_in_1_0: %auto_int_local_in_1_0: i1, auto_anon_in_1_1: %auto_int_local_in_1_1: i1, auto_anon_in_0_0: %auto_int_local_in_0_0: i1) -> (auto_anon_out_0: i1, auto_anon_out_1: i1, auto_anon_out_2: i1, auto_anon_out_3: i1) {sv.namehint = "intSinkNodeIn_3"}
+    %widget.auto_anon_in_a_ready, %widget.auto_anon_in_d_valid, %widget.auto_anon_in_d_bits_opcode, %widget.auto_anon_in_d_bits_size, %widget.auto_anon_in_d_bits_denied, %widget.auto_anon_in_d_bits_data, %widget.auto_anon_in_d_bits_corrupt, %widget.auto_anon_out_a_valid, %widget.auto_anon_out_a_bits_opcode, %widget.auto_anon_out_a_bits_param, %widget.auto_anon_out_a_bits_size, %widget.auto_anon_out_a_bits_address, %widget.auto_anon_out_a_bits_user_amba_prot_bufferable, %widget.auto_anon_out_a_bits_user_amba_prot_modifiable, %widget.auto_anon_out_a_bits_user_amba_prot_readalloc, %widget.auto_anon_out_a_bits_user_amba_prot_writealloc, %widget.auto_anon_out_a_bits_user_amba_prot_privileged, %widget.auto_anon_out_a_bits_user_amba_prot_fetch, %widget.auto_anon_out_a_bits_mask, %widget.auto_anon_out_a_bits_data, %widget.auto_anon_out_d_ready = hw.instance "widget" @TLWidthWidget8_6(auto_anon_in_a_valid: %dcache.auto_out_a_valid: i1, auto_anon_in_a_bits_opcode: %dcache.auto_out_a_bits_opcode: i3, auto_anon_in_a_bits_param: %dcache.auto_out_a_bits_param: i3, auto_anon_in_a_bits_size: %dcache.auto_out_a_bits_size: i4, auto_anon_in_a_bits_address: %dcache.auto_out_a_bits_address: i32, auto_anon_in_a_bits_user_amba_prot_bufferable: %dcache.auto_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_in_a_bits_user_amba_prot_modifiable: %dcache.auto_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_in_a_bits_user_amba_prot_readalloc: %dcache.auto_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_in_a_bits_user_amba_prot_writealloc: %dcache.auto_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_in_a_bits_user_amba_prot_privileged: %dcache.auto_out_a_bits_user_amba_prot_privileged: i1, auto_anon_in_a_bits_user_amba_prot_fetch: %false: i1, auto_anon_in_a_bits_mask: %dcache.auto_out_a_bits_mask: i8, auto_anon_in_a_bits_data: %dcache.auto_out_a_bits_data: i64, auto_anon_in_d_ready: %dcache.auto_out_d_ready: i1, auto_anon_out_a_ready: %tlMasterXbar.auto_anon_in_0_a_ready: i1, auto_anon_out_d_valid: %tlMasterXbar.auto_anon_in_0_d_valid: i1, auto_anon_out_d_bits_opcode: %tlMasterXbar.auto_anon_in_0_d_bits_opcode: i3, auto_anon_out_d_bits_size: %tlMasterXbar.auto_anon_in_0_d_bits_size: i4, auto_anon_out_d_bits_denied: %tlMasterXbar.auto_anon_in_0_d_bits_denied: i1, auto_anon_out_d_bits_data: %tlMasterXbar.auto_anon_in_0_d_bits_data: i64, auto_anon_out_d_bits_corrupt: %tlMasterXbar.auto_anon_in_0_d_bits_corrupt: i1) -> (auto_anon_in_a_ready: i1, auto_anon_in_d_valid: i1, auto_anon_in_d_bits_opcode: i3, auto_anon_in_d_bits_size: i4, auto_anon_in_d_bits_denied: i1, auto_anon_in_d_bits_data: i64, auto_anon_in_d_bits_corrupt: i1, auto_anon_out_a_valid: i1, auto_anon_out_a_bits_opcode: i3, auto_anon_out_a_bits_param: i3, auto_anon_out_a_bits_size: i4, auto_anon_out_a_bits_address: i32, auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_anon_out_a_bits_mask: i8, auto_anon_out_a_bits_data: i64, auto_anon_out_d_ready: i1) {sv.namehint = "dcache.auto_out_d_valid"}
+    %dcache.auto_out_a_valid, %dcache.auto_out_a_bits_opcode, %dcache.auto_out_a_bits_param, %dcache.auto_out_a_bits_size, %dcache.auto_out_a_bits_address, %dcache.auto_out_a_bits_user_amba_prot_bufferable, %dcache.auto_out_a_bits_user_amba_prot_modifiable, %dcache.auto_out_a_bits_user_amba_prot_readalloc, %dcache.auto_out_a_bits_user_amba_prot_writealloc, %dcache.auto_out_a_bits_user_amba_prot_privileged, %dcache.auto_out_a_bits_mask, %dcache.auto_out_a_bits_data, %dcache.auto_out_d_ready, %dcache.io_cpu_req_ready, %dcache.io_cpu_s2_nack, %dcache.io_cpu_resp_valid, %dcache.io_cpu_resp_bits_tag, %dcache.io_cpu_resp_bits_data, %dcache.io_cpu_resp_bits_replay, %dcache.io_cpu_resp_bits_has_data, %dcache.io_cpu_resp_bits_data_word_bypass, %dcache.io_cpu_resp_bits_data_raw, %dcache.io_cpu_replay_next, %dcache.io_cpu_s2_xcpt_ma_ld, %dcache.io_cpu_s2_xcpt_ma_st, %dcache.io_cpu_s2_xcpt_pf_ld, %dcache.io_cpu_s2_xcpt_pf_st, %dcache.io_cpu_s2_xcpt_ae_ld, %dcache.io_cpu_s2_xcpt_ae_st, %dcache.io_cpu_ordered, %dcache.io_cpu_perf_grant = hw.instance "dcache" @DCache(clock: %clock: !seq.clock, reset: %reset: i1, auto_out_a_ready: %widget.auto_anon_in_a_ready: i1, auto_out_d_valid: %widget.auto_anon_in_d_valid: i1, auto_out_d_bits_opcode: %widget.auto_anon_in_d_bits_opcode: i3, auto_out_d_bits_size: %widget.auto_anon_in_d_bits_size: i4, auto_out_d_bits_denied: %widget.auto_anon_in_d_bits_denied: i1, auto_out_d_bits_data: %widget.auto_anon_in_d_bits_data: i64, io_cpu_req_valid: %dcacheArb.io_mem_req_valid: i1, io_cpu_req_bits_addr: %dcacheArb.io_mem_req_bits_addr: i32, io_cpu_req_bits_tag: %dcacheArb.io_mem_req_bits_tag: i7, io_cpu_req_bits_cmd: %dcacheArb.io_mem_req_bits_cmd: i5, io_cpu_req_bits_size: %dcacheArb.io_mem_req_bits_size: i2, io_cpu_req_bits_signed: %dcacheArb.io_mem_req_bits_signed: i1, io_cpu_req_bits_dprv: %dcacheArb.io_mem_req_bits_dprv: i2, io_cpu_req_bits_no_xcpt: %dcacheArb.io_mem_req_bits_no_xcpt: i1, io_cpu_s1_kill: %dcacheArb.io_mem_s1_kill: i1, io_cpu_s1_data_data: %dcacheArb.io_mem_s1_data_data: i32, io_cpu_s1_data_mask: %dcacheArb.io_mem_s1_data_mask: i4, io_ptw_status_debug: %ptw.io_requestor_0_status_debug: i1, io_ptw_pmp_0_cfg_l: %ptw.io_requestor_0_pmp_0_cfg_l: i1, io_ptw_pmp_0_cfg_a: %ptw.io_requestor_0_pmp_0_cfg_a: i2, io_ptw_pmp_0_cfg_x: %ptw.io_requestor_0_pmp_0_cfg_x: i1, io_ptw_pmp_0_cfg_w: %ptw.io_requestor_0_pmp_0_cfg_w: i1, io_ptw_pmp_0_cfg_r: %ptw.io_requestor_0_pmp_0_cfg_r: i1, io_ptw_pmp_0_addr: %ptw.io_requestor_0_pmp_0_addr: i30, io_ptw_pmp_0_mask: %ptw.io_requestor_0_pmp_0_mask: i32, io_ptw_pmp_1_cfg_l: %ptw.io_requestor_0_pmp_1_cfg_l: i1, io_ptw_pmp_1_cfg_a: %ptw.io_requestor_0_pmp_1_cfg_a: i2, io_ptw_pmp_1_cfg_x: %ptw.io_requestor_0_pmp_1_cfg_x: i1, io_ptw_pmp_1_cfg_w: %ptw.io_requestor_0_pmp_1_cfg_w: i1, io_ptw_pmp_1_cfg_r: %ptw.io_requestor_0_pmp_1_cfg_r: i1, io_ptw_pmp_1_addr: %ptw.io_requestor_0_pmp_1_addr: i30, io_ptw_pmp_1_mask: %ptw.io_requestor_0_pmp_1_mask: i32, io_ptw_pmp_2_cfg_l: %ptw.io_requestor_0_pmp_2_cfg_l: i1, io_ptw_pmp_2_cfg_a: %ptw.io_requestor_0_pmp_2_cfg_a: i2, io_ptw_pmp_2_cfg_x: %ptw.io_requestor_0_pmp_2_cfg_x: i1, io_ptw_pmp_2_cfg_w: %ptw.io_requestor_0_pmp_2_cfg_w: i1, io_ptw_pmp_2_cfg_r: %ptw.io_requestor_0_pmp_2_cfg_r: i1, io_ptw_pmp_2_addr: %ptw.io_requestor_0_pmp_2_addr: i30, io_ptw_pmp_2_mask: %ptw.io_requestor_0_pmp_2_mask: i32, io_ptw_pmp_3_cfg_l: %ptw.io_requestor_0_pmp_3_cfg_l: i1, io_ptw_pmp_3_cfg_a: %ptw.io_requestor_0_pmp_3_cfg_a: i2, io_ptw_pmp_3_cfg_x: %ptw.io_requestor_0_pmp_3_cfg_x: i1, io_ptw_pmp_3_cfg_w: %ptw.io_requestor_0_pmp_3_cfg_w: i1, io_ptw_pmp_3_cfg_r: %ptw.io_requestor_0_pmp_3_cfg_r: i1, io_ptw_pmp_3_addr: %ptw.io_requestor_0_pmp_3_addr: i30, io_ptw_pmp_3_mask: %ptw.io_requestor_0_pmp_3_mask: i32, io_ptw_pmp_4_cfg_l: %ptw.io_requestor_0_pmp_4_cfg_l: i1, io_ptw_pmp_4_cfg_a: %ptw.io_requestor_0_pmp_4_cfg_a: i2, io_ptw_pmp_4_cfg_x: %ptw.io_requestor_0_pmp_4_cfg_x: i1, io_ptw_pmp_4_cfg_w: %ptw.io_requestor_0_pmp_4_cfg_w: i1, io_ptw_pmp_4_cfg_r: %ptw.io_requestor_0_pmp_4_cfg_r: i1, io_ptw_pmp_4_addr: %ptw.io_requestor_0_pmp_4_addr: i30, io_ptw_pmp_4_mask: %ptw.io_requestor_0_pmp_4_mask: i32, io_ptw_pmp_5_cfg_l: %ptw.io_requestor_0_pmp_5_cfg_l: i1, io_ptw_pmp_5_cfg_a: %ptw.io_requestor_0_pmp_5_cfg_a: i2, io_ptw_pmp_5_cfg_x: %ptw.io_requestor_0_pmp_5_cfg_x: i1, io_ptw_pmp_5_cfg_w: %ptw.io_requestor_0_pmp_5_cfg_w: i1, io_ptw_pmp_5_cfg_r: %ptw.io_requestor_0_pmp_5_cfg_r: i1, io_ptw_pmp_5_addr: %ptw.io_requestor_0_pmp_5_addr: i30, io_ptw_pmp_5_mask: %ptw.io_requestor_0_pmp_5_mask: i32, io_ptw_pmp_6_cfg_l: %ptw.io_requestor_0_pmp_6_cfg_l: i1, io_ptw_pmp_6_cfg_a: %ptw.io_requestor_0_pmp_6_cfg_a: i2, io_ptw_pmp_6_cfg_x: %ptw.io_requestor_0_pmp_6_cfg_x: i1, io_ptw_pmp_6_cfg_w: %ptw.io_requestor_0_pmp_6_cfg_w: i1, io_ptw_pmp_6_cfg_r: %ptw.io_requestor_0_pmp_6_cfg_r: i1, io_ptw_pmp_6_addr: %ptw.io_requestor_0_pmp_6_addr: i30, io_ptw_pmp_6_mask: %ptw.io_requestor_0_pmp_6_mask: i32, io_ptw_pmp_7_cfg_l: %ptw.io_requestor_0_pmp_7_cfg_l: i1, io_ptw_pmp_7_cfg_a: %ptw.io_requestor_0_pmp_7_cfg_a: i2, io_ptw_pmp_7_cfg_x: %ptw.io_requestor_0_pmp_7_cfg_x: i1, io_ptw_pmp_7_cfg_w: %ptw.io_requestor_0_pmp_7_cfg_w: i1, io_ptw_pmp_7_cfg_r: %ptw.io_requestor_0_pmp_7_cfg_r: i1, io_ptw_pmp_7_addr: %ptw.io_requestor_0_pmp_7_addr: i30, io_ptw_pmp_7_mask: %ptw.io_requestor_0_pmp_7_mask: i32) -> (auto_out_a_valid: i1, auto_out_a_bits_opcode: i3, auto_out_a_bits_param: i3, auto_out_a_bits_size: i4, auto_out_a_bits_address: i32, auto_out_a_bits_user_amba_prot_bufferable: i1, auto_out_a_bits_user_amba_prot_modifiable: i1, auto_out_a_bits_user_amba_prot_readalloc: i1, auto_out_a_bits_user_amba_prot_writealloc: i1, auto_out_a_bits_user_amba_prot_privileged: i1, auto_out_a_bits_mask: i8, auto_out_a_bits_data: i64, auto_out_d_ready: i1, io_cpu_req_ready: i1, io_cpu_s2_nack: i1, io_cpu_resp_valid: i1, io_cpu_resp_bits_tag: i7, io_cpu_resp_bits_data: i32, io_cpu_resp_bits_replay: i1, io_cpu_resp_bits_has_data: i1, io_cpu_resp_bits_data_word_bypass: i32, io_cpu_resp_bits_data_raw: i32, io_cpu_replay_next: i1, io_cpu_s2_xcpt_ma_ld: i1, io_cpu_s2_xcpt_ma_st: i1, io_cpu_s2_xcpt_pf_ld: i1, io_cpu_s2_xcpt_pf_st: i1, io_cpu_s2_xcpt_ae_ld: i1, io_cpu_s2_xcpt_ae_st: i1, io_cpu_ordered: i1, io_cpu_perf_grant: i1) {sv.namehint = "dcache.io_cpu_ordered"}
+    %frontend.auto_icache_master_out_a_valid, %frontend.auto_icache_master_out_a_bits_address, %frontend.auto_icache_master_out_a_bits_user_amba_prot_readalloc, %frontend.auto_icache_master_out_a_bits_user_amba_prot_writealloc, %frontend.io_cpu_resp_valid, %frontend.io_cpu_resp_bits_pc, %frontend.io_cpu_resp_bits_data, %frontend.io_cpu_resp_bits_xcpt_pf_inst, %frontend.io_cpu_resp_bits_xcpt_gf_inst, %frontend.io_cpu_resp_bits_xcpt_ae_inst, %frontend.io_cpu_resp_bits_replay = hw.instance "frontend" @Frontend(clock: %clock: !seq.clock, reset: %reset: i1, auto_icache_master_out_a_ready: %widget_1.auto_anon_in_a_ready: i1, auto_icache_master_out_d_valid: %widget_1.auto_anon_in_d_valid: i1, auto_icache_master_out_d_bits_opcode: %widget_1.auto_anon_in_d_bits_opcode: i3, auto_icache_master_out_d_bits_size: %widget_1.auto_anon_in_d_bits_size: i4, auto_icache_master_out_d_bits_data: %widget_1.auto_anon_in_d_bits_data: i64, auto_icache_master_out_d_bits_corrupt: %widget_1.auto_anon_in_d_bits_corrupt: i1, io_cpu_might_request: %core.io_imem_might_request: i1, io_cpu_req_valid: %core.io_imem_req_valid: i1, io_cpu_req_bits_pc: %core.io_imem_req_bits_pc: i32, io_cpu_req_bits_speculative: %core.io_imem_req_bits_speculative: i1, io_cpu_resp_ready: %core.io_imem_resp_ready: i1, io_cpu_btb_update_valid: %core.io_imem_btb_update_valid: i1, io_cpu_bht_update_valid: %core.io_imem_bht_update_valid: i1, io_cpu_flush_icache: %core.io_imem_flush_icache: i1, io_ptw_status_debug: %ptw.io_requestor_1_status_debug: i1, io_ptw_pmp_0_cfg_l: %ptw.io_requestor_1_pmp_0_cfg_l: i1, io_ptw_pmp_0_cfg_a: %ptw.io_requestor_1_pmp_0_cfg_a: i2, io_ptw_pmp_0_cfg_x: %ptw.io_requestor_1_pmp_0_cfg_x: i1, io_ptw_pmp_0_cfg_w: %ptw.io_requestor_1_pmp_0_cfg_w: i1, io_ptw_pmp_0_cfg_r: %ptw.io_requestor_1_pmp_0_cfg_r: i1, io_ptw_pmp_0_addr: %ptw.io_requestor_1_pmp_0_addr: i30, io_ptw_pmp_0_mask: %ptw.io_requestor_1_pmp_0_mask: i32, io_ptw_pmp_1_cfg_l: %ptw.io_requestor_1_pmp_1_cfg_l: i1, io_ptw_pmp_1_cfg_a: %ptw.io_requestor_1_pmp_1_cfg_a: i2, io_ptw_pmp_1_cfg_x: %ptw.io_requestor_1_pmp_1_cfg_x: i1, io_ptw_pmp_1_cfg_w: %ptw.io_requestor_1_pmp_1_cfg_w: i1, io_ptw_pmp_1_cfg_r: %ptw.io_requestor_1_pmp_1_cfg_r: i1, io_ptw_pmp_1_addr: %ptw.io_requestor_1_pmp_1_addr: i30, io_ptw_pmp_1_mask: %ptw.io_requestor_1_pmp_1_mask: i32, io_ptw_pmp_2_cfg_l: %ptw.io_requestor_1_pmp_2_cfg_l: i1, io_ptw_pmp_2_cfg_a: %ptw.io_requestor_1_pmp_2_cfg_a: i2, io_ptw_pmp_2_cfg_x: %ptw.io_requestor_1_pmp_2_cfg_x: i1, io_ptw_pmp_2_cfg_w: %ptw.io_requestor_1_pmp_2_cfg_w: i1, io_ptw_pmp_2_cfg_r: %ptw.io_requestor_1_pmp_2_cfg_r: i1, io_ptw_pmp_2_addr: %ptw.io_requestor_1_pmp_2_addr: i30, io_ptw_pmp_2_mask: %ptw.io_requestor_1_pmp_2_mask: i32, io_ptw_pmp_3_cfg_l: %ptw.io_requestor_1_pmp_3_cfg_l: i1, io_ptw_pmp_3_cfg_a: %ptw.io_requestor_1_pmp_3_cfg_a: i2, io_ptw_pmp_3_cfg_x: %ptw.io_requestor_1_pmp_3_cfg_x: i1, io_ptw_pmp_3_cfg_w: %ptw.io_requestor_1_pmp_3_cfg_w: i1, io_ptw_pmp_3_cfg_r: %ptw.io_requestor_1_pmp_3_cfg_r: i1, io_ptw_pmp_3_addr: %ptw.io_requestor_1_pmp_3_addr: i30, io_ptw_pmp_3_mask: %ptw.io_requestor_1_pmp_3_mask: i32, io_ptw_pmp_4_cfg_l: %ptw.io_requestor_1_pmp_4_cfg_l: i1, io_ptw_pmp_4_cfg_a: %ptw.io_requestor_1_pmp_4_cfg_a: i2, io_ptw_pmp_4_cfg_x: %ptw.io_requestor_1_pmp_4_cfg_x: i1, io_ptw_pmp_4_cfg_w: %ptw.io_requestor_1_pmp_4_cfg_w: i1, io_ptw_pmp_4_cfg_r: %ptw.io_requestor_1_pmp_4_cfg_r: i1, io_ptw_pmp_4_addr: %ptw.io_requestor_1_pmp_4_addr: i30, io_ptw_pmp_4_mask: %ptw.io_requestor_1_pmp_4_mask: i32, io_ptw_pmp_5_cfg_l: %ptw.io_requestor_1_pmp_5_cfg_l: i1, io_ptw_pmp_5_cfg_a: %ptw.io_requestor_1_pmp_5_cfg_a: i2, io_ptw_pmp_5_cfg_x: %ptw.io_requestor_1_pmp_5_cfg_x: i1, io_ptw_pmp_5_cfg_w: %ptw.io_requestor_1_pmp_5_cfg_w: i1, io_ptw_pmp_5_cfg_r: %ptw.io_requestor_1_pmp_5_cfg_r: i1, io_ptw_pmp_5_addr: %ptw.io_requestor_1_pmp_5_addr: i30, io_ptw_pmp_5_mask: %ptw.io_requestor_1_pmp_5_mask: i32, io_ptw_pmp_6_cfg_l: %ptw.io_requestor_1_pmp_6_cfg_l: i1, io_ptw_pmp_6_cfg_a: %ptw.io_requestor_1_pmp_6_cfg_a: i2, io_ptw_pmp_6_cfg_x: %ptw.io_requestor_1_pmp_6_cfg_x: i1, io_ptw_pmp_6_cfg_w: %ptw.io_requestor_1_pmp_6_cfg_w: i1, io_ptw_pmp_6_cfg_r: %ptw.io_requestor_1_pmp_6_cfg_r: i1, io_ptw_pmp_6_addr: %ptw.io_requestor_1_pmp_6_addr: i30, io_ptw_pmp_6_mask: %ptw.io_requestor_1_pmp_6_mask: i32, io_ptw_pmp_7_cfg_l: %ptw.io_requestor_1_pmp_7_cfg_l: i1, io_ptw_pmp_7_cfg_a: %ptw.io_requestor_1_pmp_7_cfg_a: i2, io_ptw_pmp_7_cfg_x: %ptw.io_requestor_1_pmp_7_cfg_x: i1, io_ptw_pmp_7_cfg_w: %ptw.io_requestor_1_pmp_7_cfg_w: i1, io_ptw_pmp_7_cfg_r: %ptw.io_requestor_1_pmp_7_cfg_r: i1, io_ptw_pmp_7_addr: %ptw.io_requestor_1_pmp_7_addr: i30, io_ptw_pmp_7_mask: %ptw.io_requestor_1_pmp_7_mask: i32, io_ptw_customCSRs_csrs_0_value: %ptw.io_requestor_1_customCSRs_csrs_0_value: i32) -> (auto_icache_master_out_a_valid: i1, auto_icache_master_out_a_bits_address: i32, auto_icache_master_out_a_bits_user_amba_prot_readalloc: i1, auto_icache_master_out_a_bits_user_amba_prot_writealloc: i1, io_cpu_resp_valid: i1, io_cpu_resp_bits_pc: i32, io_cpu_resp_bits_data: i32, io_cpu_resp_bits_xcpt_pf_inst: i1, io_cpu_resp_bits_xcpt_gf_inst: i1, io_cpu_resp_bits_xcpt_ae_inst: i1, io_cpu_resp_bits_replay: i1) {sv.namehint = "core.io_imem_resp_valid"}
+    %widget_1.auto_anon_in_a_ready, %widget_1.auto_anon_in_d_valid, %widget_1.auto_anon_in_d_bits_opcode, %widget_1.auto_anon_in_d_bits_size, %widget_1.auto_anon_in_d_bits_denied, %widget_1.auto_anon_in_d_bits_data, %widget_1.auto_anon_in_d_bits_corrupt, %widget_1.auto_anon_out_a_valid, %widget_1.auto_anon_out_a_bits_opcode, %widget_1.auto_anon_out_a_bits_param, %widget_1.auto_anon_out_a_bits_size, %widget_1.auto_anon_out_a_bits_address, %widget_1.auto_anon_out_a_bits_user_amba_prot_bufferable, %widget_1.auto_anon_out_a_bits_user_amba_prot_modifiable, %widget_1.auto_anon_out_a_bits_user_amba_prot_readalloc, %widget_1.auto_anon_out_a_bits_user_amba_prot_writealloc, %widget_1.auto_anon_out_a_bits_user_amba_prot_privileged, %widget_1.auto_anon_out_a_bits_user_amba_prot_fetch, %widget_1.auto_anon_out_a_bits_mask, %widget_1.auto_anon_out_a_bits_data, %widget_1.auto_anon_out_d_ready = hw.instance "widget_1" @TLWidthWidget8_6(auto_anon_in_a_valid: %frontend.auto_icache_master_out_a_valid: i1, auto_anon_in_a_bits_opcode: %c-4_i3: i3, auto_anon_in_a_bits_param: %c0_i3: i3, auto_anon_in_a_bits_size: %c6_i4: i4, auto_anon_in_a_bits_address: %frontend.auto_icache_master_out_a_bits_address: i32, auto_anon_in_a_bits_user_amba_prot_bufferable: %true: i1, auto_anon_in_a_bits_user_amba_prot_modifiable: %true: i1, auto_anon_in_a_bits_user_amba_prot_readalloc: %frontend.auto_icache_master_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_in_a_bits_user_amba_prot_writealloc: %frontend.auto_icache_master_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_in_a_bits_user_amba_prot_privileged: %true: i1, auto_anon_in_a_bits_user_amba_prot_fetch: %true: i1, auto_anon_in_a_bits_mask: %c-1_i8: i8, auto_anon_in_a_bits_data: %c0_i64: i64, auto_anon_in_d_ready: %true: i1, auto_anon_out_a_ready: %tlMasterXbar.auto_anon_in_1_a_ready: i1, auto_anon_out_d_valid: %tlMasterXbar.auto_anon_in_1_d_valid: i1, auto_anon_out_d_bits_opcode: %tlMasterXbar.auto_anon_in_1_d_bits_opcode: i3, auto_anon_out_d_bits_size: %tlMasterXbar.auto_anon_in_1_d_bits_size: i4, auto_anon_out_d_bits_denied: %tlMasterXbar.auto_anon_in_1_d_bits_denied: i1, auto_anon_out_d_bits_data: %tlMasterXbar.auto_anon_in_1_d_bits_data: i64, auto_anon_out_d_bits_corrupt: %tlMasterXbar.auto_anon_in_1_d_bits_corrupt: i1) -> (auto_anon_in_a_ready: i1, auto_anon_in_d_valid: i1, auto_anon_in_d_bits_opcode: i3, auto_anon_in_d_bits_size: i4, auto_anon_in_d_bits_denied: i1, auto_anon_in_d_bits_data: i64, auto_anon_in_d_bits_corrupt: i1, auto_anon_out_a_valid: i1, auto_anon_out_a_bits_opcode: i3, auto_anon_out_a_bits_param: i3, auto_anon_out_a_bits_size: i4, auto_anon_out_a_bits_address: i32, auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_anon_out_a_bits_mask: i8, auto_anon_out_a_bits_data: i64, auto_anon_out_d_ready: i1) {sv.namehint = "widget_1.auto_anon_in_d_valid"}
+    %dtim_adapter.auto_in_a_ready, %dtim_adapter.auto_in_d_valid, %dtim_adapter.auto_in_d_bits_opcode, %dtim_adapter.auto_in_d_bits_size, %dtim_adapter.auto_in_d_bits_source, %dtim_adapter.auto_in_d_bits_data, %dtim_adapter.io_dmem_req_valid, %dtim_adapter.io_dmem_req_bits_addr, %dtim_adapter.io_dmem_req_bits_cmd, %dtim_adapter.io_dmem_req_bits_size, %dtim_adapter.io_dmem_s1_kill, %dtim_adapter.io_dmem_s1_data_data, %dtim_adapter.io_dmem_s1_data_mask = hw.instance "dtim_adapter" @ScratchpadSlavePort(clock: %clock: !seq.clock, reset: %reset: i1, auto_in_a_valid: %fragmenter_1.auto_anon_out_a_valid: i1, auto_in_a_bits_opcode: %fragmenter_1.auto_anon_out_a_bits_opcode: i3, auto_in_a_bits_param: %fragmenter_1.auto_anon_out_a_bits_param: i3, auto_in_a_bits_size: %fragmenter_1.auto_anon_out_a_bits_size: i2, auto_in_a_bits_source: %fragmenter_1.auto_anon_out_a_bits_source: i11, auto_in_a_bits_address: %fragmenter_1.auto_anon_out_a_bits_address: i32, auto_in_a_bits_mask: %fragmenter_1.auto_anon_out_a_bits_mask: i4, auto_in_a_bits_data: %fragmenter_1.auto_anon_out_a_bits_data: i32, auto_in_d_ready: %fragmenter_1.auto_anon_out_d_ready: i1, io_dmem_req_ready: %dcacheArb.io_requestor_1_req_ready: i1, io_dmem_s2_nack: %dcacheArb.io_requestor_1_s2_nack: i1, io_dmem_resp_valid: %dcacheArb.io_requestor_1_resp_valid: i1, io_dmem_resp_bits_data_raw: %dcacheArb.io_requestor_1_resp_bits_data_raw: i32) -> (auto_in_a_ready: i1, auto_in_d_valid: i1, auto_in_d_bits_opcode: i3, auto_in_d_bits_size: i2, auto_in_d_bits_source: i11, auto_in_d_bits_data: i32, io_dmem_req_valid: i1, io_dmem_req_bits_addr: i32, io_dmem_req_bits_cmd: i5, io_dmem_req_bits_size: i2, io_dmem_s1_kill: i1, io_dmem_s1_data_data: i32, io_dmem_s1_data_mask: i4) {sv.namehint = "dtim_adapter.io_dmem_s1_kill"}
+    %fragmenter_1.auto_anon_in_a_ready, %fragmenter_1.auto_anon_in_d_valid, %fragmenter_1.auto_anon_in_d_bits_opcode, %fragmenter_1.auto_anon_in_d_bits_size, %fragmenter_1.auto_anon_in_d_bits_source, %fragmenter_1.auto_anon_in_d_bits_data, %fragmenter_1.auto_anon_out_a_valid, %fragmenter_1.auto_anon_out_a_bits_opcode, %fragmenter_1.auto_anon_out_a_bits_param, %fragmenter_1.auto_anon_out_a_bits_size, %fragmenter_1.auto_anon_out_a_bits_source, %fragmenter_1.auto_anon_out_a_bits_address, %fragmenter_1.auto_anon_out_a_bits_mask, %fragmenter_1.auto_anon_out_a_bits_data, %fragmenter_1.auto_anon_out_d_ready = hw.instance "fragmenter_1" @TLFragmenter_1(clock: %clock: !seq.clock, reset: %reset: i1, auto_anon_in_a_valid: %tlSlaveXbar.auto_anon_out_a_valid: i1, auto_anon_in_a_bits_opcode: %tlSlaveXbar.auto_anon_out_a_bits_opcode: i3, auto_anon_in_a_bits_param: %tlSlaveXbar.auto_anon_out_a_bits_param: i3, auto_anon_in_a_bits_size: %tlSlaveXbar.auto_anon_out_a_bits_size: i3, auto_anon_in_a_bits_source: %tlSlaveXbar.auto_anon_out_a_bits_source: i5, auto_anon_in_a_bits_address: %tlSlaveXbar.auto_anon_out_a_bits_address: i32, auto_anon_in_a_bits_mask: %tlSlaveXbar.auto_anon_out_a_bits_mask: i4, auto_anon_in_a_bits_data: %tlSlaveXbar.auto_anon_out_a_bits_data: i32, auto_anon_in_d_ready: %tlSlaveXbar.auto_anon_out_d_ready: i1, auto_anon_out_a_ready: %dtim_adapter.auto_in_a_ready: i1, auto_anon_out_d_valid: %dtim_adapter.auto_in_d_valid: i1, auto_anon_out_d_bits_opcode: %dtim_adapter.auto_in_d_bits_opcode: i3, auto_anon_out_d_bits_size: %dtim_adapter.auto_in_d_bits_size: i2, auto_anon_out_d_bits_source: %dtim_adapter.auto_in_d_bits_source: i11, auto_anon_out_d_bits_data: %dtim_adapter.auto_in_d_bits_data: i32) -> (auto_anon_in_a_ready: i1, auto_anon_in_d_valid: i1, auto_anon_in_d_bits_opcode: i3, auto_anon_in_d_bits_size: i3, auto_anon_in_d_bits_source: i5, auto_anon_in_d_bits_data: i32, auto_anon_out_a_valid: i1, auto_anon_out_a_bits_opcode: i3, auto_anon_out_a_bits_param: i3, auto_anon_out_a_bits_size: i2, auto_anon_out_a_bits_source: i11, auto_anon_out_a_bits_address: i32, auto_anon_out_a_bits_mask: i4, auto_anon_out_a_bits_data: i32, auto_anon_out_d_ready: i1) {sv.namehint = "fragmenter_1.auto_anon_in_d_valid"}
+    %buffer.auto_in_a_ready, %buffer.auto_in_d_valid, %buffer.auto_in_d_bits_opcode, %buffer.auto_in_d_bits_param, %buffer.auto_in_d_bits_size, %buffer.auto_in_d_bits_source, %buffer.auto_in_d_bits_sink, %buffer.auto_in_d_bits_denied, %buffer.auto_in_d_bits_data, %buffer.auto_in_d_bits_corrupt, %buffer.auto_out_a_valid, %buffer.auto_out_a_bits_opcode, %buffer.auto_out_a_bits_param, %buffer.auto_out_a_bits_size, %buffer.auto_out_a_bits_source, %buffer.auto_out_a_bits_address, %buffer.auto_out_a_bits_user_amba_prot_bufferable, %buffer.auto_out_a_bits_user_amba_prot_modifiable, %buffer.auto_out_a_bits_user_amba_prot_readalloc, %buffer.auto_out_a_bits_user_amba_prot_writealloc, %buffer.auto_out_a_bits_user_amba_prot_privileged, %buffer.auto_out_a_bits_user_amba_prot_secure, %buffer.auto_out_a_bits_user_amba_prot_fetch, %buffer.auto_out_a_bits_mask, %buffer.auto_out_a_bits_data, %buffer.auto_out_d_ready = hw.instance "buffer" @TLBuffer_a32d64s1k1z4u(auto_in_a_valid: %tlMasterXbar.auto_anon_out_a_valid: i1, auto_in_a_bits_opcode: %tlMasterXbar.auto_anon_out_a_bits_opcode: i3, auto_in_a_bits_param: %tlMasterXbar.auto_anon_out_a_bits_param: i3, auto_in_a_bits_size: %tlMasterXbar.auto_anon_out_a_bits_size: i4, auto_in_a_bits_source: %tlMasterXbar.auto_anon_out_a_bits_source: i1, auto_in_a_bits_address: %tlMasterXbar.auto_anon_out_a_bits_address: i32, auto_in_a_bits_user_amba_prot_bufferable: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_bufferable: i1, auto_in_a_bits_user_amba_prot_modifiable: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_modifiable: i1, auto_in_a_bits_user_amba_prot_readalloc: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_readalloc: i1, auto_in_a_bits_user_amba_prot_writealloc: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_writealloc: i1, auto_in_a_bits_user_amba_prot_privileged: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_privileged: i1, auto_in_a_bits_user_amba_prot_secure: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_secure: i1, auto_in_a_bits_user_amba_prot_fetch: %tlMasterXbar.auto_anon_out_a_bits_user_amba_prot_fetch: i1, auto_in_a_bits_mask: %tlMasterXbar.auto_anon_out_a_bits_mask: i8, auto_in_a_bits_data: %tlMasterXbar.auto_anon_out_a_bits_data: i64, auto_in_d_ready: %tlMasterXbar.auto_anon_out_d_ready: i1, auto_out_a_ready: %auto_buffer_out_a_ready: i1, auto_out_d_valid: %auto_buffer_out_d_valid: i1, auto_out_d_bits_opcode: %auto_buffer_out_d_bits_opcode: i3, auto_out_d_bits_param: %auto_buffer_out_d_bits_param: i2, auto_out_d_bits_size: %auto_buffer_out_d_bits_size: i4, auto_out_d_bits_source: %auto_buffer_out_d_bits_source: i1, auto_out_d_bits_sink: %auto_buffer_out_d_bits_sink: i1, auto_out_d_bits_denied: %auto_buffer_out_d_bits_denied: i1, auto_out_d_bits_data: %auto_buffer_out_d_bits_data: i64, auto_out_d_bits_corrupt: %auto_buffer_out_d_bits_corrupt: i1) -> (auto_in_a_ready: i1, auto_in_d_valid: i1, auto_in_d_bits_opcode: i3, auto_in_d_bits_param: i2, auto_in_d_bits_size: i4, auto_in_d_bits_source: i1, auto_in_d_bits_sink: i1, auto_in_d_bits_denied: i1, auto_in_d_bits_data: i64, auto_in_d_bits_corrupt: i1, auto_out_a_valid: i1, auto_out_a_bits_opcode: i3, auto_out_a_bits_param: i3, auto_out_a_bits_size: i4, auto_out_a_bits_source: i1, auto_out_a_bits_address: i32, auto_out_a_bits_user_amba_prot_bufferable: i1, auto_out_a_bits_user_amba_prot_modifiable: i1, auto_out_a_bits_user_amba_prot_readalloc: i1, auto_out_a_bits_user_amba_prot_writealloc: i1, auto_out_a_bits_user_amba_prot_privileged: i1, auto_out_a_bits_user_amba_prot_secure: i1, auto_out_a_bits_user_amba_prot_fetch: i1, auto_out_a_bits_mask: i8, auto_out_a_bits_data: i64, auto_out_d_ready: i1) {sv.namehint = "tlOtherMastersNodeIn_d_valid"}
+    %buffer_1.auto_in_a_ready, %buffer_1.auto_in_d_valid, %buffer_1.auto_in_d_bits_opcode, %buffer_1.auto_in_d_bits_size, %buffer_1.auto_in_d_bits_source, %buffer_1.auto_in_d_bits_data, %buffer_1.auto_out_a_valid, %buffer_1.auto_out_a_bits_opcode, %buffer_1.auto_out_a_bits_param, %buffer_1.auto_out_a_bits_size, %buffer_1.auto_out_a_bits_source, %buffer_1.auto_out_a_bits_address, %buffer_1.auto_out_a_bits_mask, %buffer_1.auto_out_a_bits_data, %buffer_1.auto_out_d_ready = hw.instance "buffer_1" @TLBuffer_a32d32s5k1z3u(auto_in_a_valid: %auto_buffer_in_a_valid: i1, auto_in_a_bits_opcode: %auto_buffer_in_a_bits_opcode: i3, auto_in_a_bits_param: %auto_buffer_in_a_bits_param: i3, auto_in_a_bits_size: %auto_buffer_in_a_bits_size: i3, auto_in_a_bits_source: %auto_buffer_in_a_bits_source: i5, auto_in_a_bits_address: %auto_buffer_in_a_bits_address: i32, auto_in_a_bits_mask: %auto_buffer_in_a_bits_mask: i4, auto_in_a_bits_data: %auto_buffer_in_a_bits_data: i32, auto_in_d_ready: %auto_buffer_in_d_ready: i1, auto_out_a_ready: %tlSlaveXbar.auto_anon_in_a_ready: i1, auto_out_d_valid: %tlSlaveXbar.auto_anon_in_d_valid: i1, auto_out_d_bits_opcode: %tlSlaveXbar.auto_anon_in_d_bits_opcode: i3, auto_out_d_bits_size: %tlSlaveXbar.auto_anon_in_d_bits_size: i3, auto_out_d_bits_source: %tlSlaveXbar.auto_anon_in_d_bits_source: i5, auto_out_d_bits_data: %tlSlaveXbar.auto_anon_in_d_bits_data: i32) -> (auto_in_a_ready: i1, auto_in_d_valid: i1, auto_in_d_bits_opcode: i3, auto_in_d_bits_size: i3, auto_in_d_bits_source: i5, auto_in_d_bits_data: i32, auto_out_a_valid: i1, auto_out_a_bits_opcode: i3, auto_out_a_bits_param: i3, auto_out_a_bits_size: i3, auto_out_a_bits_source: i5, auto_out_a_bits_address: i32, auto_out_a_bits_mask: i4, auto_out_a_bits_data: i32, auto_out_d_ready: i1) {sv.namehint = "slaveNodeIn_d_ready"}
+    %dcacheArb.io_requestor_0_req_ready, %dcacheArb.io_requestor_0_s2_nack, %dcacheArb.io_requestor_0_resp_valid, %dcacheArb.io_requestor_0_resp_bits_tag, %dcacheArb.io_requestor_0_resp_bits_data, %dcacheArb.io_requestor_0_resp_bits_replay, %dcacheArb.io_requestor_0_resp_bits_has_data, %dcacheArb.io_requestor_0_resp_bits_data_word_bypass, %dcacheArb.io_requestor_0_replay_next, %dcacheArb.io_requestor_0_s2_xcpt_ma_ld, %dcacheArb.io_requestor_0_s2_xcpt_ma_st, %dcacheArb.io_requestor_0_s2_xcpt_pf_ld, %dcacheArb.io_requestor_0_s2_xcpt_pf_st, %dcacheArb.io_requestor_0_s2_xcpt_ae_ld, %dcacheArb.io_requestor_0_s2_xcpt_ae_st, %dcacheArb.io_requestor_0_ordered, %dcacheArb.io_requestor_0_perf_grant, %dcacheArb.io_requestor_1_req_ready, %dcacheArb.io_requestor_1_s2_nack, %dcacheArb.io_requestor_1_resp_valid, %dcacheArb.io_requestor_1_resp_bits_data_raw, %dcacheArb.io_mem_req_valid, %dcacheArb.io_mem_req_bits_addr, %dcacheArb.io_mem_req_bits_tag, %dcacheArb.io_mem_req_bits_cmd, %dcacheArb.io_mem_req_bits_size, %dcacheArb.io_mem_req_bits_signed, %dcacheArb.io_mem_req_bits_dprv, %dcacheArb.io_mem_req_bits_no_xcpt, %dcacheArb.io_mem_s1_kill, %dcacheArb.io_mem_s1_data_data, %dcacheArb.io_mem_s1_data_mask = hw.instance "dcacheArb" @HellaCacheArbiter(clock: %clock: !seq.clock, io_requestor_0_req_valid: %core.io_dmem_req_valid: i1, io_requestor_0_req_bits_addr: %core.io_dmem_req_bits_addr: i32, io_requestor_0_req_bits_tag: %core.io_dmem_req_bits_tag: i7, io_requestor_0_req_bits_cmd: %core.io_dmem_req_bits_cmd: i5, io_requestor_0_req_bits_size: %core.io_dmem_req_bits_size: i2, io_requestor_0_req_bits_signed: %core.io_dmem_req_bits_signed: i1, io_requestor_0_s1_kill: %core.io_dmem_s1_kill: i1, io_requestor_0_s1_data_data: %core.io_dmem_s1_data_data: i32, io_requestor_1_req_valid: %dtim_adapter.io_dmem_req_valid: i1, io_requestor_1_req_bits_addr: %dtim_adapter.io_dmem_req_bits_addr: i32, io_requestor_1_req_bits_cmd: %dtim_adapter.io_dmem_req_bits_cmd: i5, io_requestor_1_req_bits_size: %dtim_adapter.io_dmem_req_bits_size: i2, io_requestor_1_s1_kill: %dtim_adapter.io_dmem_s1_kill: i1, io_requestor_1_s1_data_data: %dtim_adapter.io_dmem_s1_data_data: i32, io_requestor_1_s1_data_mask: %dtim_adapter.io_dmem_s1_data_mask: i4, io_mem_req_ready: %dcache.io_cpu_req_ready: i1, io_mem_s2_nack: %dcache.io_cpu_s2_nack: i1, io_mem_resp_valid: %dcache.io_cpu_resp_valid: i1, io_mem_resp_bits_tag: %dcache.io_cpu_resp_bits_tag: i7, io_mem_resp_bits_data: %dcache.io_cpu_resp_bits_data: i32, io_mem_resp_bits_replay: %dcache.io_cpu_resp_bits_replay: i1, io_mem_resp_bits_has_data: %dcache.io_cpu_resp_bits_has_data: i1, io_mem_resp_bits_data_word_bypass: %dcache.io_cpu_resp_bits_data_word_bypass: i32, io_mem_resp_bits_data_raw: %dcache.io_cpu_resp_bits_data_raw: i32, io_mem_replay_next: %dcache.io_cpu_replay_next: i1, io_mem_s2_xcpt_ma_ld: %dcache.io_cpu_s2_xcpt_ma_ld: i1, io_mem_s2_xcpt_ma_st: %dcache.io_cpu_s2_xcpt_ma_st: i1, io_mem_s2_xcpt_pf_ld: %dcache.io_cpu_s2_xcpt_pf_ld: i1, io_mem_s2_xcpt_pf_st: %dcache.io_cpu_s2_xcpt_pf_st: i1, io_mem_s2_xcpt_ae_ld: %dcache.io_cpu_s2_xcpt_ae_ld: i1, io_mem_s2_xcpt_ae_st: %dcache.io_cpu_s2_xcpt_ae_st: i1, io_mem_ordered: %dcache.io_cpu_ordered: i1, io_mem_perf_grant: %dcache.io_cpu_perf_grant: i1) -> (io_requestor_0_req_ready: i1, io_requestor_0_s2_nack: i1, io_requestor_0_resp_valid: i1, io_requestor_0_resp_bits_tag: i7, io_requestor_0_resp_bits_data: i32, io_requestor_0_resp_bits_replay: i1, io_requestor_0_resp_bits_has_data: i1, io_requestor_0_resp_bits_data_word_bypass: i32, io_requestor_0_replay_next: i1, io_requestor_0_s2_xcpt_ma_ld: i1, io_requestor_0_s2_xcpt_ma_st: i1, io_requestor_0_s2_xcpt_pf_ld: i1, io_requestor_0_s2_xcpt_pf_st: i1, io_requestor_0_s2_xcpt_ae_ld: i1, io_requestor_0_s2_xcpt_ae_st: i1, io_requestor_0_ordered: i1, io_requestor_0_perf_grant: i1, io_requestor_1_req_ready: i1, io_requestor_1_s2_nack: i1, io_requestor_1_resp_valid: i1, io_requestor_1_resp_bits_data_raw: i32, io_mem_req_valid: i1, io_mem_req_bits_addr: i32, io_mem_req_bits_tag: i7, io_mem_req_bits_cmd: i5, io_mem_req_bits_size: i2, io_mem_req_bits_signed: i1, io_mem_req_bits_dprv: i2, io_mem_req_bits_no_xcpt: i1, io_mem_s1_kill: i1, io_mem_s1_data_data: i32, io_mem_s1_data_mask: i4) {sv.namehint = "core.io_dmem_ordered"}
+    %ptw.io_requestor_0_status_debug, %ptw.io_requestor_0_pmp_0_cfg_l, %ptw.io_requestor_0_pmp_0_cfg_a, %ptw.io_requestor_0_pmp_0_cfg_x, %ptw.io_requestor_0_pmp_0_cfg_w, %ptw.io_requestor_0_pmp_0_cfg_r, %ptw.io_requestor_0_pmp_0_addr, %ptw.io_requestor_0_pmp_0_mask, %ptw.io_requestor_0_pmp_1_cfg_l, %ptw.io_requestor_0_pmp_1_cfg_a, %ptw.io_requestor_0_pmp_1_cfg_x, %ptw.io_requestor_0_pmp_1_cfg_w, %ptw.io_requestor_0_pmp_1_cfg_r, %ptw.io_requestor_0_pmp_1_addr, %ptw.io_requestor_0_pmp_1_mask, %ptw.io_requestor_0_pmp_2_cfg_l, %ptw.io_requestor_0_pmp_2_cfg_a, %ptw.io_requestor_0_pmp_2_cfg_x, %ptw.io_requestor_0_pmp_2_cfg_w, %ptw.io_requestor_0_pmp_2_cfg_r, %ptw.io_requestor_0_pmp_2_addr, %ptw.io_requestor_0_pmp_2_mask, %ptw.io_requestor_0_pmp_3_cfg_l, %ptw.io_requestor_0_pmp_3_cfg_a, %ptw.io_requestor_0_pmp_3_cfg_x, %ptw.io_requestor_0_pmp_3_cfg_w, %ptw.io_requestor_0_pmp_3_cfg_r, %ptw.io_requestor_0_pmp_3_addr, %ptw.io_requestor_0_pmp_3_mask, %ptw.io_requestor_0_pmp_4_cfg_l, %ptw.io_requestor_0_pmp_4_cfg_a, %ptw.io_requestor_0_pmp_4_cfg_x, %ptw.io_requestor_0_pmp_4_cfg_w, %ptw.io_requestor_0_pmp_4_cfg_r, %ptw.io_requestor_0_pmp_4_addr, %ptw.io_requestor_0_pmp_4_mask, %ptw.io_requestor_0_pmp_5_cfg_l, %ptw.io_requestor_0_pmp_5_cfg_a, %ptw.io_requestor_0_pmp_5_cfg_x, %ptw.io_requestor_0_pmp_5_cfg_w, %ptw.io_requestor_0_pmp_5_cfg_r, %ptw.io_requestor_0_pmp_5_addr, %ptw.io_requestor_0_pmp_5_mask, %ptw.io_requestor_0_pmp_6_cfg_l, %ptw.io_requestor_0_pmp_6_cfg_a, %ptw.io_requestor_0_pmp_6_cfg_x, %ptw.io_requestor_0_pmp_6_cfg_w, %ptw.io_requestor_0_pmp_6_cfg_r, %ptw.io_requestor_0_pmp_6_addr, %ptw.io_requestor_0_pmp_6_mask, %ptw.io_requestor_0_pmp_7_cfg_l, %ptw.io_requestor_0_pmp_7_cfg_a, %ptw.io_requestor_0_pmp_7_cfg_x, %ptw.io_requestor_0_pmp_7_cfg_w, %ptw.io_requestor_0_pmp_7_cfg_r, %ptw.io_requestor_0_pmp_7_addr, %ptw.io_requestor_0_pmp_7_mask, %ptw.io_requestor_1_status_debug, %ptw.io_requestor_1_pmp_0_cfg_l, %ptw.io_requestor_1_pmp_0_cfg_a, %ptw.io_requestor_1_pmp_0_cfg_x, %ptw.io_requestor_1_pmp_0_cfg_w, %ptw.io_requestor_1_pmp_0_cfg_r, %ptw.io_requestor_1_pmp_0_addr, %ptw.io_requestor_1_pmp_0_mask, %ptw.io_requestor_1_pmp_1_cfg_l, %ptw.io_requestor_1_pmp_1_cfg_a, %ptw.io_requestor_1_pmp_1_cfg_x, %ptw.io_requestor_1_pmp_1_cfg_w, %ptw.io_requestor_1_pmp_1_cfg_r, %ptw.io_requestor_1_pmp_1_addr, %ptw.io_requestor_1_pmp_1_mask, %ptw.io_requestor_1_pmp_2_cfg_l, %ptw.io_requestor_1_pmp_2_cfg_a, %ptw.io_requestor_1_pmp_2_cfg_x, %ptw.io_requestor_1_pmp_2_cfg_w, %ptw.io_requestor_1_pmp_2_cfg_r, %ptw.io_requestor_1_pmp_2_addr, %ptw.io_requestor_1_pmp_2_mask, %ptw.io_requestor_1_pmp_3_cfg_l, %ptw.io_requestor_1_pmp_3_cfg_a, %ptw.io_requestor_1_pmp_3_cfg_x, %ptw.io_requestor_1_pmp_3_cfg_w, %ptw.io_requestor_1_pmp_3_cfg_r, %ptw.io_requestor_1_pmp_3_addr, %ptw.io_requestor_1_pmp_3_mask, %ptw.io_requestor_1_pmp_4_cfg_l, %ptw.io_requestor_1_pmp_4_cfg_a, %ptw.io_requestor_1_pmp_4_cfg_x, %ptw.io_requestor_1_pmp_4_cfg_w, %ptw.io_requestor_1_pmp_4_cfg_r, %ptw.io_requestor_1_pmp_4_addr, %ptw.io_requestor_1_pmp_4_mask, %ptw.io_requestor_1_pmp_5_cfg_l, %ptw.io_requestor_1_pmp_5_cfg_a, %ptw.io_requestor_1_pmp_5_cfg_x, %ptw.io_requestor_1_pmp_5_cfg_w, %ptw.io_requestor_1_pmp_5_cfg_r, %ptw.io_requestor_1_pmp_5_addr, %ptw.io_requestor_1_pmp_5_mask, %ptw.io_requestor_1_pmp_6_cfg_l, %ptw.io_requestor_1_pmp_6_cfg_a, %ptw.io_requestor_1_pmp_6_cfg_x, %ptw.io_requestor_1_pmp_6_cfg_w, %ptw.io_requestor_1_pmp_6_cfg_r, %ptw.io_requestor_1_pmp_6_addr, %ptw.io_requestor_1_pmp_6_mask, %ptw.io_requestor_1_pmp_7_cfg_l, %ptw.io_requestor_1_pmp_7_cfg_a, %ptw.io_requestor_1_pmp_7_cfg_x, %ptw.io_requestor_1_pmp_7_cfg_w, %ptw.io_requestor_1_pmp_7_cfg_r, %ptw.io_requestor_1_pmp_7_addr, %ptw.io_requestor_1_pmp_7_mask, %ptw.io_requestor_1_customCSRs_csrs_0_value = hw.instance "ptw" @PTW(io_dpath_status_debug: %core.io_ptw_status_debug: i1, io_dpath_pmp_0_cfg_l: %core.io_ptw_pmp_0_cfg_l: i1, io_dpath_pmp_0_cfg_a: %core.io_ptw_pmp_0_cfg_a: i2, io_dpath_pmp_0_cfg_x: %core.io_ptw_pmp_0_cfg_x: i1, io_dpath_pmp_0_cfg_w: %core.io_ptw_pmp_0_cfg_w: i1, io_dpath_pmp_0_cfg_r: %core.io_ptw_pmp_0_cfg_r: i1, io_dpath_pmp_0_addr: %core.io_ptw_pmp_0_addr: i30, io_dpath_pmp_0_mask: %core.io_ptw_pmp_0_mask: i32, io_dpath_pmp_1_cfg_l: %core.io_ptw_pmp_1_cfg_l: i1, io_dpath_pmp_1_cfg_a: %core.io_ptw_pmp_1_cfg_a: i2, io_dpath_pmp_1_cfg_x: %core.io_ptw_pmp_1_cfg_x: i1, io_dpath_pmp_1_cfg_w: %core.io_ptw_pmp_1_cfg_w: i1, io_dpath_pmp_1_cfg_r: %core.io_ptw_pmp_1_cfg_r: i1, io_dpath_pmp_1_addr: %core.io_ptw_pmp_1_addr: i30, io_dpath_pmp_1_mask: %core.io_ptw_pmp_1_mask: i32, io_dpath_pmp_2_cfg_l: %core.io_ptw_pmp_2_cfg_l: i1, io_dpath_pmp_2_cfg_a: %core.io_ptw_pmp_2_cfg_a: i2, io_dpath_pmp_2_cfg_x: %core.io_ptw_pmp_2_cfg_x: i1, io_dpath_pmp_2_cfg_w: %core.io_ptw_pmp_2_cfg_w: i1, io_dpath_pmp_2_cfg_r: %core.io_ptw_pmp_2_cfg_r: i1, io_dpath_pmp_2_addr: %core.io_ptw_pmp_2_addr: i30, io_dpath_pmp_2_mask: %core.io_ptw_pmp_2_mask: i32, io_dpath_pmp_3_cfg_l: %core.io_ptw_pmp_3_cfg_l: i1, io_dpath_pmp_3_cfg_a: %core.io_ptw_pmp_3_cfg_a: i2, io_dpath_pmp_3_cfg_x: %core.io_ptw_pmp_3_cfg_x: i1, io_dpath_pmp_3_cfg_w: %core.io_ptw_pmp_3_cfg_w: i1, io_dpath_pmp_3_cfg_r: %core.io_ptw_pmp_3_cfg_r: i1, io_dpath_pmp_3_addr: %core.io_ptw_pmp_3_addr: i30, io_dpath_pmp_3_mask: %core.io_ptw_pmp_3_mask: i32, io_dpath_pmp_4_cfg_l: %core.io_ptw_pmp_4_cfg_l: i1, io_dpath_pmp_4_cfg_a: %core.io_ptw_pmp_4_cfg_a: i2, io_dpath_pmp_4_cfg_x: %core.io_ptw_pmp_4_cfg_x: i1, io_dpath_pmp_4_cfg_w: %core.io_ptw_pmp_4_cfg_w: i1, io_dpath_pmp_4_cfg_r: %core.io_ptw_pmp_4_cfg_r: i1, io_dpath_pmp_4_addr: %core.io_ptw_pmp_4_addr: i30, io_dpath_pmp_4_mask: %core.io_ptw_pmp_4_mask: i32, io_dpath_pmp_5_cfg_l: %core.io_ptw_pmp_5_cfg_l: i1, io_dpath_pmp_5_cfg_a: %core.io_ptw_pmp_5_cfg_a: i2, io_dpath_pmp_5_cfg_x: %core.io_ptw_pmp_5_cfg_x: i1, io_dpath_pmp_5_cfg_w: %core.io_ptw_pmp_5_cfg_w: i1, io_dpath_pmp_5_cfg_r: %core.io_ptw_pmp_5_cfg_r: i1, io_dpath_pmp_5_addr: %core.io_ptw_pmp_5_addr: i30, io_dpath_pmp_5_mask: %core.io_ptw_pmp_5_mask: i32, io_dpath_pmp_6_cfg_l: %core.io_ptw_pmp_6_cfg_l: i1, io_dpath_pmp_6_cfg_a: %core.io_ptw_pmp_6_cfg_a: i2, io_dpath_pmp_6_cfg_x: %core.io_ptw_pmp_6_cfg_x: i1, io_dpath_pmp_6_cfg_w: %core.io_ptw_pmp_6_cfg_w: i1, io_dpath_pmp_6_cfg_r: %core.io_ptw_pmp_6_cfg_r: i1, io_dpath_pmp_6_addr: %core.io_ptw_pmp_6_addr: i30, io_dpath_pmp_6_mask: %core.io_ptw_pmp_6_mask: i32, io_dpath_pmp_7_cfg_l: %core.io_ptw_pmp_7_cfg_l: i1, io_dpath_pmp_7_cfg_a: %core.io_ptw_pmp_7_cfg_a: i2, io_dpath_pmp_7_cfg_x: %core.io_ptw_pmp_7_cfg_x: i1, io_dpath_pmp_7_cfg_w: %core.io_ptw_pmp_7_cfg_w: i1, io_dpath_pmp_7_cfg_r: %core.io_ptw_pmp_7_cfg_r: i1, io_dpath_pmp_7_addr: %core.io_ptw_pmp_7_addr: i30, io_dpath_pmp_7_mask: %core.io_ptw_pmp_7_mask: i32, io_dpath_customCSRs_csrs_0_value: %core.io_ptw_customCSRs_csrs_0_value: i32) -> (io_requestor_0_status_debug: i1, io_requestor_0_pmp_0_cfg_l: i1, io_requestor_0_pmp_0_cfg_a: i2, io_requestor_0_pmp_0_cfg_x: i1, io_requestor_0_pmp_0_cfg_w: i1, io_requestor_0_pmp_0_cfg_r: i1, io_requestor_0_pmp_0_addr: i30, io_requestor_0_pmp_0_mask: i32, io_requestor_0_pmp_1_cfg_l: i1, io_requestor_0_pmp_1_cfg_a: i2, io_requestor_0_pmp_1_cfg_x: i1, io_requestor_0_pmp_1_cfg_w: i1, io_requestor_0_pmp_1_cfg_r: i1, io_requestor_0_pmp_1_addr: i30, io_requestor_0_pmp_1_mask: i32, io_requestor_0_pmp_2_cfg_l: i1, io_requestor_0_pmp_2_cfg_a: i2, io_requestor_0_pmp_2_cfg_x: i1, io_requestor_0_pmp_2_cfg_w: i1, io_requestor_0_pmp_2_cfg_r: i1, io_requestor_0_pmp_2_addr: i30, io_requestor_0_pmp_2_mask: i32, io_requestor_0_pmp_3_cfg_l: i1, io_requestor_0_pmp_3_cfg_a: i2, io_requestor_0_pmp_3_cfg_x: i1, io_requestor_0_pmp_3_cfg_w: i1, io_requestor_0_pmp_3_cfg_r: i1, io_requestor_0_pmp_3_addr: i30, io_requestor_0_pmp_3_mask: i32, io_requestor_0_pmp_4_cfg_l: i1, io_requestor_0_pmp_4_cfg_a: i2, io_requestor_0_pmp_4_cfg_x: i1, io_requestor_0_pmp_4_cfg_w: i1, io_requestor_0_pmp_4_cfg_r: i1, io_requestor_0_pmp_4_addr: i30, io_requestor_0_pmp_4_mask: i32, io_requestor_0_pmp_5_cfg_l: i1, io_requestor_0_pmp_5_cfg_a: i2, io_requestor_0_pmp_5_cfg_x: i1, io_requestor_0_pmp_5_cfg_w: i1, io_requestor_0_pmp_5_cfg_r: i1, io_requestor_0_pmp_5_addr: i30, io_requestor_0_pmp_5_mask: i32, io_requestor_0_pmp_6_cfg_l: i1, io_requestor_0_pmp_6_cfg_a: i2, io_requestor_0_pmp_6_cfg_x: i1, io_requestor_0_pmp_6_cfg_w: i1, io_requestor_0_pmp_6_cfg_r: i1, io_requestor_0_pmp_6_addr: i30, io_requestor_0_pmp_6_mask: i32, io_requestor_0_pmp_7_cfg_l: i1, io_requestor_0_pmp_7_cfg_a: i2, io_requestor_0_pmp_7_cfg_x: i1, io_requestor_0_pmp_7_cfg_w: i1, io_requestor_0_pmp_7_cfg_r: i1, io_requestor_0_pmp_7_addr: i30, io_requestor_0_pmp_7_mask: i32, io_requestor_1_status_debug: i1, io_requestor_1_pmp_0_cfg_l: i1, io_requestor_1_pmp_0_cfg_a: i2, io_requestor_1_pmp_0_cfg_x: i1, io_requestor_1_pmp_0_cfg_w: i1, io_requestor_1_pmp_0_cfg_r: i1, io_requestor_1_pmp_0_addr: i30, io_requestor_1_pmp_0_mask: i32, io_requestor_1_pmp_1_cfg_l: i1, io_requestor_1_pmp_1_cfg_a: i2, io_requestor_1_pmp_1_cfg_x: i1, io_requestor_1_pmp_1_cfg_w: i1, io_requestor_1_pmp_1_cfg_r: i1, io_requestor_1_pmp_1_addr: i30, io_requestor_1_pmp_1_mask: i32, io_requestor_1_pmp_2_cfg_l: i1, io_requestor_1_pmp_2_cfg_a: i2, io_requestor_1_pmp_2_cfg_x: i1, io_requestor_1_pmp_2_cfg_w: i1, io_requestor_1_pmp_2_cfg_r: i1, io_requestor_1_pmp_2_addr: i30, io_requestor_1_pmp_2_mask: i32, io_requestor_1_pmp_3_cfg_l: i1, io_requestor_1_pmp_3_cfg_a: i2, io_requestor_1_pmp_3_cfg_x: i1, io_requestor_1_pmp_3_cfg_w: i1, io_requestor_1_pmp_3_cfg_r: i1, io_requestor_1_pmp_3_addr: i30, io_requestor_1_pmp_3_mask: i32, io_requestor_1_pmp_4_cfg_l: i1, io_requestor_1_pmp_4_cfg_a: i2, io_requestor_1_pmp_4_cfg_x: i1, io_requestor_1_pmp_4_cfg_w: i1, io_requestor_1_pmp_4_cfg_r: i1, io_requestor_1_pmp_4_addr: i30, io_requestor_1_pmp_4_mask: i32, io_requestor_1_pmp_5_cfg_l: i1, io_requestor_1_pmp_5_cfg_a: i2, io_requestor_1_pmp_5_cfg_x: i1, io_requestor_1_pmp_5_cfg_w: i1, io_requestor_1_pmp_5_cfg_r: i1, io_requestor_1_pmp_5_addr: i30, io_requestor_1_pmp_5_mask: i32, io_requestor_1_pmp_6_cfg_l: i1, io_requestor_1_pmp_6_cfg_a: i2, io_requestor_1_pmp_6_cfg_x: i1, io_requestor_1_pmp_6_cfg_w: i1, io_requestor_1_pmp_6_cfg_r: i1, io_requestor_1_pmp_6_addr: i30, io_requestor_1_pmp_6_mask: i32, io_requestor_1_pmp_7_cfg_l: i1, io_requestor_1_pmp_7_cfg_a: i2, io_requestor_1_pmp_7_cfg_x: i1, io_requestor_1_pmp_7_cfg_w: i1, io_requestor_1_pmp_7_cfg_r: i1, io_requestor_1_pmp_7_addr: i30, io_requestor_1_pmp_7_mask: i32, io_requestor_1_customCSRs_csrs_0_value: i32) {sv.namehint = "ptw.io_requestor_1_status_debug"}
+    %core.io_imem_might_request, %core.io_imem_req_valid, %core.io_imem_req_bits_pc, %core.io_imem_req_bits_speculative, %core.io_imem_resp_ready, %core.io_imem_btb_update_valid, %core.io_imem_bht_update_valid, %core.io_imem_flush_icache, %core.io_dmem_req_valid, %core.io_dmem_req_bits_addr, %core.io_dmem_req_bits_tag, %core.io_dmem_req_bits_cmd, %core.io_dmem_req_bits_size, %core.io_dmem_req_bits_signed, %core.io_dmem_s1_kill, %core.io_dmem_s1_data_data, %core.io_ptw_status_debug, %core.io_ptw_pmp_0_cfg_l, %core.io_ptw_pmp_0_cfg_a, %core.io_ptw_pmp_0_cfg_x, %core.io_ptw_pmp_0_cfg_w, %core.io_ptw_pmp_0_cfg_r, %core.io_ptw_pmp_0_addr, %core.io_ptw_pmp_0_mask, %core.io_ptw_pmp_1_cfg_l, %core.io_ptw_pmp_1_cfg_a, %core.io_ptw_pmp_1_cfg_x, %core.io_ptw_pmp_1_cfg_w, %core.io_ptw_pmp_1_cfg_r, %core.io_ptw_pmp_1_addr, %core.io_ptw_pmp_1_mask, %core.io_ptw_pmp_2_cfg_l, %core.io_ptw_pmp_2_cfg_a, %core.io_ptw_pmp_2_cfg_x, %core.io_ptw_pmp_2_cfg_w, %core.io_ptw_pmp_2_cfg_r, %core.io_ptw_pmp_2_addr, %core.io_ptw_pmp_2_mask, %core.io_ptw_pmp_3_cfg_l, %core.io_ptw_pmp_3_cfg_a, %core.io_ptw_pmp_3_cfg_x, %core.io_ptw_pmp_3_cfg_w, %core.io_ptw_pmp_3_cfg_r, %core.io_ptw_pmp_3_addr, %core.io_ptw_pmp_3_mask, %core.io_ptw_pmp_4_cfg_l, %core.io_ptw_pmp_4_cfg_a, %core.io_ptw_pmp_4_cfg_x, %core.io_ptw_pmp_4_cfg_w, %core.io_ptw_pmp_4_cfg_r, %core.io_ptw_pmp_4_addr, %core.io_ptw_pmp_4_mask, %core.io_ptw_pmp_5_cfg_l, %core.io_ptw_pmp_5_cfg_a, %core.io_ptw_pmp_5_cfg_x, %core.io_ptw_pmp_5_cfg_w, %core.io_ptw_pmp_5_cfg_r, %core.io_ptw_pmp_5_addr, %core.io_ptw_pmp_5_mask, %core.io_ptw_pmp_6_cfg_l, %core.io_ptw_pmp_6_cfg_a, %core.io_ptw_pmp_6_cfg_x, %core.io_ptw_pmp_6_cfg_w, %core.io_ptw_pmp_6_cfg_r, %core.io_ptw_pmp_6_addr, %core.io_ptw_pmp_6_mask, %core.io_ptw_pmp_7_cfg_l, %core.io_ptw_pmp_7_cfg_a, %core.io_ptw_pmp_7_cfg_x, %core.io_ptw_pmp_7_cfg_w, %core.io_ptw_pmp_7_cfg_r, %core.io_ptw_pmp_7_addr, %core.io_ptw_pmp_7_mask, %core.io_ptw_customCSRs_csrs_0_value, %core.io_wfi = hw.instance "core" @Rocket(clock: %clock: !seq.clock, reset: %reset: i1, io_interrupts_debug: %intXbar.auto_anon_out_0: i1, io_interrupts_mtip: %intXbar.auto_anon_out_2: i1, io_interrupts_msip: %intXbar.auto_anon_out_1: i1, io_interrupts_meip: %intXbar.auto_anon_out_3: i1, io_imem_resp_valid: %frontend.io_cpu_resp_valid: i1, io_imem_resp_bits_pc: %frontend.io_cpu_resp_bits_pc: i32, io_imem_resp_bits_data: %frontend.io_cpu_resp_bits_data: i32, io_imem_resp_bits_xcpt_pf_inst: %frontend.io_cpu_resp_bits_xcpt_pf_inst: i1, io_imem_resp_bits_xcpt_gf_inst: %frontend.io_cpu_resp_bits_xcpt_gf_inst: i1, io_imem_resp_bits_xcpt_ae_inst: %frontend.io_cpu_resp_bits_xcpt_ae_inst: i1, io_imem_resp_bits_replay: %frontend.io_cpu_resp_bits_replay: i1, io_dmem_req_ready: %dcacheArb.io_requestor_0_req_ready: i1, io_dmem_s2_nack: %dcacheArb.io_requestor_0_s2_nack: i1, io_dmem_resp_valid: %dcacheArb.io_requestor_0_resp_valid: i1, io_dmem_resp_bits_tag: %dcacheArb.io_requestor_0_resp_bits_tag: i7, io_dmem_resp_bits_data: %dcacheArb.io_requestor_0_resp_bits_data: i32, io_dmem_resp_bits_replay: %dcacheArb.io_requestor_0_resp_bits_replay: i1, io_dmem_resp_bits_has_data: %dcacheArb.io_requestor_0_resp_bits_has_data: i1, io_dmem_resp_bits_data_word_bypass: %dcacheArb.io_requestor_0_resp_bits_data_word_bypass: i32, io_dmem_replay_next: %dcacheArb.io_requestor_0_replay_next: i1, io_dmem_s2_xcpt_ma_ld: %dcacheArb.io_requestor_0_s2_xcpt_ma_ld: i1, io_dmem_s2_xcpt_ma_st: %dcacheArb.io_requestor_0_s2_xcpt_ma_st: i1, io_dmem_s2_xcpt_pf_ld: %dcacheArb.io_requestor_0_s2_xcpt_pf_ld: i1, io_dmem_s2_xcpt_pf_st: %dcacheArb.io_requestor_0_s2_xcpt_pf_st: i1, io_dmem_s2_xcpt_ae_ld: %dcacheArb.io_requestor_0_s2_xcpt_ae_ld: i1, io_dmem_s2_xcpt_ae_st: %dcacheArb.io_requestor_0_s2_xcpt_ae_st: i1, io_dmem_ordered: %dcacheArb.io_requestor_0_ordered: i1, io_dmem_perf_grant: %dcacheArb.io_requestor_0_perf_grant: i1) -> (io_imem_might_request: i1, io_imem_req_valid: i1, io_imem_req_bits_pc: i32, io_imem_req_bits_speculative: i1, io_imem_resp_ready: i1, io_imem_btb_update_valid: i1, io_imem_bht_update_valid: i1, io_imem_flush_icache: i1, io_dmem_req_valid: i1, io_dmem_req_bits_addr: i32, io_dmem_req_bits_tag: i7, io_dmem_req_bits_cmd: i5, io_dmem_req_bits_size: i2, io_dmem_req_bits_signed: i1, io_dmem_s1_kill: i1, io_dmem_s1_data_data: i32, io_ptw_status_debug: i1, io_ptw_pmp_0_cfg_l: i1, io_ptw_pmp_0_cfg_a: i2, io_ptw_pmp_0_cfg_x: i1, io_ptw_pmp_0_cfg_w: i1, io_ptw_pmp_0_cfg_r: i1, io_ptw_pmp_0_addr: i30, io_ptw_pmp_0_mask: i32, io_ptw_pmp_1_cfg_l: i1, io_ptw_pmp_1_cfg_a: i2, io_ptw_pmp_1_cfg_x: i1, io_ptw_pmp_1_cfg_w: i1, io_ptw_pmp_1_cfg_r: i1, io_ptw_pmp_1_addr: i30, io_ptw_pmp_1_mask: i32, io_ptw_pmp_2_cfg_l: i1, io_ptw_pmp_2_cfg_a: i2, io_ptw_pmp_2_cfg_x: i1, io_ptw_pmp_2_cfg_w: i1, io_ptw_pmp_2_cfg_r: i1, io_ptw_pmp_2_addr: i30, io_ptw_pmp_2_mask: i32, io_ptw_pmp_3_cfg_l: i1, io_ptw_pmp_3_cfg_a: i2, io_ptw_pmp_3_cfg_x: i1, io_ptw_pmp_3_cfg_w: i1, io_ptw_pmp_3_cfg_r: i1, io_ptw_pmp_3_addr: i30, io_ptw_pmp_3_mask: i32, io_ptw_pmp_4_cfg_l: i1, io_ptw_pmp_4_cfg_a: i2, io_ptw_pmp_4_cfg_x: i1, io_ptw_pmp_4_cfg_w: i1, io_ptw_pmp_4_cfg_r: i1, io_ptw_pmp_4_addr: i30, io_ptw_pmp_4_mask: i32, io_ptw_pmp_5_cfg_l: i1, io_ptw_pmp_5_cfg_a: i2, io_ptw_pmp_5_cfg_x: i1, io_ptw_pmp_5_cfg_w: i1, io_ptw_pmp_5_cfg_r: i1, io_ptw_pmp_5_addr: i30, io_ptw_pmp_5_mask: i32, io_ptw_pmp_6_cfg_l: i1, io_ptw_pmp_6_cfg_a: i2, io_ptw_pmp_6_cfg_x: i1, io_ptw_pmp_6_cfg_w: i1, io_ptw_pmp_6_cfg_r: i1, io_ptw_pmp_6_addr: i30, io_ptw_pmp_6_mask: i32, io_ptw_pmp_7_cfg_l: i1, io_ptw_pmp_7_cfg_a: i2, io_ptw_pmp_7_cfg_x: i1, io_ptw_pmp_7_cfg_w: i1, io_ptw_pmp_7_cfg_r: i1, io_ptw_pmp_7_addr: i30, io_ptw_pmp_7_mask: i32, io_ptw_customCSRs_csrs_0_value: i32, io_wfi: i1) {sv.namehint = "core.io_wfi"}
+    %wfiNodeOut_0_REG = seq.firreg %core.io_wfi clock %clock reset sync %reset, %false {firrtl.random_init_start = 0 : ui64, sv.namehint = "wfiNodeOut_0"} : i1
+    hw.output %buffer_1.auto_in_a_ready, %buffer_1.auto_in_d_valid, %buffer_1.auto_in_d_bits_opcode, %buffer_1.auto_in_d_bits_size, %buffer_1.auto_in_d_bits_source, %buffer_1.auto_in_d_bits_data, %buffer.auto_out_a_valid, %buffer.auto_out_a_bits_opcode, %buffer.auto_out_a_bits_param, %buffer.auto_out_a_bits_size, %buffer.auto_out_a_bits_source, %buffer.auto_out_a_bits_address, %buffer.auto_out_a_bits_user_amba_prot_bufferable, %buffer.auto_out_a_bits_user_amba_prot_modifiable, %buffer.auto_out_a_bits_user_amba_prot_readalloc, %buffer.auto_out_a_bits_user_amba_prot_writealloc, %buffer.auto_out_a_bits_user_amba_prot_privileged, %buffer.auto_out_a_bits_user_amba_prot_secure, %buffer.auto_out_a_bits_user_amba_prot_fetch, %buffer.auto_out_a_bits_mask, %buffer.auto_out_a_bits_data, %buffer.auto_out_d_ready, %wfiNodeOut_0_REG : i1, i1, i3, i3, i5, i32, i1, i3, i3, i4, i1, i32, i1, i1, i1, i1, i1, i1, i1, i8, i64, i1, i1
+  }

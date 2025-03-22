@@ -1,0 +1,37 @@
+module {
+  hw.module @simple_sequential(in %in_data : i1, out out_data : i1) {
+    %false = hw.constant false
+    %in_data_0 = llhd.sig name "in_data" %false : i1
+    %false_1 = hw.constant false
+    %out_data = llhd.sig %false_1 : i1
+    %false_2 = hw.constant false
+    %intermediate_value = llhd.sig %false_2 : i1
+    %0 = llhd.prb %in_data_0 : !hw.inout<i1>
+    %1 = llhd.prb %intermediate_value : !hw.inout<i1>
+    %2 = llhd.prb %out_data : !hw.inout<i1>
+    llhd.process {
+      cf.br ^bb1
+    ^bb1:  // 2 preds: ^bb0, ^bb2
+      %5 = llhd.prb %in_data_0 : !hw.inout<i1>
+      %c0_i31 = hw.constant 0 : i31
+      %6 = comb.concat %c0_i31, %5 : i31, i1
+      %c1_i32 = hw.constant 1 : i32
+      %c1_i32_3 = hw.constant 1 : i32
+      %7 = comb.add %6, %c1_i32_3 : i32
+      %8 = comb.extract %7 from 0 : (i32) -> i1
+      %9 = llhd.constant_time <0ns, 0d, 1e>
+      llhd.drv %intermediate_value, %8 after %9 : !hw.inout<i1>
+      %10 = llhd.prb %intermediate_value : !hw.inout<i1>
+      %11 = llhd.constant_time <0ns, 0d, 1e>
+      llhd.drv %out_data, %10 after %11 : !hw.inout<i1>
+      cf.br ^bb2
+    ^bb2:  // pred: ^bb1
+      llhd.wait (%0, %1, %2 : i1, i1, i1), ^bb1
+    }
+    %3 = llhd.constant_time <0ns, 0d, 1e>
+    llhd.drv %in_data_0, %in_data after %3 : !hw.inout<i1>
+    %4 = llhd.prb %out_data : !hw.inout<i1>
+    hw.output %4 : i1
+  }
+}
+

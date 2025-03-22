@@ -1,0 +1,855 @@
+digraph PetriNet{
+  rankdir = RL;
+  p1 [shape=circle, width=1.25, label="", xlabel="wb_valid", peripheries=3 ];
+//%727 = comb.and bin %wb_reg_valid, %725, %726 {sv.namehint = "wb_valid"} : i1
+  t1:e -> p1:w;
+  t2:e -> p1:w;
+  t3:e -> p1:w;
+  t3 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t3", width=0, height=4];
+//%726 = comb.xor bin %700, %true {sv.namehint = "_rocc_blocked_T"} : i1
+  p3:e -> t3:f0:w;
+  p2:e -> t3:f1:w;
+  p4:e -> t3:f2:w;
+  t3:e -> t3:f3:w;
+  p4 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_mem"];
+//%wb_ctrl_mem = seq.firreg %680 clock %clock {firrtl.random_init_start = 112 : ui64} : i1
+  t4:e -> p4:w;
+  t4 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>", xlabel="t4", width=0, height=5];
+//%680 = comb.mux bin %505, %mem_ctrl_mem, %wb_ctrl_mem : i1
+  p5:e -> t4:f0:w;
+  p4:e -> t4:f1:w;
+  p15:e -> t4:f2:w;
+  p30:e -> t4:f3:w;
+  p31:e -> t4:f4:w;
+  p31 [shape=circle, width=1.25, label="", xlabel="mem_reg_xcpt_interrupt"];
+//%mem_reg_xcpt_interrupt = seq.firreg %546 clock %clock {firrtl.random_init_start = 321 : ui64} : i1
+  t23:e -> p31:w;
+  t23 [shape=record, label="<f0>|<f1>", xlabel="t23", width=0, height=2];
+//%546 = comb.and bin %393, %ex_reg_xcpt_interrupt {sv.namehint = "_mem_reg_xcpt_interrupt_T_1"} : i1
+  t10:e -> t23:f0:w;
+  p14:e -> t23:f1:w;
+  p14 [shape=circle, width=1.25, label="", xlabel="ex_reg_xcpt_interrupt"];
+//%ex_reg_xcpt_interrupt = seq.firreg %396 clock %clock {firrtl.random_init_start = 133 : ui64} : i1
+  t10:e -> p14:w;
+  t10 [shape=record, label="<f0>|<f1>", xlabel="t10", width=0, height=2];
+//%396 = comb.and bin %393, %ibuf.io_inst_0_valid, %csr.io_interrupt {sv.namehint = "_ex_reg_xcpt_interrupt_T_2"} : i1
+  t6:e -> t10:f0:w;
+  t3:e -> t10:f1:w;
+  t6 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>|<f12>|<f13>|<f14>|<f15>|<f16>|<f17>|<f18>|<f19>|<f20>|<f21>|<f22>|<f23>|<f24>|<f25>|<f26>|<f27>|<f28>|<f29>|<f30>|<f31>|<f32>|<f33>|<f34>|<f35>|<f36>|<f37>|<f38>|<f39>|<f40>|<f41>|<f42>|<f43>|<f44>|<f45>|<f46>|<f47>|<f48>|<f49>|<f50>|<f51>|<f52>|<f53>", xlabel="t6", width=0, height=54];
+//%404 = comb.mux bin %847, %ex_ctrl_mem, %209 : i1
+  p6:e -> t6:f0:w;
+  t3:e -> t6:f1:w;
+  p7:e -> t6:f2:w;
+  t6:e -> t6:f3:w;
+  p8:e -> t6:f4:w;
+  p1:e -> t6:f5:w;
+  p9:e -> t6:f6:w;
+  p10:e -> t6:f7:w;
+  p15:e -> t6:f8:w;
+  p16:e -> t6:f9:w;
+  p17:e -> t6:f10:w;
+  t14:e -> t6:f11:w;
+  t7:e -> t6:f12:w;
+  p42:e -> t6:f13:w;
+  p43:e -> t6:f14:w;
+  p45:e -> t6:f15:w;
+  p60:e -> t6:f16:w;
+  p2:e -> t6:f17:w;
+  p61:e -> t6:f18:w;
+  p64:e -> t6:f19:w;
+  p3:e -> t6:f20:w;
+  p66:e -> t6:f21:w;
+  t25:e -> t6:f22:w;
+  t67:e -> t6:f23:w;
+  t53:e -> t6:f24:w;
+  t26:e -> t6:f25:w;
+  t28:e -> t6:f26:w;
+  p49:e -> t6:f27:w;
+  p52:e -> t6:f28:w;
+  p69:e -> t6:f29:w;
+  p12:e -> t6:f30:w;
+  t16:e -> t6:f31:w;
+  p70:e -> t6:f32:w;
+  t17:e -> t6:f33:w;
+  t27:e -> t6:f34:w;
+  p71:e -> t6:f35:w;
+  p29:e -> t6:f36:w;
+  t71:e -> t6:f37:w;
+  p76:e -> t6:f38:w;
+  p75:e -> t6:f39:w;
+  p47:e -> t6:f40:w;
+  p62:e -> t6:f41:w;
+  p74:e -> t6:f42:w;
+  p5:e -> t6:f43:w;
+  p78:e -> t6:f44:w;
+  p50:e -> t6:f45:w;
+  p26:e -> t6:f46:w;
+  p21:e -> t6:f47:w;
+  p77:e -> t6:f48:w;
+  p27:e -> t6:f49:w;
+  p48:e -> t6:f50:w;
+  p63:e -> t6:f51:w;
+  p51:e -> t6:f52:w;
+  t47:e -> t6:f53:w;
+  t47 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>", xlabel="t47", width=0, height=8];
+//%466 = comb.mux bin %847, %ex_reg_rs_lsb_1, %465 : i2
+  t6:e -> t47:f0:w;
+  p55:e -> t47:f1:w;
+  t17:e -> t47:f2:w;
+  t26:e -> t47:f3:w;
+  t3:e -> t47:f4:w;
+  t27:e -> t47:f5:w;
+  t16:e -> t47:f6:w;
+  t47:e -> t47:f7:w;
+  p55 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_lsb_1"];
+//%ex_reg_rs_lsb_1 = seq.firreg %466 clock %clock {firrtl.random_init_start = 787 : ui64} : i2
+  t47:e -> p55:w;
+  p51 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_csr"];
+//%ex_ctrl_csr = seq.firreg %409 clock %clock {firrtl.random_init_start = 39 : ui64} : i3
+  t43:e -> p51:w;
+  t43 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t43", width=0, height=4];
+//%409 = comb.mux bin %847, %ex_ctrl_csr, %264 : i3
+  t6:e -> t43:f0:w;
+  p51:e -> t43:f1:w;
+  t26:e -> t43:f2:w;
+  t14:e -> t43:f3:w;
+  p63 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_rocc"];
+//%ex_ctrl_rocc = seq.firreg %398 clock %clock {firrtl.random_init_start = 6 : ui64} : i1
+  t59:e -> p63:w;
+  t59 [shape=record, label="<f0>|<f1>", xlabel="t59", width=0, height=2];
+//%398 = comb.and %847, %ex_ctrl_rocc : i1
+  t6:e -> t59:f0:w;
+  p63:e -> t59:f1:w;
+  p48 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_fp"];
+//%ex_ctrl_fp = seq.firreg %397 clock %clock {firrtl.random_init_start = 5 : ui64} : i1
+  t40:e -> p48:w;
+  t40 [shape=record, label="<f0>|<f1>", xlabel="t40", width=0, height=2];
+//%397 = comb.and %847, %ex_ctrl_fp : i1
+  t6:e -> t40:f0:w;
+  p48:e -> t40:f1:w;
+  p27 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_div"];
+//%ex_ctrl_div = seq.firreg %406 clock %clock {firrtl.random_init_start = 37 : ui64} : i1
+  t62:e -> p27:w;
+  t62 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t62", width=0, height=3];
+//%406 = comb.mux bin %847, %ex_ctrl_div, %151 : i1
+  t6:e -> t62:f0:w;
+  p27:e -> t62:f1:w;
+  t26:e -> t62:f2:w;
+  p77 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_mul"];
+//%ex_ctrl_mul = seq.firreg %405 clock %clock {firrtl.random_init_start = 36 : ui64} : i1
+  t77:e -> p77:w;
+  t77 [shape=record, label="<f0>|<f1>", xlabel="t77", width=0, height=2];
+//%405 = comb.and %847, %ex_ctrl_mul : i1
+  t6:e -> t77:f0:w;
+  p77:e -> t77:f1:w;
+  p21 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_jalr"];
+//%ex_ctrl_jalr = seq.firreg %401 clock %clock {firrtl.random_init_start = 9 : ui64} : i1
+  t15:e -> p21:w;
+  t15 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>", xlabel="t15", width=0, height=5];
+//%401 = comb.mux bin %847, %ex_ctrl_jalr, %59 : i1
+  t6:e -> t15:f0:w;
+  p21:e -> t15:f1:w;
+  t14:e -> t15:f2:w;
+  t12:e -> t15:f3:w;
+  t7:e -> t15:f4:w;
+  t12 [shape=record, label="<f0>|<f1>", xlabel="t12", width=0, height=2];
+//%400 = comb.mux bin %847, %ex_ctrl_jal, %61 : i1
+  t6:e -> t12:f0:w;
+  p18:e -> t12:f1:w;
+  p18 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_jal"];
+//%ex_ctrl_jal = seq.firreg %400 clock %clock {firrtl.random_init_start = 8 : ui64} : i1
+  t12:e -> p18:w;
+  p26 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_wxd"];
+//%ex_ctrl_wxd = seq.firreg %407 clock %clock {firrtl.random_init_start = 38 : ui64} : i1
+  t21:e -> p26:w;
+  t21 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t21", width=0, height=3];
+//%407 = comb.mux bin %847, %ex_ctrl_wxd, %201 : i1
+  t6:e -> t21:f0:w;
+  p26:e -> t21:f1:w;
+  t17:e -> t21:f2:w;
+  p50 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_csr"];
+//%mem_ctrl_csr = seq.firreg %577 clock %clock {firrtl.random_init_start = 82 : ui64} : i3
+  t42:e -> p50:w;
+  t42 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t42", width=0, height=4];
+//%577 = comb.mux bin %576, %mem_ctrl_csr, %ex_ctrl_csr : i3
+  p50:e -> t42:f0:w;
+  p51:e -> t42:f1:w;
+  t9:e -> t42:f2:w;
+  t3:e -> t42:f3:w;
+  t9 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>", xlabel="t9", width=0, height=8];
+//%619 = comb.mux bin %618, %mem_reg_hls_or_dv, %csr.io_status_dv : i1
+  p11:e -> t9:f0:w;
+  t6:e -> t9:f1:w;
+  t3:e -> t9:f2:w;
+  p12:e -> t9:f3:w;
+  p13:e -> t9:f4:w;
+  p14:e -> t9:f5:w;
+  p15:e -> t9:f6:w;
+  p19:e -> t9:f7:w;
+  p19 [shape=circle, width=1.25, label="", xlabel="mem_reg_flush_pipe"];
+//%mem_reg_flush_pipe = seq.firreg %652 clock %clock {firrtl.random_init_start = 374 : ui64} : i1
+  t13:e -> p19:w;
+  t13 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>", xlabel="t13", width=0, height=6];
+//%652 = comb.mux bin %651, %mem_reg_flush_pipe, %649 : i1
+  p19:e -> t13:f0:w;
+  p20:e -> t13:f1:w;
+  p21:e -> t13:f2:w;
+  t6:e -> t13:f3:w;
+  t9:e -> t13:f4:w;
+  t3:e -> t13:f5:w;
+  p20 [shape=circle, width=1.25, label="", xlabel="ex_reg_flush_pipe"];
+//%ex_reg_flush_pipe = seq.firreg %434 clock %clock {firrtl.random_init_start = 185 : ui64} : i1
+  t14:e -> p20:w;
+  p13 [shape=circle, width=1.25, label="", xlabel="ex_reg_replay"];
+//%ex_reg_replay = seq.firreg %394 clock %clock {firrtl.random_init_start = 219 : ui64} : i1
+  t63:e -> p13:w;
+  t63 [shape=record, label="<f0>|<f1>", xlabel="t63", width=0, height=2];
+//%394 = comb.and bin %393, %ibuf.io_inst_0_valid, %ibuf.io_inst_0_bits_replay {sv.namehint = "_ex_reg_replay_T_2"} : i1
+  t10:e -> t63:f0:w;
+  t6:e -> t63:f1:w;
+  p11 [shape=circle, width=1.25, label="", xlabel="mem_reg_hls_or_dv"];
+//%mem_reg_hls_or_dv = seq.firreg %619 clock %clock {firrtl.random_init_start = 478 : ui64} : i1
+  t9:e -> p11:w;
+  p78 [shape=circle, width=1.25, label="", xlabel="mem_mem_cmd_bh"];
+//%mem_mem_cmd_bh = seq.firreg %610 clock %clock {firrtl.random_init_start = 407 : ui64} : i1
+  t78:e -> p78:w;
+  t78 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>", xlabel="t78", width=0, height=5];
+//%610 = comb.mux bin %609, %mem_mem_cmd_bh, %503 : i1
+  p78:e -> t78:f0:w;
+  t53:e -> t78:f1:w;
+  t3:e -> t78:f2:w;
+  p79:e -> t78:f3:w;
+  t9:e -> t78:f4:w;
+  p79 [shape=circle, width=1.25, label="", xlabel="ex_reg_mem_size"];
+//%ex_reg_mem_size = seq.firreg %443 clock %clock {firrtl.random_init_start = 252 : ui64, sv.namehint = "ex_reg_mem_size"} : i2
+  t79:e -> p79:w;
+  t79 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t79", width=0, height=4];
+//%443 = comb.mux bin %847, %ex_reg_mem_size, %442 : i2
+  t6:e -> t79:f0:w;
+  p79:e -> t79:f1:w;
+  t14:e -> t79:f2:w;
+  t54:e -> t79:f3:w;
+  t54 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>", xlabel="t54", width=0, height=8];
+//%444 = comb.mux bin %847, %ex_ctrl_mem_cmd, %244 : i5
+  t6:e -> t54:f0:w;
+  p58:e -> t54:f1:w;
+  t28:e -> t54:f2:w;
+  t7:e -> t54:f3:w;
+  t17:e -> t54:f4:w;
+  t14:e -> t54:f5:w;
+  t26:e -> t54:f6:w;
+  t54:e -> t54:f7:w;
+  p58 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_mem_cmd"];
+//%ex_ctrl_mem_cmd = seq.firreg %444 clock %clock {firrtl.random_init_start = 27 : ui64, sv.namehint = "ex_ctrl_mem_cmd"} : i5
+  t54:e -> p58:w;
+  p74 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_vec"];
+//%mem_ctrl_vec = seq.firreg %580 clock %clock {firrtl.random_init_start = 89 : ui64} : i1
+  t73:e -> p74:w;
+  t73 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t73", width=0, height=3];
+//%580 = comb.and %579, %mem_ctrl_vec : i1
+  p74:e -> t73:f0:w;
+  t9:e -> t73:f1:w;
+  t3:e -> t73:f2:w;
+  p62 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_rocc"];
+//%mem_ctrl_rocc = seq.firreg %553 clock %clock {firrtl.random_init_start = 49 : ui64} : i1
+  t58:e -> p62:w;
+  t58 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t58", width=0, height=4];
+//%553 = comb.mux bin %552, %mem_ctrl_rocc, %ex_ctrl_rocc : i1
+  p62:e -> t58:f0:w;
+  p63:e -> t58:f1:w;
+  t9:e -> t58:f2:w;
+  t3:e -> t58:f3:w;
+  p47 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_fp"];
+//%mem_ctrl_fp = seq.firreg %550 clock %clock {firrtl.random_init_start = 48 : ui64} : i1
+  t39:e -> p47:w;
+  t39 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t39", width=0, height=4];
+//%550 = comb.mux bin %549, %mem_ctrl_fp, %ex_ctrl_fp : i1
+  p47:e -> t39:f0:w;
+  p48:e -> t39:f1:w;
+  t9:e -> t39:f2:w;
+  t3:e -> t39:f3:w;
+  p75 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_div"];
+//%mem_ctrl_div = seq.firreg %571 clock %clock {firrtl.random_init_start = 80 : ui64} : i1
+  t75:e -> p75:w;
+  t75 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t75", width=0, height=4];
+//%571 = comb.mux bin %570, %mem_ctrl_div, %ex_ctrl_div : i1
+  p75:e -> t75:f0:w;
+  p27:e -> t75:f1:w;
+  t9:e -> t75:f2:w;
+  t3:e -> t75:f3:w;
+  p76 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_mul"];
+//%mem_ctrl_mul = seq.firreg %568 clock %clock {firrtl.random_init_start = 79 : ui64} : i1
+  t76:e -> p76:w;
+  t76 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t76", width=0, height=4];
+//%568 = comb.mux bin %567, %mem_ctrl_mul, %ex_ctrl_mul : i1
+  p76:e -> t76:f0:w;
+  p77:e -> t76:f1:w;
+  t9:e -> t76:f2:w;
+  t3:e -> t76:f3:w;
+  t71 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>", xlabel="t71", width=0, height=11];
+//%804 = comb.mux bin %803, %802, %776 : i32
+  t27:e -> t71:f0:w;
+  p71:e -> t71:f1:w;
+  t6:e -> t71:f2:w;
+  t26:e -> t71:f3:w;
+  t25:e -> t71:f4:w;
+  t67:e -> t71:f5:w;
+  t71:e -> t71:f6:w;
+  p72:e -> t71:f7:w;
+  t16:e -> t71:f8:w;
+  p61:e -> t71:f9:w;
+  p73:e -> t71:f10:w;
+  p73 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_vec"];
+//%wb_ctrl_vec = seq.firreg %685 clock %clock {firrtl.random_init_start = 132 : ui64} : i1
+  t72:e -> p73:w;
+  t72 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t72", width=0, height=3];
+//%685 = comb.mux bin %505, %mem_ctrl_vec, %wb_ctrl_vec : i1
+  t4:e -> t72:f0:w;
+  p74:e -> t72:f1:w;
+  p73:e -> t72:f2:w;
+  p72 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_div"];
+//%wb_ctrl_div = seq.firreg %681 clock %clock {firrtl.random_init_start = 123 : ui64} : i1
+  t74:e -> p72:w;
+  t74 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t74", width=0, height=3];
+//%681 = comb.mux bin %505, %mem_ctrl_div, %wb_ctrl_div : i1
+  t4:e -> t74:f0:w;
+  p75:e -> t74:f1:w;
+  p72:e -> t74:f2:w;
+  p29 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_wxd"];
+//%wb_ctrl_wxd = seq.firreg %682 clock %clock {firrtl.random_init_start = 124 : ui64} : i1
+  t22:e -> p29:w;
+  t22 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t22", width=0, height=3];
+//%682 = comb.mux bin %505, %mem_ctrl_wxd, %wb_ctrl_wxd : i1
+  t4:e -> t22:f0:w;
+  p23:e -> t22:f1:w;
+  p29:e -> t22:f2:w;
+  p23 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_wxd"];
+//%mem_ctrl_wxd = seq.firreg %574 clock %clock {firrtl.random_init_start = 81 : ui64} : i1
+  t20:e -> p23:w;
+  t20 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t20", width=0, height=4];
+//%574 = comb.mux bin %573, %mem_ctrl_wxd, %ex_ctrl_wxd : i1
+  p23:e -> t20:f0:w;
+  p26:e -> t20:f1:w;
+  t9:e -> t20:f2:w;
+  t3:e -> t20:f3:w;
+  p71 [shape=circle, width=1.25, label="", xlabel="_r"];
+//%_r = seq.firreg %804 clock %clock reset sync %reset, %c0_i32 {firrtl.random_init_start = 850 : ui64} : i32
+  t71:e -> p71:w;
+  t27 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>|<f12>|<f13>|<f14>|<f15>|<f16>|<f17>", xlabel="t27", width=0, height=18];
+//%479 = comb.mux bin %847, %ex_reg_rs_lsb_0, %478 : i2
+  t6:e -> t27:f0:w;
+  p38:e -> t27:f1:w;
+  t14:e -> t27:f2:w;
+  t26:e -> t27:f3:w;
+  t3:e -> t27:f4:w;
+  t17:e -> t27:f5:w;
+  p5:e -> t27:f6:w;
+  p15:e -> t27:f7:w;
+  p23:e -> t27:f8:w;
+  t16:e -> t27:f9:w;
+  p12:e -> t27:f10:w;
+  p26:e -> t27:f11:w;
+  p8:e -> t27:f12:w;
+  p49:e -> t27:f13:w;
+  t27:e -> t27:f14:w;
+  p52:e -> t27:f15:w;
+  p1:e -> t27:f16:w;
+  p29:e -> t27:f17:w;
+  p38 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_lsb_0"];
+//%ex_reg_rs_lsb_0 = seq.firreg %479 clock %clock {firrtl.random_init_start = 785 : ui64} : i2
+  t27:e -> p38:w;
+  t17 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>", xlabel="t17", width=0, height=11];
+//%435 = comb.mux bin %847, %ex_reg_load_use, %823 : i1
+  t6:e -> t17:f0:w;
+  p22:e -> t17:f1:w;
+  p15:e -> t17:f2:w;
+  p5:e -> t17:f3:w;
+  p23:e -> t17:f4:w;
+  p24:e -> t17:f5:w;
+  t14:e -> t17:f6:w;
+  t15:e -> t17:f7:w;
+  t12:e -> t17:f8:w;
+  t7:e -> t17:f9:w;
+  t17:e -> t17:f10:w;
+  p24 [shape=circle, width=1.25, label="", xlabel="mem_reg_inst"];
+//%mem_reg_inst = seq.firreg %616 clock %clock {firrtl.random_init_start = 444 : ui64} : i32
+  t18:e -> p24:w;
+  t18 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t18", width=0, height=4];
+//%616 = comb.mux bin %615, %mem_reg_inst, %ex_reg_inst : i32
+  p24:e -> t18:f0:w;
+  p25:e -> t18:f1:w;
+  t9:e -> t18:f2:w;
+  t3:e -> t18:f3:w;
+  p25 [shape=circle, width=1.25, label="", xlabel="ex_reg_inst"];
+//%ex_reg_inst = seq.firreg %485 clock %clock {firrtl.random_init_start = 255 : ui64} : i32
+  t19:e -> p25:w;
+  t19 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t19", width=0, height=3];
+//%485 = comb.mux bin %483, %ibuf.io_inst_0_bits_inst_bits, %ex_reg_inst : i32
+  t6:e -> t19:f0:w;
+  p25:e -> t19:f1:w;
+  t7:e -> t19:f2:w;
+  p22 [shape=circle, width=1.25, label="", xlabel="ex_reg_load_use"];
+//%ex_reg_load_use = seq.firreg %435 clock %clock {firrtl.random_init_start = 186 : ui64} : i1
+  t17:e -> p22:w;
+  p70 [shape=circle, width=1.25, label="", xlabel="dcache_blocked_blocked"];
+//%dcache_blocked_blocked = seq.firreg %834 clock %clock {firrtl.random_init_start = 882 : ui64} : i1
+  t70:e -> p70:w;
+  t70 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t70", width=0, height=3];
+//%834 = comb.and bin %490, %832, %833 {sv.namehint = "_dcache_blocked_blocked_T_6"} : i1
+  t16:e -> t70:f0:w;
+  t6:e -> t70:f1:w;
+  p70:e -> t70:f2:w;
+  t16 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>|<f12>|<f13>|<f14>|<f15>|<f16>|<f17>|<f18>|<f19>|<f20>|<f21>|<f22>|<f23>|<f24>", xlabel="t16", width=0, height=25];
+//%543 = comb.xor bin %499, %true {sv.namehint = "_mem_reg_xcpt_T"} : i1
+  t3:e -> t16:f0:w;
+  t6:e -> t16:f1:w;
+  p12:e -> t16:f2:w;
+  p13:e -> t16:f3:w;
+  p22:e -> t16:f4:w;
+  p4:e -> t16:f5:w;
+  p27:e -> t16:f6:w;
+  p28:e -> t16:f7:w;
+  t16:e -> t16:f8:w;
+  p2:e -> t16:f9:w;
+  p29:e -> t16:f10:w;
+  p36:e -> t16:f11:w;
+  p37:e -> t16:f12:w;
+  p38:e -> t16:f13:w;
+  p25:e -> t16:f14:w;
+  p8:e -> t16:f15:w;
+  p33:e -> t16:f16:w;
+  t25:e -> t16:f17:w;
+  p53:e -> t16:f18:w;
+  p54:e -> t16:f19:w;
+  p55:e -> t16:f20:w;
+  t27:e -> t16:f21:w;
+  t1:e -> t16:f22:w;
+  p65:e -> t16:f23:w;
+  p6:e -> t16:f24:w;
+  p65 [shape=circle, width=1.25, label="", xlabel="div_io_kill_REG"];
+//%div_io_kill_REG = seq.firreg %671 clock %clock {firrtl.random_init_start = 849 : ui64} : i1
+  t61:e -> p65:w;
+  t61 [shape=record, label="<f0>", xlabel="t61", width=0, height=1];
+//%671 = comb.and bin %div.io_req_ready, %391 {sv.namehint = "_div_io_kill_T"} : i1
+  t16:e -> t61:f0:w;
+  p54 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_msb_1"];
+//%ex_reg_rs_msb_1 = seq.firreg %469 clock %clock {firrtl.random_init_start = 819 : ui64} : i30
+  t48:e -> p54:w;
+  t48 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t48", width=0, height=3];
+//%469 = comb.mux bin %468, %467, %ex_reg_rs_msb_1 : i30
+  p54:e -> t48:f0:w;
+  t47:e -> t48:f1:w;
+  t7:e -> t48:f2:w;
+  p53 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_bypass_1"];
+//%ex_reg_rs_bypass_1 = seq.firreg %461 clock %clock {firrtl.random_init_start = 784 : ui64} : i1
+  t49:e -> p53:w;
+  t49 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t49", width=0, height=3];
+//%461 = comb.mux bin %847, %ex_reg_rs_bypass_1, %456 : i1
+  t6:e -> t49:f0:w;
+  p53:e -> t49:f1:w;
+  t47:e -> t49:f2:w;
+  p33 [shape=circle, width=1.25, label="", xlabel="mem_reg_wdata"];
+//%mem_reg_wdata = seq.firreg %625 clock %clock {firrtl.random_init_start = 511 : ui64, sv.namehint = "bpu.io_ea"} : i32
+  t25:e -> p33:w;
+  p37 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_msb_0"];
+//%ex_reg_rs_msb_0 = seq.firreg %482 clock %clock {firrtl.random_init_start = 789 : ui64} : i30
+  t45:e -> p37:w;
+  t45 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t45", width=0, height=3];
+//%482 = comb.mux bin %847, %ex_reg_rs_msb_0, %481 : i30
+  t6:e -> t45:f0:w;
+  p37:e -> t45:f1:w;
+  t27:e -> t45:f2:w;
+  p36 [shape=circle, width=1.25, label="", xlabel="ex_reg_rs_bypass_0"];
+//%ex_reg_rs_bypass_0 = seq.firreg %476 clock %clock {firrtl.random_init_start = 783 : ui64} : i1
+  t46:e -> p36:w;
+  t46 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t46", width=0, height=4];
+//%476 = comb.mux bin %847, %ex_reg_rs_bypass_0, %475 : i1
+  t6:e -> t46:f0:w;
+  p36:e -> t46:f1:w;
+  t27:e -> t46:f2:w;
+  t3:e -> t46:f3:w;
+  p28 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_alu_fn"];
+//%ex_ctrl_alu_fn = seq.firreg %416 clock %clock {firrtl.random_init_start = 21 : ui64, sv.namehint = "ex_ctrl_alu_fn"} : i5
+  t52:e -> p28:w;
+  t52 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>", xlabel="t52", width=0, height=9];
+//%416 = comb.mux bin %847, %ex_ctrl_alu_fn, %415 : i5
+  t6:e -> t52:f0:w;
+  p28:e -> t52:f1:w;
+  t26:e -> t52:f2:w;
+  t14:e -> t52:f3:w;
+  t28:e -> t52:f4:w;
+  t17:e -> t52:f5:w;
+  t7:e -> t52:f6:w;
+  t12:e -> t52:f7:w;
+  t52:e -> t52:f8:w;
+  p12 [shape=circle, width=1.25, label="", xlabel="ex_reg_valid"];
+//%ex_reg_valid = seq.firreg %392 clock %clock {firrtl.random_init_start = 134 : ui64} : i1
+  t7:e -> p12:w;
+  p69 [shape=circle, width=1.25, label="", xlabel="id_reg_fence"];
+//%id_reg_fence = seq.firreg %414 clock %clock reset sync %reset, %false {firrtl.random_init_start = 782 : ui64} : i1
+  t69:e -> p69:w;
+  t69 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t69", width=0, height=4];
+//%414 = comb.or %413, %296 : i1
+  t6:e -> t69:f0:w;
+  p69:e -> t69:f1:w;
+  t7:e -> t69:f2:w;
+  t26:e -> t69:f3:w;
+  p52 [shape=circle, width=1.25, label="", xlabel="wb_reg_inst"];
+//%wb_reg_inst = seq.firreg %690 clock %clock {firrtl.random_init_start = 652 : ui64} : i32
+  t44:e -> p52:w;
+  t44 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t44", width=0, height=3];
+//%690 = comb.mux bin %505, %mem_reg_inst, %wb_reg_inst : i32
+  t4:e -> t44:f0:w;
+  p24:e -> t44:f1:w;
+  p52:e -> t44:f2:w;
+  p49 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_csr"];
+//%wb_ctrl_csr = seq.firreg %683 clock %clock {firrtl.random_init_start = 125 : ui64} : i3
+  t41:e -> p49:w;
+  t41 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t41", width=0, height=3];
+//%683 = comb.mux bin %505, %mem_ctrl_csr, %wb_ctrl_csr : i3
+  t4:e -> t41:f0:w;
+  p50:e -> t41:f1:w;
+  p49:e -> t41:f2:w;
+  t28 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>|<f12>|<f13>|<f14>", xlabel="t28", width=0, height=15];
+//%688 = comb.mux bin %505, %687, %wb_reg_wdata : i32
+  t4:e -> t28:f0:w;
+  p8:e -> t28:f1:w;
+  t25:e -> t28:f2:w;
+  p33:e -> t28:f3:w;
+  p39:e -> t28:f4:w;
+  t6:e -> t28:f5:w;
+  p17:e -> t28:f6:w;
+  p40:e -> t28:f7:w;
+  t28:e -> t28:f8:w;
+  p24:e -> t28:f9:w;
+  p16:e -> t28:f10:w;
+  t26:e -> t28:f11:w;
+  t3:e -> t28:f12:w;
+  p47:e -> t28:f13:w;
+  p23:e -> t28:f14:w;
+  p40 [shape=circle, width=1.25, label="", xlabel="mem_reg_rvc"];
+//%mem_reg_rvc = seq.firreg %583 clock %clock {firrtl.random_init_start = 323 : ui64} : i1
+  t29:e -> p40:w;
+  t29 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t29", width=0, height=4];
+//%583 = comb.mux bin %582, %mem_reg_rvc, %ex_reg_rvc : i1
+  p40:e -> t29:f0:w;
+  p41:e -> t29:f1:w;
+  t9:e -> t29:f2:w;
+  t3:e -> t29:f3:w;
+  p41 [shape=circle, width=1.25, label="", xlabel="ex_reg_rvc"];
+//%ex_reg_rvc = seq.firreg %422 clock %clock {firrtl.random_init_start = 135 : ui64} : i1
+  t30:e -> p41:w;
+  t30 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t30", width=0, height=3];
+//%422 = comb.mux bin %847, %ex_reg_rvc, %421 : i1
+  t6:e -> t30:f0:w;
+  p41:e -> t30:f1:w;
+  t26:e -> t30:f2:w;
+  p39 [shape=circle, width=1.25, label="", xlabel="mem_reg_pc"];
+//%mem_reg_pc = seq.firreg %622 clock %clock {firrtl.random_init_start = 412 : ui64} : i32
+  t34:e -> p39:w;
+  t34 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t34", width=0, height=4];
+//%622 = comb.mux bin %621, %mem_reg_pc, %ex_reg_pc : i32
+  p39:e -> t34:f0:w;
+  p35:e -> t34:f1:w;
+  t9:e -> t34:f2:w;
+  t3:e -> t34:f3:w;
+  p35 [shape=circle, width=1.25, label="", xlabel="ex_reg_pc"];
+//%ex_reg_pc = seq.firreg %486 clock %clock {firrtl.random_init_start = 220 : ui64} : i32
+  t35:e -> p35:w;
+  t35 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t35", width=0, height=3];
+//%486 = comb.mux bin %483, %ibuf.io_pc, %ex_reg_pc : i32
+  t19:e -> t35:f0:w;
+  t6:e -> t35:f1:w;
+  p35:e -> t35:f2:w;
+  t26 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>", xlabel="t26", width=0, height=9];
+//%429 = comb.mux bin %847, %ex_ctrl_sel_alu1, %428 : i2
+  t6:e -> t26:f0:w;
+  p34:e -> t26:f1:w;
+  t17:e -> t26:f2:w;
+  t12:e -> t26:f3:w;
+  t14:e -> t26:f4:w;
+  t7:e -> t26:f5:w;
+  t1:e -> t26:f6:w;
+  t3:e -> t26:f7:w;
+  t26:e -> t26:f8:w;
+  p34 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_sel_alu1"];
+//%ex_ctrl_sel_alu1 = seq.firreg %429 clock %clock {firrtl.random_init_start = 15 : ui64} : i2
+  t26:e -> p34:w;
+  t53 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>", xlabel="t53", width=0, height=5];
+//%607 = comb.mux bin %606, %mem_reg_store, %604 : i1
+  p32:e -> t53:f0:w;
+  p6:e -> t53:f1:w;
+  p58:e -> t53:f2:w;
+  t9:e -> t53:f3:w;
+  t3:e -> t53:f4:w;
+  p32 [shape=circle, width=1.25, label="", xlabel="mem_reg_store"];
+//%mem_reg_store = seq.firreg %607 clock %clock {firrtl.random_init_start = 409 : ui64} : i1
+  t53:e -> p32:w;
+  t67 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>", xlabel="t67", width=0, height=7];
+//%484 = comb.mux bin %483, %313, %ex_reg_cause : i32
+  t19:e -> t67:f0:w;
+  p68:e -> t67:f1:w;
+  t6:e -> t67:f2:w;
+  t1:e -> t67:f3:w;
+  t53:e -> t67:f4:w;
+  t67:e -> t67:f5:w;
+  t26:e -> t67:f6:w;
+  p68 [shape=circle, width=1.25, label="", xlabel="ex_reg_cause"];
+//%ex_reg_cause = seq.firreg %484 clock %clock {firrtl.random_init_start = 187 : ui64, sv.namehint = "ex_cause"} : i32
+  t67:e -> p68:w;
+  t25 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>|<f12>|<f13>|<f14>|<f15>|<f16>|<f17>", xlabel="t25", width=0, height=18];
+//%625 = comb.mux bin %624, %mem_reg_wdata, %alu.io_out : i32
+  p33:e -> t25:f0:w;
+  p28:e -> t25:f1:w;
+  p34:e -> t25:f2:w;
+  p35:e -> t25:f3:w;
+  t16:e -> t25:f4:w;
+  t25:e -> t25:f5:w;
+  p56:e -> t25:f6:w;
+  t43:e -> t25:f7:w;
+  p25:e -> t25:f8:w;
+  p57:e -> t25:f9:w;
+  t14:e -> t25:f10:w;
+  t26:e -> t25:f11:w;
+  t7:e -> t25:f12:w;
+  t6:e -> t25:f13:w;
+  t3:e -> t25:f14:w;
+  p41:e -> t25:f15:w;
+  t28:e -> t25:f16:w;
+  t9:e -> t25:f17:w;
+  p57 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_sel_imm"];
+//%ex_ctrl_sel_imm = seq.firreg %403 clock %clock {firrtl.random_init_start = 17 : ui64} : i3
+  t51:e -> p57:w;
+  t51 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>", xlabel="t51", width=0, height=9];
+//%403 = comb.mux bin %847, %ex_ctrl_sel_imm, %242 : i3
+  t6:e -> t51:f0:w;
+  p57:e -> t51:f1:w;
+  t7:e -> t51:f2:w;
+  t33:e -> t51:f3:w;
+  t12:e -> t51:f4:w;
+  t50:e -> t51:f5:w;
+  t26:e -> t51:f6:w;
+  t17:e -> t51:f7:w;
+  t15:e -> t51:f8:w;
+  t50 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>", xlabel="t50", width=0, height=12];
+//%432 = comb.mux bin %847, %ex_ctrl_sel_alu2, %431 : i3
+  t6:e -> t50:f0:w;
+  p56:e -> t50:f1:w;
+  t26:e -> t50:f2:w;
+  t28:e -> t50:f3:w;
+  t17:e -> t50:f4:w;
+  t15:e -> t50:f5:w;
+  t12:e -> t50:f6:w;
+  t7:e -> t50:f7:w;
+  t14:e -> t50:f8:w;
+  t33:e -> t50:f9:w;
+  t30:e -> t50:f10:w;
+  t1:e -> t50:f11:w;
+  t33 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>", xlabel="t33", width=0, height=7];
+//%399 = comb.mux bin %847, %ex_ctrl_branch, %237 : i1
+  t6:e -> t33:f0:w;
+  p44:e -> t33:f1:w;
+  t26:e -> t33:f2:w;
+  t17:e -> t33:f3:w;
+  t14:e -> t33:f4:w;
+  t12:e -> t33:f5:w;
+  t7:e -> t33:f6:w;
+  p44 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_branch"];
+//%ex_ctrl_branch = seq.firreg %399 clock %clock {firrtl.random_init_start = 7 : ui64} : i1
+  t33:e -> p44:w;
+  p56 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_sel_alu2"];
+//%ex_ctrl_sel_alu2 = seq.firreg %432 clock %clock {firrtl.random_init_start = 12 : ui64} : i3
+  t50:e -> p56:w;
+  p66 [shape=circle, width=1.25, label="", xlabel="wb_reg_cause"];
+//%wb_reg_cause = seq.firreg %689 clock %clock {firrtl.random_init_start = 581 : ui64} : i32
+  t65:e -> p66:w;
+  t65 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>", xlabel="t65", width=0, height=5];
+//%689 = comb.mux bin %505, %666, %wb_reg_cause : i32
+  t4:e -> t65:f0:w;
+  p66:e -> t65:f1:w;
+  t1:e -> t65:f2:w;
+  p67:e -> t65:f3:w;
+  t7:e -> t65:f4:w;
+  p67 [shape=circle, width=1.25, label="", xlabel="mem_reg_cause"];
+//%mem_reg_cause = seq.firreg %613 clock %clock {firrtl.random_init_start = 375 : ui64} : i32
+  t66:e -> p67:w;
+  t66 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t66", width=0, height=4];
+//%613 = comb.mux bin %612, %mem_reg_cause, %ex_reg_cause : i32
+  p67:e -> t66:f0:w;
+  p68:e -> t66:f1:w;
+  t9:e -> t66:f2:w;
+  t3:e -> t66:f3:w;
+  p64 [shape=circle, width=1.25, label="", xlabel="wb_reg_replay"];
+//%wb_reg_replay = seq.firreg %676 clock %clock {firrtl.random_init_start = 579 : ui64} : i1
+  t60:e -> p64:w;
+  t60 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t60", width=0, height=4];
+//%676 = comb.and bin %668, %675 {sv.namehint = "_wb_reg_replay_T_1"} : i1
+  t6:e -> t60:f0:w;
+  t3:e -> t60:f1:w;
+  t1:e -> t60:f2:w;
+  p30:e -> t60:f3:w;
+  p61 [shape=circle, width=1.25, label="", xlabel="wb_ctrl_rocc"];
+//%wb_ctrl_rocc = seq.firreg %679 clock %clock {firrtl.random_init_start = 92 : ui64} : i1
+  t57:e -> p61:w;
+  t57 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t57", width=0, height=3];
+//%679 = comb.mux bin %505, %mem_ctrl_rocc, %wb_ctrl_rocc : i1
+  t4:e -> t57:f0:w;
+  p62:e -> t57:f1:w;
+  p61:e -> t57:f2:w;
+  p60 [shape=circle, width=1.25, label="", xlabel="wb_reg_flush_pipe"];
+//%wb_reg_flush_pipe = seq.firreg %678 clock %clock {firrtl.random_init_start = 580 : ui64} : i1
+  t56:e -> p60:w;
+  t56 [shape=record, label="<f0>|<f1>", xlabel="t56", width=0, height=2];
+//%678 = comb.and bin %674, %mem_reg_flush_pipe {sv.namehint = "_wb_reg_flush_pipe_T_1"} : i1
+  t1:e -> t56:f0:w;
+  p19:e -> t56:f1:w;
+  p45 [shape=circle, width=1.25, label="", xlabel="mem_reg_xcpt"];
+//%mem_reg_xcpt = seq.firreg %545 clock %clock {firrtl.random_init_start = 372 : ui64} : i1
+  t37:e -> p45:w;
+  t37 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t37", width=0, height=3];
+//%545 = comb.and bin %543, %504 {sv.namehint = "_mem_reg_xcpt_T_1"} : i1
+  t16:e -> t37:f0:w;
+  p14:e -> t37:f1:w;
+  p46:e -> t37:f2:w;
+  p46 [shape=circle, width=1.25, label="", xlabel="ex_reg_xcpt"];
+//%ex_reg_xcpt = seq.firreg %395 clock %clock {firrtl.random_init_start = 184 : ui64} : i1
+  t38:e -> p46:w;
+  t38 [shape=record, label="<f0>|<f1>", xlabel="t38", width=0, height=2];
+//%395 = comb.and bin %392, %302 {sv.namehint = "_ex_reg_xcpt_T_1"} : i1
+  t7:e -> t38:f0:w;
+  t26:e -> t38:f1:w;
+  p43 [shape=circle, width=1.25, label="", xlabel="mem_br_taken"];
+//%mem_br_taken = seq.firreg %628 clock %clock {firrtl.random_init_start = 575 : ui64} : i1
+  t31:e -> p43:w;
+  t31 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t31", width=0, height=4];
+//%628 = comb.mux bin %627, %mem_br_taken, %alu.io_cmp_out : i1
+  p43:e -> t31:f0:w;
+  t25:e -> t31:f1:w;
+  t9:e -> t31:f2:w;
+  t3:e -> t31:f3:w;
+  p42 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_branch"];
+//%mem_ctrl_branch = seq.firreg %556 clock %clock {firrtl.random_init_start = 50 : ui64} : i1
+  t32:e -> p42:w;
+  t32 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t32", width=0, height=4];
+//%556 = comb.mux bin %555, %mem_ctrl_branch, %ex_ctrl_branch : i1
+  p42:e -> t32:f0:w;
+  p44:e -> t32:f1:w;
+  t9:e -> t32:f2:w;
+  t3:e -> t32:f3:w;
+  t7 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t7", width=0, height=4];
+//%871 = comb.and %870, %412 : i1
+  p7:e -> t7:f0:w;
+  t6:e -> t7:f1:w;
+  t3:e -> t7:f2:w;
+  t14:e -> t7:f3:w;
+  t14 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>", xlabel="t14", width=0, height=6];
+//%434 = comb.mux bin %847, %ex_reg_flush_pipe, %433 : i1
+  t6:e -> t14:f0:w;
+  p20:e -> t14:f1:w;
+  t3:e -> t14:f2:w;
+  t12:e -> t14:f3:w;
+  t14:e -> t14:f4:w;
+  t7:e -> t14:f5:w;
+  p17 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_jal"];
+//%mem_ctrl_jal = seq.firreg %559 clock %clock {firrtl.random_init_start = 51 : ui64} : i1
+  t11:e -> p17:w;
+  t11 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t11", width=0, height=4];
+//%559 = comb.mux bin %558, %mem_ctrl_jal, %ex_ctrl_jal : i1
+  p17:e -> t11:f0:w;
+  p18:e -> t11:f1:w;
+  t9:e -> t11:f2:w;
+  t3:e -> t11:f3:w;
+  p16 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_jalr"];
+//%mem_ctrl_jalr = seq.firreg %562 clock %clock {firrtl.random_init_start = 52 : ui64} : i1
+  t36:e -> p16:w;
+  t36 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t36", width=0, height=4];
+//%562 = comb.mux bin %561, %mem_ctrl_jalr, %ex_ctrl_jalr : i1
+  p16:e -> t36:f0:w;
+  p21:e -> t36:f1:w;
+  t9:e -> t36:f2:w;
+  t3:e -> t36:f3:w;
+  p10 [shape=circle, width=1.25, label="", xlabel="wb_reg_hls_or_dv"];
+//%wb_reg_hls_or_dv = seq.firreg %691 clock %clock {firrtl.random_init_start = 649 : ui64} : i1
+  t8:e -> p10:w;
+  t8 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t8", width=0, height=3];
+//%691 = comb.mux bin %505, %mem_reg_hls_or_dv, %wb_reg_hls_or_dv : i1
+  t4:e -> t8:f0:w;
+  p11:e -> t8:f1:w;
+  p10:e -> t8:f2:w;
+  p9 [shape=circle, width=1.25, label="", xlabel="wb_reg_pc"];
+//%wb_reg_pc = seq.firreg %692 clock %clock {firrtl.random_init_start = 615 : ui64, sv.namehint = "csr.io_pc"} : i32
+  t68:e -> p9:w;
+  t68 [shape=record, label="<f0>|<f1>|<f2>", xlabel="t68", width=0, height=3];
+//%692 = comb.mux bin %505, %mem_reg_pc, %wb_reg_pc : i32
+  t4:e -> t68:f0:w;
+  p39:e -> t68:f1:w;
+  p9:e -> t68:f2:w;
+  p8 [shape=circle, width=1.25, label="", xlabel="wb_reg_wdata"];
+//%wb_reg_wdata = seq.firreg %688 clock %clock {firrtl.random_init_start = 716 : ui64, sv.namehint = "wb_reg_wdata"} : i32
+  t28:e -> p8:w;
+  p7 [shape=circle, width=1.25, label="", xlabel="id_reg_pause"];
+//%id_reg_pause = seq.firreg %871 clock %clock {firrtl.random_init_start = 2 : ui64} : i1
+  t7:e -> p7:w;
+  p6 [shape=circle, width=1.25, label="", xlabel="ex_ctrl_mem"];
+//%ex_ctrl_mem = seq.firreg %404 clock %clock {firrtl.random_init_start = 26 : ui64} : i1
+  t6:e -> p6:w;
+  p30 [shape=circle, width=1.25, label="", xlabel="mem_reg_replay"];
+//%mem_reg_replay = seq.firreg %544 clock %clock {firrtl.random_init_start = 373 : ui64} : i1
+  t24:e -> p30:w;
+  t24 [shape=record, label="<f0>|<f1>", xlabel="t24", width=0, height=2];
+//%544 = comb.and bin %393, %497 {sv.namehint = "_mem_reg_replay_T_1"} : i1
+  t10:e -> t24:f0:w;
+  t16:e -> t24:f1:w;
+  p15 [shape=circle, width=1.25, label="", xlabel="mem_reg_valid"];
+//%mem_reg_valid = seq.firreg %543 clock %clock {firrtl.random_init_start = 322 : ui64} : i1
+  t16:e -> p15:w;
+  p5 [shape=circle, width=1.25, label="", xlabel="mem_ctrl_mem"];
+//%mem_ctrl_mem = seq.firreg %565 clock %clock {firrtl.random_init_start = 69 : ui64} : i1
+  t5:e -> p5:w;
+  t5 [shape=record, label="<f0>|<f1>|<f2>|<f3>", xlabel="t5", width=0, height=4];
+//%565 = comb.mux bin %564, %mem_ctrl_mem, %ex_ctrl_mem : i1
+  p5:e -> t5:f0:w;
+  p6:e -> t5:f1:w;
+  t9:e -> t5:f2:w;
+  t3:e -> t5:f3:w;
+  p2 [shape=circle, width=1.25, label="", xlabel="wb_reg_valid"];
+//%wb_reg_valid = seq.firreg %674 clock %clock {firrtl.random_init_start = 577 : ui64} : i1
+  t1:e -> p2:w;
+  p3 [shape=circle, width=1.25, label="", xlabel="wb_reg_xcpt"];
+//%wb_reg_xcpt = seq.firreg %677 clock %clock {firrtl.random_init_start = 578 : ui64} : i1
+  t64:e -> p3:w;
+  t64 [shape=record, label="<f0>|<f1>", xlabel="t64", width=0, height=2];
+//%677 = comb.and bin %663, %675 {sv.namehint = "_wb_reg_xcpt_T_3"} : i1
+  t1:e -> t64:f0:w;
+  t60:e -> t64:f1:w;
+  t2 [shape=record, label="<f0>|<f1>", xlabel="t2", width=0, height=2];
+//%725 = comb.xor bin %712, %true {sv.namehint = "_wb_valid_T"} : i1
+  t6:e -> t2:f0:w;
+  t3:e -> t2:f1:w;
+  t1 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>|<f7>|<f8>|<f9>|<f10>|<f11>", xlabel="t1", width=0, height=12];
+//%wb_reg_valid = seq.firreg %674 clock %clock {firrtl.random_init_start = 577 : ui64} : i1
+  p2:e -> t1:f0:w;
+  t3:e -> t1:f1:w;
+  p15:e -> t1:f2:w;
+  p32:e -> t1:f3:w;
+  t6:e -> t1:f4:w;
+  p33:e -> t1:f5:w;
+  p59:e -> t1:f6:w;
+  t1:e -> t1:f7:w;
+  t28:e -> t1:f8:w;
+  p31:e -> t1:f9:w;
+  p45:e -> t1:f10:w;
+  t27:e -> t1:f11:w;
+  p59 [shape=circle, width=1.25, label="", xlabel="mem_reg_load"];
+//%mem_reg_load = seq.firreg %600 clock %clock {firrtl.random_init_start = 408 : ui64} : i1
+  t55:e -> p59:w;
+  t55 [shape=record, label="<f0>|<f1>|<f2>|<f3>|<f4>|<f5>|<f6>", xlabel="t55", width=0, height=7];
+//%600 = comb.mux bin %599, %mem_reg_load, %597 : i1
+  p59:e -> t55:f0:w;
+  p6:e -> t55:f1:w;
+  t53:e -> t55:f2:w;
+  p58:e -> t55:f3:w;
+  t14:e -> t55:f4:w;
+  t9:e -> t55:f5:w;
+  t3:e -> t55:f6:w;
+}

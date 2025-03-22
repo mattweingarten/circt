@@ -1,32 +1,4 @@
 module {
-  moore.module @top_module(in %clk : !moore.l1, in %rst : !moore.l1, in %in_data : !moore.l4, out out_data : !moore.l4) {
-    %clk_0 = moore.variable name "clk" : <l1>
-    %rst_1 = moore.variable name "rst" : <l1>
-    %in_data_2 = moore.variable name "in_data" : <l4>
-    %out_data = moore.variable : <l4>
-    %interconnect1 = moore.variable : <l4>
-    %interconnect2 = moore.variable : <l4>
-    %0 = moore.read %clk_0 : <l1>
-    %1 = moore.read %rst_1 : <l1>
-    %2 = moore.read %in_data_2 : <l4>
-    %u1.data_out = moore.instance "u1" @module1(clk: %0: !moore.l1, rst: %1: !moore.l1, data_in: %2: !moore.l4) -> (data_out: !moore.l4)
-    moore.assign %interconnect1, %u1.data_out : l4
-    %3 = moore.read %clk_0 : <l1>
-    %4 = moore.read %rst_1 : <l1>
-    %5 = moore.read %interconnect1 : <l4>
-    %u2.data_out = moore.instance "u2" @module2(clk: %3: !moore.l1, rst: %4: !moore.l1, data_in: %5: !moore.l4) -> (data_out: !moore.l4)
-    moore.assign %interconnect2, %u2.data_out : l4
-    %6 = moore.read %clk_0 : <l1>
-    %7 = moore.read %rst_1 : <l1>
-    %8 = moore.read %interconnect2 : <l4>
-    %u3.data_out = moore.instance "u3" @module3(clk: %6: !moore.l1, rst: %7: !moore.l1, data_in: %8: !moore.l4) -> (data_out: !moore.l4)
-    moore.assign %out_data, %u3.data_out : l4
-    moore.assign %clk_0, %clk : l1
-    moore.assign %rst_1, %rst : l1
-    moore.assign %in_data_2, %in_data : l4
-    %9 = moore.read %out_data : <l4>
-    moore.output %9 : !moore.l4
-  }
   moore.module private @module1(in %clk : !moore.l1, in %rst : !moore.l1, in %data_in : !moore.l4, out data_out : !moore.l4) {
     %clk_0 = moore.variable name "clk" : <l1>
     %rst_1 = moore.variable name "rst" : <l1>
@@ -145,5 +117,33 @@ module {
     moore.assign %data_in_2, %data_in : l4
     %0 = moore.read %data_out : <l4>
     moore.output %0 : !moore.l4
+  }
+  moore.module @module4(in %clk : !moore.l1, in %rst : !moore.l1, in %in_data : !moore.l4, out out_data : !moore.l4) {
+    %clk_0 = moore.variable name "clk" : <l1>
+    %rst_1 = moore.variable name "rst" : <l1>
+    %in_data_2 = moore.variable name "in_data" : <l4>
+    %out_data = moore.variable : <l4>
+    %interconnect1 = moore.variable : <l4>
+    %interconnect2 = moore.variable : <l4>
+    %0 = moore.read %clk_0 : <l1>
+    %1 = moore.read %rst_1 : <l1>
+    %2 = moore.read %in_data_2 : <l4>
+    %u1.data_out = moore.instance "u1" @module1(clk: %0: !moore.l1, rst: %1: !moore.l1, data_in: %2: !moore.l4) -> (data_out: !moore.l4)
+    moore.assign %interconnect1, %u1.data_out : l4
+    %3 = moore.read %clk_0 : <l1>
+    %4 = moore.read %rst_1 : <l1>
+    %5 = moore.read %interconnect1 : <l4>
+    %u2.data_out = moore.instance "u2" @module2(clk: %3: !moore.l1, rst: %4: !moore.l1, data_in: %5: !moore.l4) -> (data_out: !moore.l4)
+    moore.assign %interconnect2, %u2.data_out : l4
+    %6 = moore.read %clk_0 : <l1>
+    %7 = moore.read %rst_1 : <l1>
+    %8 = moore.read %interconnect2 : <l4>
+    %u3.data_out = moore.instance "u3" @module3(clk: %6: !moore.l1, rst: %7: !moore.l1, data_in: %8: !moore.l4) -> (data_out: !moore.l4)
+    moore.assign %out_data, %u3.data_out : l4
+    moore.assign %clk_0, %clk : l1
+    moore.assign %rst_1, %rst : l1
+    moore.assign %in_data_2, %in_data : l4
+    %9 = moore.read %out_data : <l4>
+    moore.output %9 : !moore.l4
   }
 }

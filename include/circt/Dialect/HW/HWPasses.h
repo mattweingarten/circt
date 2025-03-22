@@ -27,6 +27,9 @@ namespace hw {
 std::unique_ptr<mlir::Pass> createPrintInstanceGraphPass();
 std::unique_ptr<mlir::Pass> createHWSpecializePass();
 std::unique_ptr<mlir::Pass> createPrintHWModuleGraphPass();
+std::unique_ptr<mlir::Pass>
+createPrintPetriNetPass(std::string moduleName = "",
+                        std::string progressSignal = "", int levels = -1);
 std::unique_ptr<mlir::Pass> createFlattenIOPass(bool recursiveFlag = true,
                                                 bool flattenExternFlag = false,
                                                 char joinChar = '.');
