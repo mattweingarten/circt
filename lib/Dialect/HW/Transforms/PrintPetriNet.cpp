@@ -8,7 +8,7 @@
 // Print Petri Net of Module.
 //
 //===----------------------------------------------------------------------===//
-
+#include "PassDetails.h"
 #include "circt/Dialect/HW/HWOps.h"
 #include "circt/Dialect/HW/HWPasses.h"
 #include "circt/Dialect/HW/HWTypes.h"
@@ -22,26 +22,24 @@
 
 #include <string>
 
-namespace circt {
-namespace hw {
-#define GEN_PASS_DEF_PRINTPETRINET
-#include "circt/Dialect/HW/Passes.h.inc"
-} // namespace hw
-} // namespace circt
+// namespace circt {
+// namespace hw {
+// #define GEN_PASS_DEF_PRINTPETRINET
+// #include "circt/Dialect/HW/Passes.h.inc"
+// } // namespace hw
+// } // namespace circt
 
 using namespace circt;
 using namespace hw;
-using namespace pnet;
 
 namespace {
-struct PrintPetriNetPass
-    : public circt::hw::impl::PrintPetriNetBase<PrintPetriNetPass> {
-  void runOnOperation() override;
+struct PrintPetriNetPass : public circt::hw::PrintPetriNetBase<PrintPetriNetPass> {
   PrintPetriNetPass(std::string moduleName, std::string progressSignal,
                     int levels) {
     moduleName = moduleName;
     progressSignal = progressSignal;
   }
+  void runOnOperation() override;
 
 private:
 };
@@ -62,7 +60,7 @@ void PrintPetriNetPass::runOnOperation() {
     if (module.getName() == moduleName) {
       // llvm::errs() << "PrintPetriNetPass running on module: " << moduleName
       //              << "\n";
-      auto petriNet = PetriNet::buildGraphFromModule(module, progressSignal);
+      auto petriNet = pnet::PetriNet::buildGraphFromModule(module, progressSignal);
       petriNet->writeGraph(llvm::errs(), levels);
       // Todo: Support WriteGraph Interface
       // llvm::WriteGraph(llvm::errs(), buildGraph(), /*ShortNames=*/false);

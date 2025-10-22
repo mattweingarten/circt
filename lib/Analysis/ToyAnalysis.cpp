@@ -51,7 +51,7 @@ struct CallerStateContext {
         "not a hwInstanceOp!");
     auto instance = dyn_cast<::circt::hw::InstanceOp>(op);
     llvm::errs() << "Creating CallerStateContext for instance: ";
-    op->dumpPretty();
+    op->dump();
   }
   CallerStateContext() {};
 };
@@ -128,7 +128,7 @@ bool ToyAnalysisBuilder::handleOutputOp(Operation *op, CallerStateContext &cc,
   assert(isa<::circt::hw::OutputOp>(op) &&
          "Panic! Trying to handle an operation that is not a hwOutputOp!");
   llvm::errs() << "Handling OutputOp: ";
-  op->dumpPretty();
+  op->dump();
   auto output = dyn_cast<::circt::hw::OutputOp>(op);
   return false;
 }
@@ -137,7 +137,7 @@ bool ToyAnalysisBuilder::handleInstanceOp(Operation *op, CallerStateContext &cc,
   assert(isa<::circt::hw::InstanceOp>(op) &&
          "Panic! Trying to handle an operation that is not a hwInstanceOp!");
   llvm::errs() << "Handling InstanceOp: ";
-  op->dumpPretty();
+  op->dump();
   CallerStateContext new_cc(op);
   auto instance = dyn_cast<::circt::hw::InstanceOp>(op);
   auto moduleOp = instanceToModule[op];
@@ -158,7 +158,7 @@ void ToyAnalysisBuilder::runBuildGraph(mlir::AnalysisManager &am) {
       auto attrName = instance.getReferencedModuleNameAttr();
       llvm::errs() << attrName << "\n";
       circt::igraph::InstanceGraphNode *node =
-          instanceGraph.lookupOrNull(attrName);
+          instanceGraph.lookup(attrName);
       if (node) {
         auto module = dyn_cast_or_null<circt::hw::HWModuleOp>(
             node->getModule().getOperation());
@@ -178,7 +178,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
   Operation *top_level_module = getTopLevelModuleOp(am);
   assert(top_level_module && "Panic! Could not find top level module");
   llvm::errs() << "Top level module: \n";
-  top_level_module->dumpPretty();
+  top_level_module->dump();
   // Top-level context, should be empty?
   CallerStateContext cc;
   runOnModule(top_level_module, am, cc);
@@ -194,7 +194,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
 //   equivalent
 //   // of a callgraph)
 //   llvm::errs() << "RootOp: " << rootOp->getName() << "\n";
-//   // rootOp->dumpPretty();
+//   // rootOp->dump();
 
 //   auto ctxt = rootOp->getContext();
 
@@ -208,7 +208,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
 //         if (isa<::circt::hw::InstanceOp>(op)) {
 //           circt::hw::InstanceOp instance =
 //           dyn_cast<circt::hw::InstanceOp>(op); llvm::errs() << "InstanceOp:
-//           "; op->dumpPretty(); toyOps.insert(op); auto it =
+//           "; op->dump(); toyOps.insert(op); auto it =
 //           instanceToModule.find(op); if (it == instanceToModule.end()) {
 //             assert(false && "Panic! Could not resolve instanceOp to
 //             module");
@@ -216,7 +216,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
 
 //           for (const auto &users : op->getUsers()) {
 //             llvm::errs() << "User: ";
-//             users->dumpPretty();
+//             users->dump();
 //             llvm::errs() << "\n";
 //           }
 
@@ -233,7 +233,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
 //             Operation *def_op = args.getDefiningOp();
 //             if (def_op) {
 //               llvm::errs() << "DefiningOp: ";
-//               def_op->dumpPretty();
+//               def_op->dump();
 //               llvm::errs() << "\n";
 //             }
 //           }
@@ -244,7 +244,7 @@ void ToyAnalysisBuilder::run(mlir::AnalysisManager &am) {
 //         } else if (isa<::circt::hw::OutputOp>(op)) {
 //           llvm::errs() << "Output: " << op->getParentOp()->getName() << "
 //           -->
-//           "; op->dumpPretty(); toyOps.insert(op);
+//           "; op->dump(); toyOps.insert(op);
 //         }
 //       });
 // }

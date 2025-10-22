@@ -10,7 +10,6 @@ add_circt_translation_library(CIRCTTargetDebugInfo
   CIRCTDebug
   CIRCTDebugAnalysis
   CIRCTToyAnalysis
-  CIRCTEmit
   CIRCTHW
   CIRCTOM
   CIRCTSeq
