@@ -26,12 +26,13 @@ std::unique_ptr<mlir::Pass> createHWSpecializePass();
 std::unique_ptr<mlir::Pass> createPrintHWModuleGraphPass();
 std::unique_ptr<mlir::Pass>
 createPrintPetriNetPass(std::string moduleName = "",
-                        std::string progressSignal = "", int levels = -1);
+    std::string progressSignal = "", int levels = -1);
 std::unique_ptr<mlir::Pass> createFlattenIOPass(bool recursiveFlag = true,
                                                 bool flattenExternFlag = false,
                                                 char joinChar = '.');
 std::unique_ptr<mlir::Pass> createVerifyInnerRefNamespacePass();
 std::unique_ptr<mlir::Pass> createFlattenModulesPass();
+std::unique_ptr<mlir::Pass> createPrintR2RGraphPass();
 
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION

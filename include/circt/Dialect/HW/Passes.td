@@ -48,6 +48,16 @@ def PrintPetriNet : Pass<"hw-print-petri-net", "mlir::ModuleOp"> {
   ];
 }
 
+def PrintR2RGraph : Pass<"hw-print-r2r", "mlir::ModuleOp"> {
+  let summary = "Print a DOT graph of a register-to-register view";
+  let description = [{
+  }];
+  let constructor =  "circt::hw::createPrintR2RGraphPass()";
+  let options = [
+    Option<"debug", "debug", "bool", "false", "Enable debug prints for this pass.">
+  ];
+}
+
 def FlattenIO : Pass<"hw-flatten-io", "mlir::ModuleOp"> {
   let summary = "Flattens hw::Structure typed in- and output ports.";
   let constructor =  "circt::hw::createFlattenIOPass()";

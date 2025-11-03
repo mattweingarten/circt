@@ -16,6 +16,7 @@
 #include "mlir/Transforms/InliningUtils.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Support/Debug.h"
+#include <iostream>
 
 #define DEBUG_TYPE "hw-flatten-modules"
 
