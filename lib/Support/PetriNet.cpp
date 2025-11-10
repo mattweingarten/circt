@@ -13,6 +13,10 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/raw_ostream.h"
 
+
+#define DEBUG_TYPE "petri"
+
+
 using namespace circt;
 using namespace hw;
 using namespace pnet;

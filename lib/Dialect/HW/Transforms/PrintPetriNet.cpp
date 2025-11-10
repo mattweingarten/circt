@@ -20,7 +20,13 @@
 
 #include "circt/Support/PetriNet.h"
 
+
 #include <string>
+
+
+#define DEBUG_TYPE "petri"
+
+
 
 // namespace circt {
 // namespace hw {

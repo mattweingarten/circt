@@ -43,6 +43,8 @@ def PrintPetriNet : Pass<"hw-print-petri-net", "mlir::ModuleOp"> {
       "Name of module to run the pass on.">,
     Option<"progressSignal", "progress-signal", "std::string", "\"\"",
       "Name of signal to track as progress.">,
+    Option<"debugDirectory", "debug-directory", "std::string", "\".\"",
+      "Directory to output debug files to.">,
     Option<"levels", "levels", "int", "-1",
       "Number of levels to print.">
   ];
