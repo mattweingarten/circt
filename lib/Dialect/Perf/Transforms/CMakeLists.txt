@@ -3,6 +3,7 @@ add_circt_dialect_library(CIRCTPerfTransforms
   InsertCounterPass.cpp
   PerfHelpers.cpp
   
+
   DEPENDS
   CIRCTPerfTransformsIncGen
 

@@ -1,4 +1,5 @@
 // RUN: circt-opt --perf-emit-autocounter='file=%t.json' %s >/dev/null
+// RUN: circt-opt --perf-emit-autocounter='file=%t.json' %s | FileCheck %s
 // RUN: FileCheck %s --check-prefix=JSON < %t.json
 
 module {
@@ -11,6 +12,7 @@ module {
 
       %wb_valid = firrtl.node interesting_name %cond : !firrtl.uint<1>
 
+      // CHECK: perf.counter %wb_valid : !firrtl.uint<1>, "wb_valid", "WB valid perf counter", %clk : !firrtl.clock, %reset : !firrtl.uint<1>
       perf.counter %wb_valid : !firrtl.uint<1>,
                    "wb_valid", "WB valid perf counter",
                    %clk : !firrtl.clock,
@@ -27,6 +29,7 @@ module {
 // JSON: "reset":"~Top|Top>reset"
 // JSON: "label":"wb_valid"
 // JSON: "description":"wb_valid<--(circt autogen)"
+// JSON: "description":""
 // JSON: "opType":{
 // JSON: "class":"midas.targetutils.PerfCounterOps$Accumulate$"
 // JSON: }

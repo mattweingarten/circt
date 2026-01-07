@@ -49,6 +49,29 @@ private:
   void runOnOperation() override;
 };
 
+// static std::string getSSAName(mlir::Value v) {
+//   std::string s;
+//   llvm::raw_string_ostream os(s);
+//   v.print(os);
+//   return s;
+// }
+
+// Hacky way to get the original name back, just use SSA results name.
+static std::string getSSAName(mlir::Value v,
+                              ::circt::igraph::ModuleOpInterface module) {
+  std::string s;
+  llvm::raw_string_ostream os(s);
+  mlir::AsmState asmState(module);
+  v.printAsOperand(os, asmState);
+  return s.erase(0, 1); // remove leading %
+}
+static std::string getSSAName(mlir::Value v, circt::firrtl::FModuleOp module) {
+  std::string s;
+  llvm::raw_string_ostream os(s);
+  mlir::AsmState asmState(module);
+  v.printAsOperand(os, asmState);
+  return s.erase(0, 1); // remove leading %
+}
 
 static void startJSON(llvm::raw_ostream &os) { os << "[\n"; }
 
@@ -84,6 +107,7 @@ struct AutoCounterAnnotation {
   void printAsJSON(llvm::raw_ostream &os, int annoCount) const {
     if (annoCount > 0)
       os << ",\n";
+  void printAsJSON(llvm::raw_ostream &os) const {
     os << "{\n";
     os << "  \"class\":\"" << AnnotationClass << "\",\n";
     os << "  \"target\":\"~" << circuit << "|" << getModulePref() << target
@@ -97,12 +121,14 @@ struct AutoCounterAnnotation {
        << label << "<--(circt autogen)" 
        << (!description.empty() ? " " : "")
        <<  description << "\",\n";
+    os << "  \"description\":\"" << description << "\",\n";
     os << "  \"opType\":{\n";
     os << "    \"class\":\"" << getOpTypeClass() << "\"\n";
     os << "  },\n";
     os << "  \"coverGenerated\":" << (coverGenerated ? "true" : "false")
        << "\n";
     os << "}\n";
+    os << "},\n";
   }
 };
 
@@ -157,6 +183,10 @@ struct AccumulateCounterAnnotation : public AutoCounterAnnotation {
 
     std::string resetName =
         op.getReset() ? perf::getSSAName(op.getReset(), parentModule) : "reset";
+    std::string clkName = getSSAName(op.getClk(), parentModule);
+
+    std::string resetName =
+        op.getReset() ? getSSAName(op.getReset(), parentModule) : "reset";
 
     std::string label = op.getName() ? op.getName()->str() : "<unkown>";
 
@@ -224,6 +254,7 @@ void EmitAutoCounterAnnotationsPass::runOnOperation() {
     anno.printAsJSON(os, annoCount);
     annoCount++;
     op.erase();
+    anno.printAsJSON(os);
   });
 
   endJSON(os);
