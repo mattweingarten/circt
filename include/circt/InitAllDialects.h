@@ -34,6 +34,7 @@
 #include "circt/Dialect/MSFT/MSFTDialect.h"
 #include "circt/Dialect/Moore/MooreDialect.h"
 #include "circt/Dialect/OM/OMDialect.h"
+#include "circt/Dialect/Perf/PerfDialect.h"
 #include "circt/Dialect/Pipeline/PipelineDialect.h"
 #include "circt/Dialect/SSP/SSPDialect.h"
 #include "circt/Dialect/SV/SVDialect.h"
@@ -68,6 +69,7 @@ inline void registerAllDialects(mlir::DialectRegistry &registry) {
     moore::MooreDialect,
     msft::MSFTDialect,
     om::OMDialect,
+    perf::PerfDialect,
     pipeline::PipelineDialect,
     seq::SeqDialect,
     ssp::SSPDialect,

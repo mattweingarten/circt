@@ -14,6 +14,7 @@ set(LLVM_OPTIONAL_SOURCES
   MSFT.cpp
   Moore.cpp
   OM.cpp
+  Perf.cpp
   SV.cpp
   Seq.cpp
   Verif.cpp

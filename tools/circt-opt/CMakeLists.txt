@@ -75,6 +75,8 @@ target_link_libraries(circt-opt
   CIRCTCFToHandshake
   CIRCTOM
   CIRCTOMTransforms
+  CIRCTPerf
+  CIRCTPerfTransforms
   CIRCTPipelineOps
   CIRCTPipelineToHW
   CIRCTPipelineTransforms
