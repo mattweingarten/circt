@@ -29,6 +29,7 @@
 #include "circt/Dialect/LLHD/Transforms/Passes.h"
 #include "circt/Dialect/MSFT/MSFTPasses.h"
 #include "circt/Dialect/OM/OMPasses.h"
+#include "circt/Dialect/Perf/PerfPasses.h"
 #include "circt/Dialect/Pipeline/PipelinePasses.h"
 #include "circt/Dialect/SSP/SSPPasses.h"
 #include "circt/Dialect/SV/SVPasses.h"
@@ -60,6 +61,7 @@ inline void registerAllPasses() {
   llhd::initLLHDTransformationPasses();
   msft::registerPasses();
   om::registerPasses();
+  perf::registerPasses();
   seq::registerPasses();
   sv::registerPasses();
   handshake::registerPasses();
