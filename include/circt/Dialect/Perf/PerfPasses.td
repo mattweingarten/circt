@@ -27,4 +27,21 @@ def EmitAutoCounterAnnotations : Pass<"perf-emit-autocounter", "mlir::ModuleOp">
 }
 
 
+def InsertCounter : Pass<"perf-insert-counter", "circt::firrtl::FModuleOp"> {
+  let summary = "Insert PerfCounterOps into selected FIRRTL modules/signals.";
+  let description = [{
+    Takes a list of (module, signal) pairs and inserts a PerfCounterOp
+    for each matching entry. Each pair is encoded as:
+      <module-name>:<signal-name>
+  }];
+  let constructor = "circt::perf::createInsertCounterPass()";
+
+  let options = [
+    ListOption<"targets", "targets", "std::string", 
+      "Comma-separated list of module:signal pairs (e.g. Top:foo,Core:bar).">
+  ];
+}
+
+
+
 #endif // CIRCT_DIALECT_PERF_PASSES_TD
