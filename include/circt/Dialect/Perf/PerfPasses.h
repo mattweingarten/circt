@@ -24,6 +24,8 @@ namespace perf {
 
 std::unique_ptr<mlir::Pass> createEmitAutoCounterAnnotationsPass(StringRef outputFilename ="");
 
+std::unique_ptr<mlir::Pass> createInsertCounterPass();
+
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION
 #include "circt/Dialect/Perf/PerfPasses.h.inc"
