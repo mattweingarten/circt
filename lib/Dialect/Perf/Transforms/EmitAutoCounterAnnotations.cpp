@@ -49,29 +49,6 @@ private:
   void runOnOperation() override;
 };
 
-// static std::string getSSAName(mlir::Value v) {
-//   std::string s;
-//   llvm::raw_string_ostream os(s);
-//   v.print(os);
-//   return s;
-// }
-
-// Hacky way to get the original name back, just use SSA results name.
-static std::string getSSAName(mlir::Value v,
-                              ::circt::igraph::ModuleOpInterface module) {
-  std::string s;
-  llvm::raw_string_ostream os(s);
-  mlir::AsmState asmState(module);
-  v.printAsOperand(os, asmState);
-  return s.erase(0, 1); // remove leading %
-}
-static std::string getSSAName(mlir::Value v, circt::firrtl::FModuleOp module) {
-  std::string s;
-  llvm::raw_string_ostream os(s);
-  mlir::AsmState asmState(module);
-  v.printAsOperand(os, asmState);
-  return s.erase(0, 1); // remove leading %
-}
 
 static void startJSON(llvm::raw_ostream &os) { os << "[\n"; }
 
@@ -186,7 +163,7 @@ struct AccumulateCounterAnnotation : public AutoCounterAnnotation {
     std::string clkName = getSSAName(op.getClk(), parentModule);
 
     std::string resetName =
-        op.getReset() ? getSSAName(op.getReset(), parentModule) : "reset";
+        op.getReset() ? perf::getSSAName(op.getReset(), parentModule) : "reset";
 
     std::string label = op.getName() ? op.getName()->str() : "<unkown>";
 

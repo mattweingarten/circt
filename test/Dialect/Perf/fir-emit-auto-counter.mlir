@@ -12,7 +12,6 @@ module {
 
       %wb_valid = firrtl.node interesting_name %cond : !firrtl.uint<1>
 
-      // CHECK: perf.counter %wb_valid : !firrtl.uint<1>, "wb_valid", "WB valid perf counter", %clk : !firrtl.clock, %reset : !firrtl.uint<1>
       perf.counter %wb_valid : !firrtl.uint<1>,
                    "wb_valid", "WB valid perf counter",
                    %clk : !firrtl.clock,
