@@ -870,4 +870,27 @@ def SpecializeOption :
   ];
 }
 
+
+def PrintPetriNet : Pass<"firrtl-print-petri-net", "firrtl::CircuitOp"> {
+  let summary = "Print a DOT graph of the Petri net";
+  let description = [{
+    This pass prints a DOT graph of the Petri net for the given module.
+    The Petri net is a representation of the module's control flow and data
+    dependencies, which can be useful for debugging and analysis.
+  }];
+  let constructor =  "circt::firrtl::createFIRRTLPrintPetriNetPass()"; 
+  let options = [   
+    Option<"moduleName", "module-name", "std::string", "\"\"",
+      "Name of module to run the pass on.">,
+    Option<"progressSignal", "progress-signal", "std::string", "\"\"",
+      "Name of signal to track as progress.">,
+    Option<"petriFile", "petri-file", "std::string", "\"\"",
+      "Name of output file for petrinet.">,
+    Option<"debugDirectory", "debug-directory", "std::string", "\".\"",
+      "Directory to output debug files to.">,
+    Option<"levels", "levels", "int", "-1",
+      "Number of levels to print.">
+  ];
+}
+
 #endif // CIRCT_DIALECT_FIRRTL_PASSES_TD

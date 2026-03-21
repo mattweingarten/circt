@@ -39,8 +39,8 @@ using namespace circt;
 using namespace hw;
 
 namespace {
-struct PrintPetriNetPass : public circt::hw::PrintPetriNetBase<PrintPetriNetPass> {
-  PrintPetriNetPass(std::string moduleName, std::string progressSignal,
+struct HWPrintPetriNetPass : public circt::hw::PrintPetriNetBase<HWPrintPetriNetPass> {
+  HWPrintPetriNetPass(std::string moduleName, std::string progressSignal,
                     int levels) {
     moduleName = moduleName;
     progressSignal = progressSignal;
@@ -51,32 +51,32 @@ private:
 };
 } // namespace
 
-void PrintPetriNetPass::runOnOperation() {
+void HWPrintPetriNetPass::runOnOperation() {
   assert(progressSignal != "" &&
-         "progress signal must be specified for PrintPetriNetPass");
+         "progress signal must be specified for HWPrintPetriNetPass");
 
   // llvm::errs() << "Modulename: " << moduleName << "\n";
   // llvm::errs() << "ProgressSignal: " << progressSignal << "\n";
 
   // Step 1: initialize graph
 
-  getOperation().walk([&](hw::HWModuleOp module) {
-    // Step 2: create graph for each module
-    // llvm::errs() << "module: " << module.getName() << "\n";
-    if (module.getName() == moduleName) {
-      // llvm::errs() << "PrintPetriNetPass running on module: " << moduleName
-      //              << "\n";
-      auto petriNet = pnet::PetriNet::buildGraphFromModule(module, progressSignal);
-      petriNet->writeGraph(llvm::errs(), levels);
-      // Todo: Support WriteGraph Interface
-      // llvm::WriteGraph(llvm::errs(), buildGraph(), /*ShortNames=*/false);
-    }
-  });
+  // getOperation().walk([&](hw::HWModuleOp module) {
+  //   // Step 2: create graph for each module
+  //   // llvm::errs() << "module: " << module.getName() << "\n";
+  //   if (module.getName() == moduleName) {
+  //     // llvm::errs() << "HWPrintPetriNetPass running on module: " << moduleName
+  //     //              << "\n";
+  //     auto petriNet = pnet::PetriNet::buildGraphFromModule(module, progressSignal);
+  //     petriNet->writeGraph(llvm::errs(), levels);
+  //     // Todo: Support WriteGraph Interface
+  //     // llvm::WriteGraph(llvm::errs(), buildGraph(), /*ShortNames=*/false);
+  //   }
+  // });
 }
 
 std::unique_ptr<mlir::Pass>
-circt::hw::createPrintPetriNetPass(std::string moduleName,
+circt::hw::createHWPrintPetriNetPass(std::string moduleName,
                                    std::string progressSignal, int levels) {
-  return std::make_unique<PrintPetriNetPass>(moduleName, progressSignal,
+  return std::make_unique<HWPrintPetriNetPass>(moduleName, progressSignal,
                                              levels);
 }

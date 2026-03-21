@@ -24,6 +24,7 @@ add_circt_library(CIRCTSupport
   PrettyPrinterHelpers.cpp
   ParsingUtils.cpp
   SymCache.cpp
+  Solver.cpp
   ValueMapper.cpp
   InstanceGraph.cpp
   "${VERSION_CPP}"

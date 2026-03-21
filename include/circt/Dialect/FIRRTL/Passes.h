@@ -200,6 +200,9 @@ std::unique_ptr<mlir::Pass> createLintingPass();
 
 std::unique_ptr<mlir::Pass> createSpecializeOptionPass();
 
+std::unique_ptr<mlir::Pass>
+createFIRRTLPrintPetriNetPass(std::string moduleName = "",
+    std::string progressSignal = "", std::string petriFile = "", std::string debugDirectory = "", int levels = -1);
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION
 #include "circt/Dialect/FIRRTL/Passes.h.inc"

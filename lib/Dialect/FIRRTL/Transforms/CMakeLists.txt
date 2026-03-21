@@ -10,6 +10,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   ExpandWhens.cpp
   ExtractInstances.cpp
   FinalizeIR.cpp
+  FIRRTLPrintPetriNet.cpp
   FlattenMemory.cpp
   GrandCentral.cpp
   HoistPassthrough.cpp
@@ -73,3 +74,9 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   MLIRPass
   MLIRTransformUtils
 )
+
+
+  target_link_libraries(CIRCTFIRRTLTransforms
+    PUBLIC
+    ${Z3_LIBRARIES}
+  )

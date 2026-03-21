@@ -16,6 +16,10 @@ set(CIRCT_FIRRTL_Sources
   FIRRTLTypes.cpp
   FIRRTLUtils.cpp
   NLATable.cpp
+  TransformZ3Graph.cpp
+  Petrinet.cpp
+  CounterInserter.cpp
+
 )
 
 set(LLVM_OPTIONAL_SOURCES

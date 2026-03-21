@@ -37,7 +37,7 @@ def PrintPetriNet : Pass<"hw-print-petri-net", "mlir::ModuleOp"> {
     The Petri net is a representation of the module's control flow and data
     dependencies, which can be useful for debugging and analysis.
   }];
-  let constructor =  "circt::hw::createPrintPetriNetPass()"; 
+  let constructor =  "circt::hw::createHWPrintPetriNetPass()"; 
   let options = [   
     Option<"moduleName", "module-name", "std::string", "\"\"",
       "Name of module to run the pass on.">,
