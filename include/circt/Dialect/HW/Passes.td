@@ -30,6 +30,36 @@ def PrintHWModuleGraph : Pass<"hw-print-module-graph", "mlir::ModuleOp"> {
   ];
 }
 
+def PrintPetriNet : Pass<"hw-print-petri-net", "mlir::ModuleOp"> {
+  let summary = "Print a DOT graph of the Petri net";
+  let description = [{
+    This pass prints a DOT graph of the Petri net for the given module.
+    The Petri net is a representation of the module's control flow and data
+    dependencies, which can be useful for debugging and analysis.
+  }];
+  let constructor =  "circt::hw::createHWPrintPetriNetPass()"; 
+  let options = [   
+    Option<"moduleName", "module-name", "std::string", "\"\"",
+      "Name of module to run the pass on.">,
+    Option<"progressSignal", "progress-signal", "std::string", "\"\"",
+      "Name of signal to track as progress.">,
+    Option<"debugDirectory", "debug-directory", "std::string", "\".\"",
+      "Directory to output debug files to.">,
+    Option<"levels", "levels", "int", "-1",
+      "Number of levels to print.">
+  ];
+}
+
+def PrintR2RGraph : Pass<"hw-print-r2r", "mlir::ModuleOp"> {
+  let summary = "Print a DOT graph of a register-to-register view";
+  let description = [{
+  }];
+  let constructor =  "circt::hw::createPrintR2RGraphPass()";
+  let options = [
+    Option<"debug", "debug", "bool", "false", "Enable debug prints for this pass.">
+  ];
+}
+
 def FlattenIO : Pass<"hw-flatten-io", "mlir::ModuleOp"> {
   let summary = "Flattens hw::Structure typed in- and output ports.";
   let constructor =  "circt::hw::createFlattenIOPass()";

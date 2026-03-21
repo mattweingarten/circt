@@ -73,6 +73,18 @@ struct AnnoPathValue {
   }
 };
 
+inline bool operator==(const AnnoPathValue &a,
+  const AnnoPathValue &b) {
+return a.fieldIdx == b.fieldIdx &&
+a.ref == b.ref &&
+a.instances == b.instances;
+}
+
+inline bool operator!=(const AnnoPathValue &a,
+  const AnnoPathValue &b) {
+return !(a == b);
+}
+
 template <typename T>
 static T &operator<<(T &os, const AnnoPathValue &path) {
   os << "~" << path.ref.getModule()->getParentOfType<CircuitOp>().getName()
