@@ -16,14 +16,20 @@
 include "mlir/Pass/PassBase.td"
 
 
-def EmitAutoCounterAnnotations : Pass<"perf-emit-autocounter", "mlir::ModuleOp"> {
+def EmitAutoCounterAnnotations
+    : Pass<"perf-emit-autocounter", "circt::firrtl::FModuleOp"> {
   let summary = "Emit automatic counter annotations for perf analysis";
   let description = [{
+    Attaches AutoCounter annotations for perf counters in a single FIRRTL module.
+    Intended to be scheduled as a nested pass over all FIRRTL modules.
   }];
-  let constructor =  "circt::perf::createEmitAutoCounterAnnotationsPass()";
-  let options = [Option<"outputFilename", "file", "std::string", "",
-      "Output file for AutoCounter annotations in JSON format">];
+  let constructor =
+      "circt::perf::createEmitAutoCounterAnnotationsPass()";
 
+  let options = [
+    Option<"outputDir", "output-dir", "std::string", "",
+           "Optional directory to dump emitted AutoCounter annotations as one JSON file per module">
+  ];
 }
 
 

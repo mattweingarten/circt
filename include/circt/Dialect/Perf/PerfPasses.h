@@ -1,4 +1,5 @@
-//===- Passes.h - Perf pass entry points --------------------------*- C++ -*-===//
+//===- Passes.h - Perf pass entry points --------------------------*- C++
+//-*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -9,7 +10,6 @@
 // This header file defines prototypes that expose pass constructors.
 //
 //===----------------------------------------------------------------------===//
-
 
 #ifndef CIRCT_DIALECT_PERF_PERFPASSES_H
 #define CIRCT_DIALECT_PERF_PERFPASSES_H
@@ -22,7 +22,8 @@
 namespace circt {
 namespace perf {
 
-std::unique_ptr<mlir::Pass> createEmitAutoCounterAnnotationsPass(StringRef outputFilename ="");
+std::unique_ptr<mlir::Pass>
+createEmitAutoCounterAnnotationsPass(llvm::StringRef outputDir = "");
 
 std::unique_ptr<mlir::Pass> createInsertCounterPass();
 

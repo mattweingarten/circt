@@ -1,6 +1,7 @@
 #include "circt/Dialect/FIRRTL/CounterInserter.h"
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
 #include "circt/Dialect/FIRRTL/FIRRTLTypes.h"
+#include "circt/Dialect/Perf/PerfOps.h"
 #include "mlir/IR/Builders.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
@@ -12,6 +13,90 @@ using namespace circt;
 using namespace circt::firrtl;
 
 namespace {
+
+struct LoweredExpr {
+  enum Kind { Leaf, Constant, Not, And, Or, Xor, Eq } kind;
+
+  mlir::Value leafValue;
+  llvm::APInt constValue = llvm::APInt(1, 0);
+  unsigned constWidth = 0;
+
+  llvm::SmallVector<std::shared_ptr<LoweredExpr>, 2> children;
+
+  static std::shared_ptr<LoweredExpr> makeLeaf(mlir::Value v) {
+    auto out = std::make_shared<LoweredExpr>();
+    out->kind = Leaf;
+    out->leafValue = v;
+    return out;
+  }
+
+  static std::shared_ptr<LoweredExpr> makeConst(unsigned width,
+                                                const llvm::APInt &value) {
+    auto out = std::make_shared<LoweredExpr>();
+    out->kind = Constant;
+    out->constWidth = width;
+    out->constValue = value;
+    return out;
+  }
+
+  static std::shared_ptr<LoweredExpr>
+  makeNode(Kind kind, llvm::SmallVector<std::shared_ptr<LoweredExpr>, 2> kids) {
+    auto out = std::make_shared<LoweredExpr>();
+    out->kind = kind;
+    out->children = std::move(kids);
+    return out;
+  }
+};
+
+static bool isClockType(mlir::Type ty) { return ty.isa<ClockType>(); }
+
+static bool isResetLikeType(mlir::Type ty) {
+  if (auto firTy = ty.dyn_cast<FIRRTLType>()) {
+    if (firTy.isa<ResetType, AsyncResetType>())
+      return true;
+    if (auto uintTy = firTy.dyn_cast<UIntType>())
+      return uintTy.getWidthOrSentinel() == 1;
+  }
+  return false;
+}
+
+struct ModuleClockReset {
+  mlir::Value clock;
+  mlir::Value reset;
+};
+static ModuleClockReset findModuleClockAndReset(FModuleOp module) {
+  ModuleClockReset result;
+
+  auto *body = module.getBodyBlock();
+  if (!body)
+    return result;
+
+  auto ports = module.getPorts();
+
+  // First pass: prefer ports literally named clock/reset
+  for (auto [idx, arg] : llvm::enumerate(body->getArguments())) {
+    auto port = ports[idx];
+    auto nameAttr = port.name;
+    StringRef name = nameAttr ? nameAttr.getValue() : "";
+
+    if (!result.clock && name == "clock" && isClockType(arg.getType()))
+      result.clock = arg;
+
+    if (!result.reset && name == "reset" && isResetLikeType(arg.getType()))
+      result.reset = arg;
+  }
+
+  // Second pass: fallback to any matching type
+  for (auto arg : body->getArguments()) {
+    if (!result.clock && isClockType(arg.getType()))
+      result.clock = arg;
+
+    if (!result.reset && isResetLikeType(arg.getType()))
+      result.reset = arg;
+  }
+
+  return result;
+}
 
 static bool isZ3BoolConst(const z3::expr &e) {
   if (!e.is_app())
@@ -54,7 +139,7 @@ static void collectReferencedLeaves(const z3::expr &e,
 static bool isBooleanLikeTargetType(FIRRTLType type) {
   if (!type)
     return false;
-  if (auto uintTy = dyn_cast<UIntType>(type))
+  if (auto uintTy = llvm::dyn_cast<UIntType>(type))
     return uintTy.getWidthOrSentinel() == 1;
   if (type.isa<ResetType, AsyncResetType>())
     return true;
@@ -134,6 +219,21 @@ static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
     // is enough. Otherwise this needs refinement.
     return {};
   }
+  if (auto portRef = apv.ref.dyn_cast<PortAnnoTarget>()) {
+    auto module = llvm::dyn_cast<FModuleOp>(portRef.getModule().getOperation());
+    if (!module)
+      return {};
+
+    auto *body = module.getBodyBlock();
+    if (!body)
+      return {};
+
+    unsigned portNo = portRef.getPortNo();
+    if (portNo >= body->getNumArguments())
+      return {};
+
+    return body->getArgument(portNo);
+  }
 
   return {};
 }
@@ -166,7 +266,7 @@ static mlir::Value makeValueVisibleInModule(const AnnoPathValue &apv,
   if (sourceModule == targetModule)
     return value;
 
-  llvm::errs() << "TODO: plumb signal '" << debugName << "' from module "
+  llvm::errs() << "[TODO] plumb signal '" << debugName << "' from module "
                << sourceModule.getModuleName() << " to module "
                << targetModule.getModuleName()
                << " using ports along path: " << apv << "\n";
@@ -174,56 +274,187 @@ static mlir::Value makeValueVisibleInModule(const AnnoPathValue &apv,
   return {};
 }
 
-static mlir::Value
-emitExprIntoModule(mlir::OpBuilder &b, mlir::Location loc, const z3::expr &e,
+static std::shared_ptr<LoweredExpr>
+planExprIntoModule(const z3::expr &e,
                    const llvm::DenseMap<Z3_ast, mlir::Value> &leafMap) {
   if (auto it = leafMap.find((Z3_ast)e); it != leafMap.end())
-    return it->second;
+    return LoweredExpr::makeLeaf(it->second);
+
+  auto isAtomicVar = [](const z3::expr &expr) {
+    if (!expr.is_const() || expr.num_args() != 0)
+      return false;
+    auto dk = expr.decl().decl_kind();
+    return dk != Z3_OP_TRUE && dk != Z3_OP_FALSE && !expr.is_numeral();
+  };
+
+  if (isAtomicVar(e)) {
+    llvm::errs() << "[WARN] Atomic Z3 leaf not found in leafMap: "
+                 << e.to_string() << "\n";
+    return nullptr;
+  }
 
   if (isZ3BoolConst(e)) {
     bool bit = e.decl().decl_kind() == Z3_OP_TRUE;
-    auto ty = UIntType::get(b.getContext(), 1);
-    auto attr = b.getIntegerAttr(b.getIntegerType(1), bit ? 1 : 0);
-    return b.create<ConstantOp>(loc, ty, attr);
+    return LoweredExpr::makeConst(1, llvm::APInt(1, bit ? 1 : 0));
   }
 
-  auto emitChild = [&](unsigned i) {
-    return emitExprIntoModule(b, loc, e.arg(i), leafMap);
+  if (e.is_numeral()) {
+    if (e.is_bool()) {
+      bool bit = Z3_get_bool_value(e.ctx(), e) == Z3_L_TRUE;
+      return LoweredExpr::makeConst(1, llvm::APInt(1, bit ? 1 : 0));
+    }
+
+    if (e.is_bv()) {
+      unsigned width = e.get_sort().bv_size();
+      if (width == 0)
+        width = 1;
+
+      uint64_t value = 0;
+      if (!e.is_numeral_u64(value)) {
+        llvm::errs()
+            << "[WARN] Unsupported non-u64 BV numeral in counter expr: "
+            << e.to_string() << "\n";
+        return nullptr;
+      }
+
+      return LoweredExpr::makeConst(width, llvm::APInt(width, value));
+    }
+
+    llvm::errs() << "[WARN] Unsupported numeral sort in counter expr: "
+                 << e.to_string() << "\n";
+    return nullptr;
+  }
+
+  auto planChild = [&](unsigned i) {
+    return planExprIntoModule(e.arg(i), leafMap);
   };
 
   switch (e.decl().decl_kind()) {
   case Z3_OP_NOT: {
-    auto a = emitChild(0);
-    return b.create<NotPrimOp>(loc, a);
+    auto a = planChild(0);
+    if (!a)
+      return nullptr;
+    return LoweredExpr::makeNode(LoweredExpr::Not, {a});
   }
   case Z3_OP_AND: {
-    mlir::Value acc = emitChild(0);
-    for (unsigned i = 1; i < e.num_args(); ++i)
-      acc = b.create<AndPrimOp>(loc, acc, emitChild(i));
-    return acc;
+    llvm::SmallVector<std::shared_ptr<LoweredExpr>, 2> kids;
+    kids.reserve(e.num_args());
+    for (unsigned i = 0; i < e.num_args(); ++i) {
+      auto child = planChild(i);
+      if (!child)
+        return nullptr;
+      kids.push_back(child);
+    }
+    return LoweredExpr::makeNode(LoweredExpr::And, std::move(kids));
   }
   case Z3_OP_OR: {
-    mlir::Value acc = emitChild(0);
-    for (unsigned i = 1; i < e.num_args(); ++i)
-      acc = b.create<OrPrimOp>(loc, acc, emitChild(i));
-    return acc;
+    llvm::SmallVector<std::shared_ptr<LoweredExpr>, 2> kids;
+    kids.reserve(e.num_args());
+    for (unsigned i = 0; i < e.num_args(); ++i) {
+      auto child = planChild(i);
+      if (!child)
+        return nullptr;
+      kids.push_back(child);
+    }
+    return LoweredExpr::makeNode(LoweredExpr::Or, std::move(kids));
   }
   case Z3_OP_XOR: {
-    mlir::Value acc = emitChild(0);
-    for (unsigned i = 1; i < e.num_args(); ++i)
-      acc = b.create<XorPrimOp>(loc, acc, emitChild(i));
-    return acc;
+    llvm::SmallVector<std::shared_ptr<LoweredExpr>, 2> kids;
+    kids.reserve(e.num_args());
+    for (unsigned i = 0; i < e.num_args(); ++i) {
+      auto child = planChild(i);
+      if (!child)
+        return nullptr;
+      kids.push_back(child);
+    }
+    return LoweredExpr::makeNode(LoweredExpr::Xor, std::move(kids));
   }
   case Z3_OP_EQ: {
-    auto a = emitChild(0);
-    auto bv = emitChild(1);
-    return b.create<EQPrimOp>(loc, a, bv);
+    auto a = planChild(0);
+    auto b = planChild(1);
+    if (!a || !b)
+      return nullptr;
+    return LoweredExpr::makeNode(LoweredExpr::Eq, {a, b});
   }
   default:
-    llvm::errs() << "Unsupported Z3 op while lowering counter expr: "
+    llvm::errs() << "[WARN] Unsupported Z3 op while lowering counter expr: "
                  << e.to_string() << "\n";
-    return {};
+    return nullptr;
   }
+}
+static mlir::Value
+materializeExprIntoModule(mlir::OpBuilder &b, mlir::Location loc,
+                          const std::shared_ptr<LoweredExpr> &expr) {
+  if (!expr)
+    return {};
+
+  switch (expr->kind) {
+  case LoweredExpr::Leaf:
+    return expr->leafValue;
+
+  case LoweredExpr::Constant: {
+    auto ty = UIntType::get(b.getContext(), expr->constWidth);
+    auto attr = b.getIntegerAttr(b.getIntegerType(expr->constWidth),
+                                 expr->constValue.getZExtValue());
+    return b.create<ConstantOp>(loc, ty, attr);
+  }
+
+  case LoweredExpr::Not: {
+    auto a = materializeExprIntoModule(b, loc, expr->children[0]);
+    if (!a)
+      return {};
+    return b.create<NotPrimOp>(loc, a);
+  }
+
+  case LoweredExpr::And: {
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
+    if (!acc)
+      return {};
+    for (size_t i = 1; i < expr->children.size(); ++i) {
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
+      if (!rhs)
+        return {};
+      acc = b.create<AndPrimOp>(loc, acc, rhs);
+    }
+    return acc;
+  }
+
+  case LoweredExpr::Or: {
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
+    if (!acc)
+      return {};
+    for (size_t i = 1; i < expr->children.size(); ++i) {
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
+      if (!rhs)
+        return {};
+      acc = b.create<OrPrimOp>(loc, acc, rhs);
+    }
+    return acc;
+  }
+
+  case LoweredExpr::Xor: {
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
+    if (!acc)
+      return {};
+    for (size_t i = 1; i < expr->children.size(); ++i) {
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
+      if (!rhs)
+        return {};
+      acc = b.create<XorPrimOp>(loc, acc, rhs);
+    }
+    return acc;
+  }
+
+  case LoweredExpr::Eq: {
+    auto a = materializeExprIntoModule(b, loc, expr->children[0]);
+    auto rhs = materializeExprIntoModule(b, loc, expr->children[1]);
+    if (!a || !rhs)
+      return {};
+    return b.create<EQPrimOp>(loc, a, rhs);
+  }
+  }
+
+  return {};
 }
 
 } // namespace
@@ -247,13 +478,13 @@ void CounterInserter::insertPerfCounters(
   // Step 3: Create new operations so that we translate this z3 expression into
   // FIRRTL IR.
 
-  // Step 4: Insert `prof dialect` operations.
-  llvm::errs() << "Insert counter: " << counterName
-               << " with expr: " << counterExpr.to_string() << "\n";
+  // Step 4: Insert `prof/perf dialect` operations.
+  // llvm::errs() << "Insert counter: " << counterName
+  //              << " with expr: " << counterExpr.to_string() << "\n";
 
   auto circuitOp = llvm::dyn_cast<circt::firrtl::CircuitOp>(module);
   if (!circuitOp) {
-    llvm::errs() << "CounterInserter: module is not a CircuitOp\n";
+    llvm::errs() << "[ERROR] CounterInserter: module is not a CircuitOp\n";
     return;
   }
 
@@ -275,13 +506,13 @@ void CounterInserter::insertPerfCounters(
 
     auto it = annoMap.find(name);
     if (it == annoMap.end()) {
-      llvm::errs() << "CounterInserter: missing annoMap entry for '" << name
-                   << "'\n";
+      llvm::errs() << "[WARNING] CounterInserter: missing annoMap entry for '"
+                   << name << "'\n";
       return;
     }
 
     if (!isZ3BoolLikeLeaf(leaf)) {
-      llvm::errs() << "CounterInserter: non-bool leaf '" << name
+      llvm::errs() << "[WARNING] CounterInserter: non-bool leaf '" << name
                    << "' in expr: " << leaf.to_string() << "\n";
       return;
     }
@@ -329,8 +560,9 @@ void CounterInserter::insertPerfCounters(
 
     mlir::Value sourceValue = getValueFromAnnoPathValue(apv);
     if (!sourceValue) {
-      llvm::errs() << "CounterInserter: could not recover mlir::Value for '"
-                   << name << "' from AnnoPathValue\n";
+      llvm::errs()
+          << "[ERROR] CounterInserter: could not recover mlir::Value for '"
+          << name << "' from AnnoPathValue\n";
       return;
     }
 
@@ -347,7 +579,7 @@ void CounterInserter::insertPerfCounters(
   }
 
   // Step 3: lower the Z3 expression into FIRRTL IR in the LCA module.
-  auto lcaFModule = dyn_cast<FModuleOp>(lcaModule.getOperation());
+  auto lcaFModule = llvm::dyn_cast<FModuleOp>(lcaModule.getOperation());
   if (!lcaFModule) {
     llvm::errs() << "CounterInserter: insertion module is not an FModuleOp\n";
     return;
@@ -362,19 +594,62 @@ void CounterInserter::insertPerfCounters(
   mlir::OpBuilder b(body, body->end());
   mlir::Location loc = lcaModule.getLoc();
 
-  mlir::Value cond = emitExprIntoModule(b, loc, counterExpr, leafMap);
-  if (!cond) {
-    llvm::errs() << "CounterInserter: failed to lower expression for counter '"
-                 << counterName << "'\n";
+  auto plan = planExprIntoModule(counterExpr, leafMap);
+  if (!plan) {
+    llvm::errs() << "[WARN] CounterInserter: skipping counter '" << counterName
+                 << "' because expression planning failed: "
+                 << counterExpr.to_string() << "\n";
     return;
   }
 
-  llvm::errs()
-      << "CounterInserter: successfully emitted counter condition for '"
-      << counterName << "' in module " << lcaModule.getModuleName() << "\n";
+  mlir::Value cond = materializeExprIntoModule(b, loc, plan);
+  if (!cond) {
+    llvm::errs() << "[WARN] CounterInserter: skipping counter '" << counterName
+                 << "' because expression materialization failed\n";
+    return;
+  }
 
+  // llvm::errs()
+  //     << "CounterInserter: successfully emitted counter condition for '"
+  //     << counterName << "' in module " << lcaModule.getModuleName() << "\n";
   // Step 4: insert perf ops here.
-  // TODO
+  auto clockReset = findModuleClockAndReset(lcaFModule);
+  if (!clockReset.clock) {
+    llvm::errs() << "CounterInserter: could not find visible clock in module "
+                 << lcaModule.getModuleName() << "\n";
+    return;
+  }
+
+  // Materialize the condition as a named FIRRTL node first.
+  mlir::OpBuilder perfBuilder(body, body->end());
+  auto *ctx = perfBuilder.getContext();
+
+  auto emptyAnnos = perfBuilder.getArrayAttr({});
+  auto nameAttr = perfBuilder.getStringAttr(counterName);
+  auto nameKindAttr = circt::firrtl::NameKindEnumAttr::get(
+      ctx, circt::firrtl::NameKindEnum::InterestingName);
+
+  // Build firrtl.node manually to avoid null optional attrs.
+  mlir::OperationState nodeState(loc,
+                                 circt::firrtl::NodeOp::getOperationName());
+  nodeState.addOperands(cond);
+  nodeState.addTypes(cond.getType());
+  nodeState.addAttribute("name", nameAttr);
+  nodeState.addAttribute("nameKind", nameKindAttr);
+  nodeState.addAttribute("annotations", emptyAnnos);
+
+  auto *nodeRaw = perfBuilder.create(nodeState);
+  auto nodeOp = llvm::cast<circt::firrtl::NodeOp>(nodeRaw);
+  mlir::Value namedCond = nodeOp.getResult();
+
+  auto descAttr = perfBuilder.getStringAttr(counterExpr.to_string());
+
+  perfBuilder.create<circt::perf::PerfCounterOp>(
+      loc, namedCond, clockReset.clock, clockReset.reset, nameAttr, descAttr);
+
+  llvm::errs() << "CounterInserter: inserted NodeOp + PerfCounterOp '"
+               << counterName << "' in module " << lcaModule.getModuleName()
+               << "\n";
 }
 
 std::unique_ptr<CounterInserter>

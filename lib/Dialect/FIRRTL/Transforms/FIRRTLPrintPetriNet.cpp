@@ -12,6 +12,8 @@
 #include "circt/Dialect/FIRRTL/FIRRTLAnnotationHelper.h"
 #include "circt/Dialect/FIRRTL/FIRRTLInstanceGraph.h"
 
+#include "circt/Dialect/Perf/PerfDialect.h"
+
 #include "circt/Dialect/FIRRTL/CounterInserter.h"
 #include "circt/Dialect/FIRRTL/Petrinet.h"
 #include "circt/Dialect/FIRRTL/TransformZ3Graph.h"
@@ -66,6 +68,10 @@ struct FIRRTLPrintPetriNetPass
     levels = levels;
   }
   void runOnOperation() override;
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {
+    registry.insert<circt::perf::PerfDialect>();
+    registry.insert<circt::firrtl::FIRRTLDialect>();
+  }
 
 private:
   struct FIRRTLPrintPetriNetPassState {
@@ -626,34 +632,10 @@ private:
   static std::string
   getQualifiedPortNameFromBlockArg(mlir::BlockArgument barg,
                                    FIRRTLPrintPetriNetPassState &state) {
-    auto *owner = barg.getOwner();
-    assert(owner && "BlockArgument must have an owner block");
-
-    auto module = owner->getParentOp();
-    assert(module &&
-           "BlockArgument expasBected to be inside a firrtl::FModuleOp");
-
-    auto fModuleOP = llvm::dyn_cast<firrtl::FModuleOp>(module);
-    assert(fModuleOP &&
-           "BlockArgument expected to be inside a firrtl::FModuleOp");
-
-    unsigned argIdx = barg.getArgNumber();
-    auto ports = fModuleOP.getPorts();
-    assert(argIdx < ports.size() &&
-           "BlockArgument index out of range for module ports");
-
-    llvm::StringRef modName = fModuleOP.getName();
-    llvm::StringRef portName = ports[argIdx].getName();
-
-    std::string qualified = (modName + "." + portName).str();
-
-    // Append subfields accumulated in state.localState.fields
-    for (int i = state.localState.fields.size() - 1; i >= 0; --i) {
-      qualified += ".";
-      qualified += state.localState.fields[i];
-    }
-
-    return qualified;
+    auto target = createAnnoPathForCallerContext(state, barg);
+    auto name = annoToString(target);
+    state.globalState.targetCache[name] = target;
+    return name;
   }
 
   static std::string indent(unsigned depth) {
@@ -1048,6 +1030,35 @@ private:
 
     llvm::StringRef moduleName = getModuleName(op);
     return createAnnoPathForCallerContext(state, op);
+  }
+  static AnnoPathValue
+  createAnnoPathForCallerContext(FIRRTLPrintPetriNetPassState &state,
+                                 mlir::BlockArgument barg) {
+    auto *owner = barg.getOwner();
+    assert(owner && "BlockArgument must have an owner block");
+
+    auto *moduleOp = owner->getParentOp();
+    assert(moduleOp && "BlockArgument expected to be inside an op");
+
+    auto fModule = llvm::dyn_cast<circt::firrtl::FModuleOp>(moduleOp);
+    assert(fModule &&
+           "BlockArgument expected to be inside a firrtl::FModuleOp");
+
+    unsigned portNo = barg.getArgNumber();
+    auto ports = fModule.getPorts();
+    assert(portNo < ports.size() &&
+           "BlockArgument index out of range for module ports");
+
+    llvm::SmallVector<circt::firrtl::InstanceOp, 8> path;
+    path.reserve(state.callerContext().size());
+
+    for (const auto &ci : state.callerContext()) {
+      auto inst = llvm::dyn_cast<circt::firrtl::InstanceOp>(ci.callsite);
+      assert(inst && "callerContext.callsite must be an InstanceOp");
+      path.push_back(inst);
+    }
+
+    return AnnoPathValue(path, PortAnnoTarget(fModule, portNo), 0);
   }
 
   static AnnoPathValue
@@ -3104,9 +3115,17 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
 
   for (auto &[reg, art] : artifactsMap) {
     for (auto &[transition, expressions] : art.counterExpressions) {
+      const auto &incomingEdges = transition->incomingEdges;
+      int i = 0;
       for (auto &expr : expressions) {
-        counterInserter->insertPerfCounters(expr, "test",
+        auto &p = incomingEdges[i]->from;
+        std::string name =
+            "t" + std::to_string(transition->id) + "_" + std::to_string(i);
+
+        counterInserter->insertPerfCounters(expr, name,
                                             state.globalState.targetCache);
+
+        i++;
       }
     }
   }
