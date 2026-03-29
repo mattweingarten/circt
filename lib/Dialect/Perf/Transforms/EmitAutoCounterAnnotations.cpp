@@ -10,17 +10,21 @@
 #include "circt/Dialect/Perf/PerfHelpers.h"
 #include "circt/Dialect/Perf/PerfOps.h"
 #include "circt/Dialect/Perf/PerfPasses.h"
+#include "circt/Dialect/Seq/SeqDialect.h"
 #include "circt/Support/InstanceGraphInterface.h"
 
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/Pass.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Errc.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
@@ -42,7 +46,8 @@ namespace {
 static std::string sanitizeFilename(llvm::StringRef s) {
   std::string out = s.str();
   for (char &c : out) {
-    if (!(llvm::isAlnum(c) || c == '_' || c == '-' || c == '.'))
+    if (!(llvm::isAlnum(static_cast<unsigned char>(c)) || c == '_' ||
+          c == '-' || c == '.'))
       c = '_';
   }
   return out;
@@ -52,9 +57,8 @@ static llvm::json::Value attrToJson(mlir::Attribute attr);
 
 static llvm::json::Object dictAttrToJsonObject(mlir::DictionaryAttr dict) {
   llvm::json::Object obj;
-  for (auto named : dict) {
+  for (auto named : dict)
     obj[named.getName().str()] = attrToJson(named.getValue());
-  }
   return obj;
 }
 
@@ -75,52 +79,8 @@ static llvm::json::Value attrToJson(mlir::Attribute attr) {
   if (auto b = llvm::dyn_cast<mlir::BoolAttr>(attr))
     return b.getValue();
 
-<<<<<<< HEAD
-  AutoCounterAnnotation(std::string target, std::string circuit,
-                        std::string module, std::string clock,
-                        std::string reset, std::string label,
-                        std::string description = "",
-                        bool coverGenerated = false)
-      : target(target), circuit(circuit), module(module), clock(clock),
-        reset(reset), label(label), description(description),
-        coverGenerated(coverGenerated) {}
-  virtual ~AutoCounterAnnotation() = default;
-
-  virtual llvm::StringRef getOpTypeClass() const = 0;
-
-  std::string getModulePref() const { return module + ">"; }
-
-  void printAsJSON(llvm::raw_ostream &os, int annoCount) const {
-    if (annoCount > 0)
-      os << ",\n";
-  void printAsJSON(llvm::raw_ostream &os) const {
-    os << "{\n";
-    os << "  \"class\":\"" << AnnotationClass << "\",\n";
-    os << "  \"target\":\"~" << circuit << "|" << getModulePref() << target
-       << "\",\n";
-    os << "  \"clock\":\"~" << circuit << "|" << getModulePref() << clock
-       << "\",\n";
-    os << "  \"reset\":\"~" << circuit << "|" << getModulePref() << reset
-       << "\",\n";
-    os << "  \"label\":\"" << label << "\",\n";
-    os << "  \"description\":\""
-       << label << "<--(circt autogen)" 
-       << (!description.empty() ? " " : "")
-       <<  description << "\",\n";
-    os << "  \"description\":\"" << description << "\",\n";
-    os << "  \"opType\":{\n";
-    os << "    \"class\":\"" << getOpTypeClass() << "\"\n";
-    os << "  },\n";
-    os << "  \"coverGenerated\":" << (coverGenerated ? "true" : "false")
-       << "\n";
-    os << "}\n";
-    os << "},\n";
-  }
-};
-=======
   if (auto i = llvm::dyn_cast<mlir::IntegerAttr>(attr))
     return static_cast<int64_t>(i.getInt());
->>>>>>> ae66158a6... Initial end -to end counter insertion
 
   if (auto dict = llvm::dyn_cast<mlir::DictionaryAttr>(attr))
     return dictAttrToJsonObject(dict);
@@ -133,6 +93,7 @@ static llvm::json::Value attrToJson(mlir::Attribute attr) {
   attr.print(os);
   return os.str().str();
 }
+
 static mlir::LogicalResult writeAnnotationsToFileForModule(
     circt::firrtl::FModuleOp module, llvm::StringRef outputDir,
     llvm::ArrayRef<mlir::DictionaryAttr> annotations) {
@@ -180,7 +141,7 @@ struct AutoCounterAnnotationHelper {
     auto opType = mlir::DictionaryAttr::get(
         ctx, {b.getNamedAttr("class", b.getStringAttr(accumulateOpTypeClass))});
 
-    std::string desc = (label + "<--(circt autogen)").str();
+    std::string desc = label.str();
     if (!description.empty()) {
       desc += " ";
       desc += description.str();
@@ -213,10 +174,6 @@ struct AutoCounterAnnotationHelper {
     std::string clkName = perf::getSSAName(op.getClk(), parentModule);
     std::string resetName =
         op.getReset() ? perf::getSSAName(op.getReset(), parentModule) : "reset";
-    std::string clkName = getSSAName(op.getClk(), parentModule);
-
-    std::string resetName =
-        op.getReset() ? perf::getSSAName(op.getReset(), parentModule) : "reset";
     std::string label = op.getName() ? op.getName()->str() : "<unknown>";
 
     return build(op->getContext(), clkName, resetName, label);
@@ -229,6 +186,7 @@ static void addAnnotationToOp(mlir::Operation *targetOp,
   annos.addAnnotations(mlir::ArrayAttr::get(targetOp->getContext(), {anno}));
   annos.applyToOperation(targetOp);
 }
+
 static mlir::LogicalResult addAnnotationToBlockArg(mlir::BlockArgument arg,
                                                    mlir::DictionaryAttr anno) {
   auto *block = arg.getOwner();
@@ -289,6 +247,7 @@ annotateInputSource(circt::perf::PerfCounterOp perfOp,
   perfOp.emitError("unsupported PerfCounter input kind for annotation target");
   return mlir::failure();
 }
+
 struct EmitAutoCounterAnnotationsPass
     : public circt::perf::impl::EmitAutoCounterAnnotationsBase<
           EmitAutoCounterAnnotationsPass> {
@@ -321,11 +280,6 @@ void EmitAutoCounterAnnotationsPass::runOnOperation() {
       anyFailure = true;
       return;
     }
-    AccumulateCounterAnnotation anno = *annoOrErr;
-    anno.printAsJSON(os, annoCount);
-    annoCount++;
-    op.erase();
-    anno.printAsJSON(os);
 
     mlir::DictionaryAttr anno = *annoOrErr;
 
@@ -354,12 +308,12 @@ void EmitAutoCounterAnnotationsPass::runOnOperation() {
   for (auto *op : opsToErase)
     op->erase();
 }
+
 } // namespace
 
 std::unique_ptr<mlir::Pass>
 circt::perf::createEmitAutoCounterAnnotationsPass(llvm::StringRef outputDir) {
   auto pass = std::make_unique<EmitAutoCounterAnnotationsPass>();
-
   if (!outputDir.empty())
     pass->outputDir = outputDir.str();
   return pass;
