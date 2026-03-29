@@ -32,11 +32,20 @@ def AnyBoolType : Type<CPred<"::llvm::isa<::mlir::IntegerType>($_self) && "
                              "getWidthOrSentinel() == 1">,
                        "bool-like condition (i1 or firrtl.uint<1>)">;
 
+def AnyResetType : Type<Or<[
+                           AnyBoolType.predicate,
+                           CPred<"$_self.isa<circt::firrtl::ResetType>()">
+                         ]>,
+                         "any reset type (bool-like or firrtl.reset)">;
+
 def AnyClockType : Type<Or<[
                           ClockType.predicate,
                           CPred<"$_self.isa<circt::firrtl::ClockType>()">
                         ]>,
                         "Any clock type">;
+
+
+
 
 def PerfCounterOp : PerfOp<"counter", [
   Clocked,
@@ -47,7 +56,7 @@ def PerfCounterOp : PerfOp<"counter", [
   let arguments = (ins
     AnyBoolType:$cond,
     AnyClockType:$clk,
-    Optional<AnyBoolType>:$reset,
+    Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
     OptionalAttr<StrAttr>:$desc
   );
@@ -69,7 +78,7 @@ def PerfSamplerOp : PerfOp<"sampler", [Clocked, AttrSizedOperandSegments]> {
     AnyType:$value,
     Optional<AnyBoolType>:$cond,
     AnyClockType:$clk,
-    Optional<AnyBoolType>:$reset,
+    Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
     OptionalAttr<StrAttr>:$desc
   );
@@ -94,7 +103,7 @@ def PerfTraceOp : PerfOp<"trace", [Clocked, AttrSizedOperandSegments]> {
     AnyType:$value,
     Optional<AnyBoolType>:$cond,
     AnyClockType:$clk,
-    Optional<AnyBoolType>:$reset,
+    Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
     OptionalAttr<StrAttr>:$desc
   );
