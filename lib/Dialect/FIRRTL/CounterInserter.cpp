@@ -8,6 +8,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Casting.h"
 
 using namespace circt;
 using namespace circt::firrtl;
@@ -207,7 +208,7 @@ findLowestCommonModule(CircuitOp circuit,
 /// This assumes the target is an op target with exactly one result or a block
 /// arg. You may need to specialize this for your exact annotations.
 static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
-  if (auto opRef = apv.ref.dyn_cast<OpAnnoTarget>()) {
+  if (auto opRef = llvm::dyn_cast<OpAnnoTarget>(apv.ref)) {
     Operation *op = opRef.getOp();
     if (!op)
       return {};
@@ -219,7 +220,7 @@ static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
     // is enough. Otherwise this needs refinement.
     return {};
   }
-  if (auto portRef = apv.ref.dyn_cast<PortAnnoTarget>()) {
+  if (auto portRef = llvm::dyn_cast<PortAnnoTarget>(apv.ref)) {
     auto module = llvm::dyn_cast<FModuleOp>(portRef.getModule().getOperation());
     if (!module)
       return {};
