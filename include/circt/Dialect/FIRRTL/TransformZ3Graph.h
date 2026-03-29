@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <z3++.h>
+#include <optional>
 
 namespace llvm {
 class raw_ostream;
