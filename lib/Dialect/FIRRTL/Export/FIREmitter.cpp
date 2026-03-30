@@ -16,6 +16,7 @@
 #include "circt/Dialect/FIRRTL/FIRRTLDialect.h"
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
 #include "circt/Dialect/FIRRTL/Namespace.h"
+#include "circt/Dialect/HW/HWOps.h"
 #include "circt/Support/LLVM.h"
 #include "circt/Support/PrettyPrinterHelpers.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -142,6 +143,7 @@ struct Emitter {
   void emitExpression(PadPrimOp op) { emitPrimExpr("pad", op, op.getAmount()); }
   void emitExpression(ShlPrimOp op) { emitPrimExpr("shl", op, op.getAmount()); }
   void emitExpression(ShrPrimOp op) { emitPrimExpr("shr", op, op.getAmount()); }
+
 
   // Funnel all ops without attrs into `emitPrimExpr`.
 #define HANDLE(OPTYPE, MNEMONIC)                                               \
@@ -406,6 +408,9 @@ void Emitter::emitCircuit(CircuitOp op) {
           })
           .Case<LayerOp>([&](auto op) { emitDeclaration(op); })
           .Case<OptionOp>([&](auto op) { emitDeclaration(op); })
+          .Case<hw::HierPathOp>([&](auto op) {
+            // Do nothing — skip emitting this op
+          })
           .Default([&](auto op) {
             emitOpError(op, "not supported for emission inside circuit");
           });
