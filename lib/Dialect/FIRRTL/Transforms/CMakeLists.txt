@@ -34,6 +34,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   LowerLayers.cpp
   LowerMatches.cpp
   LowerMemory.cpp
+  LowerMultibitMux.cpp
   LowerOpenAggs.cpp
   LowerSignatures.cpp
   LowerTypes.cpp

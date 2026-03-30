@@ -253,6 +253,19 @@ def LowerMemory : Pass<"firrtl-lower-memory", "firrtl::CircuitOp"> {
   ];
 }
 
+def LowerMultibitMux : Pass<"firrtl-lower-multibitmux", "firrtl::FModuleOp"> {
+  let summary = "Lower multibit muxes to single-bit muxes";
+  let description = [{
+    This pass lowers FIRRTL mux operations with multibit result types into
+    equivalent compositions of single-bit muxes.
+  }];
+  let constructor = "circt::firrtl::createLowerMultibitMuxPass()";
+  let statistics = [
+    Statistic<"numLoweredMuxes", "num-lowered-multibit-muxes",
+      "Number of multibit muxes lowered">,
+  ];
+}
+
 def Dedup : Pass<"firrtl-dedup", "firrtl::CircuitOp"> {
   let summary = "Deduplicate modules which are structurally equivalent";
   let description = [{

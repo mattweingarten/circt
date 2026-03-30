@@ -104,6 +104,8 @@ std::unique_ptr<mlir::Pass> createInferResetsPass();
 
 std::unique_ptr<mlir::Pass> createLowerMemoryPass();
 
+std::unique_ptr<mlir::Pass> createLowerMultibitMuxPass();
+
 std::unique_ptr<mlir::Pass>
 createHoistPassthroughPass(bool hoistHWDrivers = true);
 
