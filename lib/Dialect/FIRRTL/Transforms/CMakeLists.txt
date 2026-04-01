@@ -8,6 +8,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   DropConst.cpp
   DropName.cpp
   EmitOMIR.cpp
+  EmitLegacyAnnotations.cpp
   ExpandWhens.cpp
   ExtractInstances.cpp
   FinalizeIR.cpp

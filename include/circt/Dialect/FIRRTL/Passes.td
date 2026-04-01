@@ -302,6 +302,26 @@ def EmitOMIR : Pass<"firrtl-emit-omir", "firrtl::CircuitOp"> {
   ];
 }
 
+def EmitLegacyAnnotations : Pass<"firrtl-emit-legacy-annotations",
+                                 "firrtl::CircuitOp"> {
+  let summary = "Emit legacy annotations";
+  let description = [{
+    This pass gathers legacy-style FIRRTL annotations from the design and
+    serializes the resulting data into a JSON file.
+  }];
+  let constructor = "circt::firrtl::createEmitLegacyAnnotationsPass()";
+  let options = [Option<"outputFilename", "file", "std::string", "",
+      "Output file for the JSON-serialized legacy annotation data">];
+  let dependentDialects = [
+      "hw::HWDialect"
+  ];
+    let statistics = [
+    Statistic<"numAnnotations", "num-annotations",
+      "Number of annotations emitted">
+  ];
+}
+
+
 def LowerMatches : Pass<"firrtl-lower-matches", "firrtl::FModuleOp"> {
   let summary = "Remove all matchs conditional blocks";
   let description = [{
