@@ -134,6 +134,23 @@ void Petrinet::integrateExpression(const z3::expr &e, const std::string &name,
   if (markRootFinal)
     rootPlace->final = true;
 
+  // Special case: if the whole expression is just a top-level variable,
+  // still create a normal transition from that variable place to the root
+  // place.
+  if (isAtomicVar(e)) {
+    auto varPlace =
+        getOrCreatePlace(e.decl().name().str(), nameToGraph, /*rank=*/1, e);
+
+    auto t = getOrCreateTransition(transitionKeyForExpr("var", e), "var",
+                                   /*depth=*/0);
+
+    addArcIfMissing(varPlace, t, "in");
+    addArcIfMissing(t, rootPlace, "out");
+
+    exprToBuiltPlace[Z3_ast(e)] = rootPlace;
+    return;
+  }
+
   // First pass: create places for atomic variables, preserving first-seen rank.
   std::function<void(const z3::expr &, int)> createPlaces =
       [&](const z3::expr &expr, int rank) {
