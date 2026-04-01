@@ -97,6 +97,16 @@ def LowerFIRRTLTypes : Pass<"firrtl-lower-types", "firrtl::CircuitOp"> {
   let dependentDialects = ["hw::HWDialect"];
 }
 
+def LowerFireSimAnnotationTypes
+    : Pass<"firrtl-lower-firesim-annotation-types", "firrtl::CircuitOp"> {
+  let summary = "Lower FireSim annotation types";
+  let description = [{
+    Lower or normalize FireSim-specific annotation types into the form expected
+    by later passes.
+  }];
+  let constructor = "circt::firrtl::createLowerFireSimAnnotationTypesPass()";
+}
+
 def LowerSignatures : Pass<"firrtl-lower-signatures", "firrtl::CircuitOp"> {
   let summary = "Lower FIRRTL module signatures";
   let description = [{

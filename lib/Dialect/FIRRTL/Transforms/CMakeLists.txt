@@ -30,6 +30,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   LowerAnnotations.cpp
   LowerCHIRRTL.cpp
   LowerClasses.cpp
+  LowerFireSimAnnotationTypes.cpp
   LowerIntmodules.cpp
   LowerIntrinsics.cpp
   LowerLayers.cpp

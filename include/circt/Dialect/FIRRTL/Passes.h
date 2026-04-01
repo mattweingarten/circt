@@ -204,6 +204,8 @@ std::unique_ptr<mlir::Pass> createLintingPass();
 
 std::unique_ptr<mlir::Pass> createSpecializeOptionPass();
 
+std::unique_ptr<mlir::Pass> createLowerFireSimAnnotationTypesPass();
+
 std::unique_ptr<mlir::Pass> createCreateCompanionAssume();
 
 std::unique_ptr<mlir::Pass>
