@@ -5,6 +5,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <iostream>
@@ -169,8 +170,9 @@ void Z3Graph::buildZ3Graph() {
   auto getOrCreateMaterializedNode =
       [&](const z3::expr &expr) -> std::shared_ptr<Node> {
     z3::expr canon = canonicalizer.canonicalize(expr);
-    llvm::errs() << "[CANONICALIZING] For expr: " << expr.to_string()
-                 << " got canonical form: " << canon.to_string() << "\n";
+    LLVM_DEBUG(llvm::dbgs()
+               << "[CANONICALIZING] For expr: " << expr.to_string()
+               << " got canonical form: " << canon.to_string() << "\n");
     Z3_ast ast = canon;
 
     auto it = exprToNode.find(ast);
@@ -802,8 +804,9 @@ Z3Graph::Canonicalizer::Canonicalizer(z3::context &ctx) : ctx(ctx) {
     z3::expr b = e.arg(1);
 
     // Only apply to boolean equality
-    if (!a.is_bool() || !b.is_bool() || !a.is_bv() || a.get_sort().bv_size() != 1 ||
-        !b.is_bv() || b.get_sort().bv_size() != 1)
+    if (!a.is_bool() || !b.is_bool() || !a.is_bv() ||
+        a.get_sort().bv_size() != 1 || !b.is_bv() ||
+        b.get_sort().bv_size() != 1)
       return std::nullopt;
 
     return (a && b) || ((!a) && (!b));

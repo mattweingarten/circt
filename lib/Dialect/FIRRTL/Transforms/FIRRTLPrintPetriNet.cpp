@@ -273,70 +273,75 @@ private:
         os << indent(depth + 4) << "injectIdx : " << ci.injectPortIdx << "\n";
       }
 
-      // -------------------------
-      // StageState
-      // -------------------------
-      os << indent(depth + 1) << "StageState\n";
-      os << indent(depth + 2) << "stageNumber : " << stageState.stageNumber
-         << "\n";
-      os << indent(depth + 2)
-         << "done        : " << (stageState.done ? "true" : "false") << "\n";
+      // // -------------------------
+      // // StageState
+      // // -------------------------
+      // os << indent(depth + 1) << "StageState\n";
+      // os << indent(depth + 2) << "stageNumber : " << stageState.stageNumber
+      //    << "\n";
+      // os << indent(depth + 2)
+      //    << "done        : " << (stageState.done ? "true" : "false") << "\n";
 
-      os << indent(depth + 2) << "activePoints ("
-         << stageState.activePoints.size() << ")\n";
-      for (const auto &ap : stageState.activePoints) {
-        os << indent(depth + 3) << "- op: " << *ap.op << "\n";
-      }
+      // os << indent(depth + 2) << "activePoints ("
+      //    << stageState.activePoints.size() << ")\n";
+      // for (const auto &ap : stageState.activePoints) {
+      //   os << indent(depth + 3) << "- op: " << *ap.op << "\n";
+      // }
 
-      os << indent(depth + 2) << "nextActivePoints ("
-         << stageState.nextActivePoints.size() << ")\n";
-      for (const auto &ap : stageState.nextActivePoints) {
-        os << indent(depth + 3) << "- op: " << *ap.op << "\n";
-      }
+      // os << indent(depth + 2) << "nextActivePoints ("
+      //    << stageState.nextActivePoints.size() << ")\n";
+      // for (const auto &ap : stageState.nextActivePoints) {
+      //   os << indent(depth + 3) << "- op: " << *ap.op << "\n";
+      // }
 
-      os << indent(depth + 2) << "visited (" << stageState.visited.size()
-         << ")\n";
-      for (auto anno : stageState.visited)
-        os << indent(depth + 3) << "- " << anno << "\n";
+      // os << indent(depth + 2) << "visited (" << stageState.visited.size()
+      //    << ")\n";
+      // for (auto anno : stageState.visited)
+      //   os << indent(depth + 3) << "- " << anno << "\n";
 
-      os << indent(depth + 2)
-         << "petriNet: " << (stageState.petriNet ? "present" : "null") << "\n";
+      // os << indent(depth + 2)
+      //    << "petriNet: " << (stageState.petriNet ? "present" : "null") <<
+      //    "\n";
 
-      // -------------------------
-      // GlobalState
-      // -------------------------
-      os << indent(depth + 1) << "GlobalState\n";
+      //   // -------------------------
+      //   // GlobalState
+      //   // -------------------------
+      //   os << indent(depth + 1) << "GlobalState\n";
 
-      os << indent(depth + 2)
-         << "connectToRegister: " << globalState.connectToRegister.size()
-         << " entries\n";
+      //   os << indent(depth + 2)
+      //      << "connectToRegister: " << globalState.connectToRegister.size()
+      //      << " entries\n";
 
-      os << indent(depth + 2)
-         << "z3ctx: " << (globalState.z3ctx ? "initialized" : "null") << "\n";
+      //   os << indent(depth + 2)
+      //      << "z3ctx: " << (globalState.z3ctx ? "initialized" : "null") <<
+      //      "\n";
 
-      os << indent(depth + 2) << "finalExprs: " << globalState.finalExprs.size()
-         << "\n";
+      //   os << indent(depth + 2) << "finalExprs: " <<
+      //   globalState.finalExprs.size()
+      //      << "\n";
 
-      os << indent(depth + 2) << "nodeNames: " << globalState.nodeNames.size()
-         << "\n";
+      //   os << indent(depth + 2) << "nodeNames: " <<
+      //   globalState.nodeNames.size()
+      //      << "\n";
 
-      os << indent(depth + 2)
-         << "circuit: " << (globalState.circuit ? "set" : "null") << "\n";
+      //   os << indent(depth + 2)
+      //      << "circuit: " << (globalState.circuit ? "set" : "null") << "\n";
 
-      os << indent(depth + 2) << "top: " << (globalState.top ? "set" : "null")
-         << "\n";
+      //   os << indent(depth + 2) << "top: " << (globalState.top ? "set" :
+      //   "null")
+      //      << "\n";
 
-      os << indent(depth) << "====================================\n";
+      //   os << indent(depth) << "====================================\n";
 
-      // -------------------------
-      // Current Final Expressions
-      // -------------------------
-      for (unsigned long i = 0; i < globalState.nodeNames.size(); i++) {
-        auto name = globalState.nodeNames[i];
-        auto expr = globalState.finalExprs[i];
-        os << "" << name << ":\n";
-        os << expr.to_string() << "\n\n";
-      }
+      //   // -------------------------
+      //   // Current Final Expressions
+      //   // -------------------------
+      //   for (unsigned long i = 0; i < globalState.nodeNames.size(); i++) {
+      //     auto name = globalState.nodeNames[i];
+      //     auto expr = globalState.finalExprs[i];
+      //     os << "" << name << ":\n";
+      //     os << expr.to_string() << "\n\n";
+      //   }
     }
   };
 
@@ -367,7 +372,7 @@ private:
     std::string out = (pos == std::string::npos) ? s : s.substr(pos + 1);
 
     for (char &c : out) {
-      if (c == '/' || c == ':' || c == '>')
+      if (c == '/' || c == ':' || c == '>' || c == '|')
         c = '.';
     }
 
@@ -531,7 +536,7 @@ private:
         continue;
 
       std::string subgraphFile =
-          regDir + "/" + normalizeAfterArrow(rootName) + ".dot";
+          regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".dot";
       if (!withOutputFile(
               subgraphFile,
               [&](llvm::raw_ostream &os) {
@@ -541,7 +546,7 @@ private:
         return false;
 
       std::string quasiFile =
-          regDir + "/" + normalizeAfterArrow(rootName) + "_quasi.dot";
+          regDir + "/" + normalizeRegisterSubgraphName(rootName) + "_quasi.dot";
       if (!withOutputFile(
               quasiFile,
               [&](llvm::raw_ostream &os) {
@@ -551,10 +556,44 @@ private:
         return false;
 
       std::string petriFile =
-          regDir + "/" + normalizeAfterArrow(rootName) + ".petri.dot";
+          regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".petri.dot";
       if (!withOutputFile(
               petriFile,
               [&](llvm::raw_ostream &os) { artifacts.petri->writeGraph(os); },
+              op, pass))
+        return false;
+
+      std::string t2pFile = regDir + "/" +
+                            normalizeRegisterSubgraphName(rootName) +
+                            ".petri.t2p.csv";
+      if (!withOutputFile(
+              t2pFile,
+              [&](llvm::raw_ostream &os) {
+                artifacts.petri->writeTransitionToPlaceMatrixCSV(os);
+              },
+              op, pass))
+        return false;
+
+      std::string p2tSlotFile = regDir + "/" +
+                                normalizeRegisterSubgraphName(rootName) +
+                                ".petri.p2t_slots.csv";
+      if (!withOutputFile(
+              p2tSlotFile,
+              [&](llvm::raw_ostream &os) {
+                artifacts.petri->writePlaceToTransitionSlotMatrixCSV(os);
+              },
+              op, pass))
+        return false;
+
+      std::string placeMapFile = regDir + "/" +
+                                 normalizeRegisterSubgraphName(rootName) +
+                                 ".petri.place_map.csv";
+
+      if (!withOutputFile(
+              placeMapFile,
+              [&](llvm::raw_ostream &os) {
+                artifacts.petri->writePlaceIdNameCSV(os);
+              },
               op, pass))
         return false;
 
@@ -563,7 +602,7 @@ private:
       z3::set_param("pp.min_alias_size", 1000000000);
 
       std::string exprFilename =
-          regDir + "/" + normalizeAfterArrow(rootName) + ".expr";
+          regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".expr";
       if (!withOutputFile(
               exprFilename,
               [&](llvm::raw_ostream &os) {
@@ -573,7 +612,7 @@ private:
         return false;
 
       std::string countersFilename =
-          regDir + "/" + normalizeAfterArrow(rootName) + ".counters";
+          regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".counters";
       if (!withOutputFile(
               countersFilename,
               [&](llvm::raw_ostream &os) {
@@ -1243,6 +1282,7 @@ private:
   z3::expr handleOpMatch(mlir::Operation *op, mlir::Value value,
                          FIRRTLPrintPetriNetPassState &state) {
     if (isDefinition(op)) {
+      // llvm::errs() << "Handle register-like op: " << *op << "\n";
       return handleRegisterLike(op, state);
     } else if (isMemoryLike(op)) {
       return handleMemoryLike(op, state);
@@ -1721,9 +1761,16 @@ private:
 
   z3::expr handleConnectLike(mlir::Operation *op, mlir::Value v,
                              FIRRTLPrintPetriNetPassState &state) {
+
     auto connect = llvm::cast<firrtl::FConnectLike>(op);
+    if (!connect) {
+      assert(false && "COnnect op not connect op? How did we get here?!");
+    }
     if (connect.getDest() != v) {
       state.dump(llvm::dbgs());
+      llvm::dbgs() << "Is connect like op: " << *connect << "\n";
+      llvm::dbgs() << "Destination: " << connect.getDest() << "\n";
+      llvm::dbgs() << "Matched value that led us here: " << v << "\n";
       llvm::dbgs() << "[PETRINET] Connect op dest does not match value: "
                    << "dest= " << connect.getDest() << ", \nvalue= " << v
                    << "For op " << *op << "and \nvalue:" << v << "\n";
@@ -2370,31 +2417,52 @@ private:
 
     state.globalState.targetCache[name] = target;
     state.localState = ap.localState;
-    mlir::Operation *starting_op;
-    mlir::Value starting_value = op->getResult(0);
+
+    mlir::Operation *starting_op = nullptr;
+    mlir::Value starting_value = nullptr;
+
     if (llvm::isa<firrtl::RegOp>(op) || llvm::isa<firrtl::RegResetOp>(op)) {
-      for (Operation *user : op->getResult(0).getUsers()) {
+      auto regResult = op->getResult(0);
+
+      for (Operation *user : regResult.getUsers()) {
         if (auto connect = llvm::dyn_cast<firrtl::FConnectLike>(user)) {
-          if (connect.getDest() == op->getResult(0)) {
+          if (connect.getDest() == regResult) {
             state.mapConnectToReg(connect, op);
-            starting_op = connect;
+            starting_op = connect.getOperation();
+            starting_value = connect.getDest();
+
             LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Found connect " << *connect
                                     << " driving register " << name << "\n");
             break;
           }
         }
       }
-    }
 
-    else if (llvm::isa<firrtl::NodeOp>(op)) {
-      starting_op = llvm::cast<firrtl::NodeOp>(op).getInput().getDefiningOp();
+      if (!starting_op) {
+        op->emitError()
+            << "could not find driving connect for register-like op";
+        return;
+      }
+    } else if (auto node = llvm::dyn_cast<firrtl::NodeOp>(op)) {
+      starting_value = node.getInput();
+      starting_op = starting_value.getDefiningOp();
 
+      if (!starting_op) {
+        op->emitError()
+            << "node input has no defining op; cannot kick off stage";
+        return;
+      }
     } else {
       llvm_unreachable("unknown active op type");
     }
 
     LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Starting stage at node: "
                             << *starting_op << "\n");
+
+    // llvm::errs() << "[PETRINET] Starting stage at node: " << *starting_op
+    //              << " with driving value of ";
+    // starting_value.print(llvm::errs());
+    // llvm::errs() << "\n";
 
     z3::expr rhs = handleOp(starting_op, starting_value, state);
     z3::expr lhs = rhs.is_bv() ? state.ctx().bv_const(name.c_str(),
@@ -2939,7 +3007,7 @@ void FIRRTLPrintPetriNetPass::init() {
 
   if (petriFile.empty()) {
     llvm::errs() << "missing --petri-file";
-    signalPassFailure();
+    // signalPassFailure();
     return;
   }
 

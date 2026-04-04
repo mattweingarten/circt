@@ -69,6 +69,50 @@ static llvm::json::Array arrayAttrToJsonArray(mlir::ArrayAttr arr) {
   return out;
 }
 
+static std::optional<std::string> getFIRRTLTargetForValue(
+    mlir::Value value,
+    std::optional<llvm::StringRef> fallbackRefName = std::nullopt) {
+
+  if (!value)
+    return std::nullopt;
+
+  circt::firrtl::FModuleOp module;
+  std::string refName;
+
+  if (auto blockArg = llvm::dyn_cast<mlir::BlockArgument>(value)) {
+    module = llvm::dyn_cast<circt::firrtl::FModuleOp>(
+        blockArg.getOwner()->getParentOp());
+    if (!module)
+      return std::nullopt;
+
+    unsigned portIdx = blockArg.getArgNumber();
+
+    if (portIdx < module.getNumPorts()) {
+      refName = module.getPortName(portIdx).str();
+    } else if (fallbackRefName) {
+      refName = fallbackRefName->str();
+    } else {
+      return std::nullopt;
+    }
+
+  } else if (auto *defOp = value.getDefiningOp()) {
+    module = defOp->getParentOfType<circt::firrtl::FModuleOp>();
+    if (!module || !fallbackRefName)
+      return std::nullopt;
+
+    refName = fallbackRefName->str();
+  } else {
+    return std::nullopt;
+  }
+
+  auto circuit = module->getParentOfType<circt::firrtl::CircuitOp>();
+  if (!circuit)
+    return std::nullopt;
+
+  return "~" + circuit.getName().str() + "|" + module.getModuleName().str() +
+         ">" + refName;
+}
+
 static llvm::json::Value attrToJson(mlir::Attribute attr) {
   if (!attr)
     return nullptr;
@@ -161,22 +205,27 @@ struct AutoCounterAnnotationHelper {
   }
 
   static llvm::Expected<mlir::DictionaryAttr> buildFor(perf::PerfCounterOp op) {
-    auto parentModule =
-        op->getParentOfType<::circt::igraph::ModuleOpInterface>();
-
-    if (!parentModule) {
-      op.emitError("PerfCounterOp has no parent module");
+    auto clkTarget = getFIRRTLTargetForValue(op.getClk(), "clock");
+    if (!clkTarget) {
       return llvm::make_error<llvm::StringError>(
-          "PerfCounterOp has no parent module",
+          "failed to compute FIRRTL target for PerfCounterOp clock",
           std::make_error_code(std::errc::invalid_argument));
     }
 
-    std::string clkName = perf::getSSAName(op.getClk(), parentModule);
-    std::string resetName =
-        op.getReset() ? perf::getSSAName(op.getReset(), parentModule) : "reset";
-    std::string label = op.getName() ? op.getName()->str() : "<unknown>";
+    std::string resetTarget;
+    if (op.getReset()) {
+      auto rstTarget = getFIRRTLTargetForValue(op.getReset(), "reset");
+      if (!rstTarget)
+        return llvm::make_error<llvm::StringError>(
+            "failed to compute FIRRTL target for PerfCounterOp reset",
+            std::make_error_code(std::errc::invalid_argument));
+      resetTarget = *rstTarget;
+    } else {
+      resetTarget = "~<unknown>|<unknown> >reset";
+    }
 
-    return build(op->getContext(), clkName, resetName, label);
+    std::string label = op.getName() ? op.getName()->str() : "<unknown>";
+    return build(op->getContext(), *clkTarget, resetTarget, label);
   }
 };
 
@@ -268,42 +317,38 @@ struct EmitAutoCounterAnnotationsPass
 void EmitAutoCounterAnnotationsPass::runOnOperation() {
   auto module = getOperation();
 
-  bool anyFailure = false;
   llvm::SmallVector<mlir::Operation *> opsToErase;
-  llvm::SmallVector<mlir::DictionaryAttr> emittedAnnotations;
 
   module.walk([&](perf::PerfCounterOp op) {
     auto annoOrErr = AutoCounterAnnotationHelper::buildFor(op);
     if (!annoOrErr) {
-      op.emitError() << "failed to create AutoCounter annotation: "
-                     << llvm::toString(annoOrErr.takeError());
-      anyFailure = true;
+      llvm::errs() << "EmitAutoCounterAnnotations: failed to create "
+                      "AutoCounter annotation: "
+                   << llvm::toString(annoOrErr.takeError()) << "\n";
+      llvm::errs() << "Offending PerfCounterOp:\n";
+      op.print(llvm::errs());
+      llvm::errs() << "\n";
+
+      opsToErase.push_back(op.getOperation());
+      signalPassFailure();
       return;
     }
 
     mlir::DictionaryAttr anno = *annoOrErr;
 
     if (mlir::failed(annotateInputSource(op, anno))) {
-      anyFailure = true;
+      llvm::errs() << "EmitAutoCounterAnnotations: failed to attach "
+                      "annotation to source\n";
+      llvm::errs() << "Offending PerfCounterOp:\n";
+      op.print(llvm::errs());
+      llvm::errs() << "\n";
+
+      opsToErase.push_back(op.getOperation());
       return;
     }
 
-    emittedAnnotations.push_back(anno);
-    opsToErase.push_back(op);
+    opsToErase.push_back(op.getOperation());
   });
-
-  if (anyFailure) {
-    signalPassFailure();
-    return;
-  }
-
-  if (!emittedAnnotations.empty()) {
-    if (mlir::failed(writeAnnotationsToFileForModule(module, outputDir,
-                                                     emittedAnnotations))) {
-      signalPassFailure();
-      return;
-    }
-  }
 
   for (auto *op : opsToErase)
     op->erase();

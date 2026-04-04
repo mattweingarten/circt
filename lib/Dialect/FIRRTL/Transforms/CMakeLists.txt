@@ -57,6 +57,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   ResolveTraces.cpp
   SFCCompat.cpp
   SpecializeOption.cpp
+  StripNameAttributes.cpp
   VBToBV.cpp
   Vectorization.cpp
 

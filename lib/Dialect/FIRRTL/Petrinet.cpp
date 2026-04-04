@@ -538,8 +538,8 @@ Petrinet::getCountersPairs() const {
 std::vector<
     std::pair<std::shared_ptr<Petrinet::Transition>, std::vector<z3::expr>>>
 Petrinet::getCountersAllSubsets() const {
-  using CounterResult =
-      std::vector<std::pair<std::shared_ptr<Transition>, std::vector<z3::expr>>>;
+  using CounterResult = std::vector<
+      std::pair<std::shared_ptr<Transition>, std::vector<z3::expr>>>;
 
   static constexpr uint64_t kMaxSubsetCounters = 1000;
   static constexpr unsigned kMaxTupleSize = 6;
@@ -639,19 +639,19 @@ Petrinet::getCountersAllSubsets() const {
     std::vector<z3::expr> cur;
     cur.reserve(maxK);
 
-    std::function<void(size_t, unsigned)> dfs =
-        [&](size_t start, unsigned need) {
-          if (need == 0) {
-            out.push_back(mkAnd(cur));
-            return;
-          }
+    std::function<void(size_t, unsigned)> dfs = [&](size_t start,
+                                                    unsigned need) {
+      if (need == 0) {
+        out.push_back(mkAnd(cur));
+        return;
+      }
 
-          for (size_t i = start; i + need <= n; ++i) {
-            cur.push_back(preds[i]);
-            dfs(i + 1, need - 1);
-            cur.pop_back();
-          }
-        };
+      for (size_t i = start; i + need <= n; ++i) {
+        cur.push_back(preds[i]);
+        dfs(i + 1, need - 1);
+        cur.pop_back();
+      }
+    };
 
     for (unsigned sz = 1; sz <= std::min<unsigned>(maxK, n); ++sz)
       dfs(0, sz);
@@ -662,8 +662,8 @@ Petrinet::getCountersAllSubsets() const {
   unsigned chosenK = chooseTupleSize();
 
   llvm::errs() << "[PETRINET] getCountersAllSubsets: using tuple size "
-               << chosenK << " under max counter budget "
-               << kMaxSubsetCounters << "\n";
+               << chosenK << " under max counter budget " << kMaxSubsetCounters
+               << "\n";
 
   CounterResult result;
 
@@ -683,4 +683,209 @@ Petrinet::getCountersAllSubsets() const {
          const std::monostate &) { return std::monostate{}; });
 
   return result;
+}
+
+void Petrinet::writeTransitionToPlaceMatrixCSV(llvm::raw_ostream &os) const {
+  std::vector<std::shared_ptr<Place>> places;
+  std::vector<std::shared_ptr<Transition>> transitions;
+
+  for (const auto &node : nodes) {
+    if (!node)
+      continue;
+
+    if (auto *p = llvm::dyn_cast<Place>(node.get()))
+      places.push_back(std::static_pointer_cast<Place>(node));
+    else if (auto *t = llvm::dyn_cast<Transition>(node.get()))
+      transitions.push_back(std::static_pointer_cast<Transition>(node));
+  }
+
+  std::sort(places.begin(), places.end(),
+            [](const auto &a, const auto &b) { return a->id < b->id; });
+  std::sort(transitions.begin(), transitions.end(),
+            [](const auto &a, const auto &b) { return a->id < b->id; });
+
+  std::unordered_map<unsigned, size_t> placeCol;
+  std::unordered_map<unsigned, size_t> transitionRow;
+
+  for (size_t i = 0; i < places.size(); ++i)
+    placeCol[places[i]->id] = i;
+  for (size_t i = 0; i < transitions.size(); ++i)
+    transitionRow[transitions[i]->id] = i;
+
+  std::vector<std::vector<int>> mat(transitions.size(),
+                                    std::vector<int>(places.size(), 0));
+
+  for (const auto &node : nodes) {
+    if (!node)
+      continue;
+
+    if (auto *arc = llvm::dyn_cast<Arc>(node.get())) {
+      auto *fromT = llvm::dyn_cast<Transition>(arc->from.get());
+      auto *toP = llvm::dyn_cast<Place>(arc->to.get());
+      if (!fromT || !toP)
+        continue;
+
+      auto rIt = transitionRow.find(fromT->id);
+      auto cIt = placeCol.find(toP->id);
+      if (rIt == transitionRow.end() || cIt == placeCol.end())
+        continue;
+
+      mat[rIt->second][cIt->second] = 1;
+      continue;
+    }
+
+    if (auto *inh = llvm::dyn_cast<InhibitorArc>(node.get())) {
+      auto *fromT = llvm::dyn_cast<Transition>(inh->from.get());
+      auto *toP = llvm::dyn_cast<Place>(inh->to.get());
+      if (!fromT || !toP)
+        continue;
+
+      auto rIt = transitionRow.find(fromT->id);
+      auto cIt = placeCol.find(toP->id);
+      if (rIt == transitionRow.end() || cIt == placeCol.end())
+        continue;
+
+      mat[rIt->second][cIt->second] = -1;
+      continue;
+    }
+  }
+
+  os << "transition_id";
+  for (const auto &p : places)
+    os << ",p" << p->id;
+  os << "\n";
+
+  for (size_t r = 0; r < transitions.size(); ++r) {
+    os << "t" << transitions[r]->id;
+    for (size_t c = 0; c < places.size(); ++c)
+      os << "," << mat[r][c];
+    os << "\n";
+  }
+}
+
+void Petrinet::writePlaceToTransitionSlotMatrixCSV(
+    llvm::raw_ostream &os) const {
+  std::vector<std::shared_ptr<Place>> places;
+  std::vector<std::shared_ptr<Transition>> transitions;
+
+  for (const auto &node : nodes) {
+    if (!node)
+      continue;
+
+    if (auto *p = llvm::dyn_cast<Place>(node.get()))
+      places.push_back(std::static_pointer_cast<Place>(node));
+    else if (auto *t = llvm::dyn_cast<Transition>(node.get()))
+      transitions.push_back(std::static_pointer_cast<Transition>(node));
+  }
+
+  std::sort(places.begin(), places.end(),
+            [](const auto &a, const auto &b) { return a->id < b->id; });
+  std::sort(transitions.begin(), transitions.end(),
+            [](const auto &a, const auto &b) { return a->id < b->id; });
+
+  std::unordered_map<unsigned, size_t> placeRow;
+  for (size_t i = 0; i < places.size(); ++i)
+    placeRow[places[i]->id] = i;
+
+  struct TransitionSlot {
+    unsigned transitionId;
+    unsigned slot;
+  };
+
+  std::vector<TransitionSlot> slots;
+  std::unordered_map<unsigned, size_t> slotBaseCol;
+
+  for (const auto &t : transitions) {
+    slotBaseCol[t->id] = slots.size();
+    for (unsigned s = 0; s < t->numIncoming; ++s)
+      slots.push_back({t->id, s});
+  }
+
+  std::vector<std::vector<int>> mat(places.size(),
+                                    std::vector<int>(slots.size(), 0));
+
+  for (const auto &node : nodes) {
+    if (!node)
+      continue;
+
+    int value = 0;
+    Place *fromP = nullptr;
+    Transition *toT = nullptr;
+    unsigned slot = 0;
+
+    if (auto *arc = llvm::dyn_cast<Arc>(node.get())) {
+      fromP = llvm::dyn_cast<Place>(arc->from.get());
+      toT = llvm::dyn_cast<Transition>(arc->to.get());
+      if (!fromP || !toT)
+        continue;
+      value = 1;
+      slot = arc->incomingIdx;
+    } else if (auto *inh = llvm::dyn_cast<InhibitorArc>(node.get())) {
+      fromP = llvm::dyn_cast<Place>(inh->from.get());
+      toT = llvm::dyn_cast<Transition>(inh->to.get());
+      if (!fromP || !toT)
+        continue;
+      value = -1;
+      slot = inh->incomingIdx;
+    } else {
+      continue;
+    }
+
+    auto rIt = placeRow.find(fromP->id);
+    auto baseIt = slotBaseCol.find(toT->id);
+    if (rIt == placeRow.end() || baseIt == slotBaseCol.end())
+      continue;
+
+    size_t col = baseIt->second + slot;
+    if (col >= slots.size())
+      continue;
+
+    mat[rIt->second][col] = value;
+  }
+
+  os << "place_id";
+  for (const auto &slotInfo : slots)
+    os << ",t" << slotInfo.transitionId << "_" << slotInfo.slot;
+  os << "\n";
+
+  for (size_t r = 0; r < places.size(); ++r) {
+    os << "p" << places[r]->id;
+    for (size_t c = 0; c < slots.size(); ++c)
+      os << "," << mat[r][c];
+    os << "\n";
+  }
+}
+
+
+void Petrinet::writePlaceIdNameCSV(llvm::raw_ostream &os) const {
+  std::vector<std::shared_ptr<Place>> places;
+
+  for (const auto &node : nodes) {
+    if (!node)
+      continue;
+
+    if (auto *p = llvm::dyn_cast<Place>(node.get()))
+      places.push_back(std::static_pointer_cast<Place>(node));
+  }
+
+  std::sort(places.begin(), places.end(),
+            [](const auto &a, const auto &b) { return a->id < b->id; });
+
+  bool first = true;
+  for (const auto &p : places) {
+    if (!first)
+      os << ",";
+    first = false;
+    os << "p" << p->id;
+  }
+  os << "\n";
+
+  first = true;
+  for (const auto &p : places) {
+    if (!first)
+      os << ",";
+    first = false;
+    os << p->getName();
+  }
+  os << "\n";
 }

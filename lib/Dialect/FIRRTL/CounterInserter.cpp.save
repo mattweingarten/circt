@@ -3,17 +3,11 @@
 #include "circt/Dialect/FIRRTL/FIRRTLTypes.h"
 #include "circt/Dialect/Perf/PerfOps.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinAttributes.h"
-#include "mlir/IR/Operation.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
-
-#define DEBUG_TYPE "counter-inserter"
 
 using namespace circt;
 using namespace circt::firrtl;
@@ -66,16 +60,10 @@ static bool isResetLikeType(mlir::Type ty) {
   return false;
 }
 
-struct NamedModulePort {
-  mlir::Value value;
-  std::string portName;
-};
-
 struct ModuleClockReset {
-  NamedModulePort clock;
-  NamedModulePort reset;
+  mlir::Value clock;
+  mlir::Value reset;
 };
-
 static ModuleClockReset findModuleClockAndReset(FModuleOp module) {
   ModuleClockReset result;
 
@@ -83,27 +71,28 @@ static ModuleClockReset findModuleClockAndReset(FModuleOp module) {
   if (!body)
     return result;
 
-  for (unsigned i = 0, e = module.getNumPorts(); i != e; ++i) {
-    auto arg = body->getArgument(i);
-    auto name = module.getPortName(i).str();
+  auto ports = module.getPorts();
 
-    if (!result.clock.value && name == "clock" && isClockType(arg.getType()))
-      result.clock = {arg, name};
+  // First pass: prefer ports literally named clock/reset
+  for (auto [idx, arg] : llvm::enumerate(body->getArguments())) {
+    auto port = ports[idx];
+    auto nameAttr = port.name;
+    StringRef name = nameAttr ? nameAttr.getValue() : "";
 
-    if (!result.reset.value && name == "reset" &&
-        isResetLikeType(arg.getType()))
-      result.reset = {arg, name};
+    if (!result.clock && name == "clock" && isClockType(arg.getType()))
+      result.clock = arg;
+
+    if (!result.reset && name == "reset" && isResetLikeType(arg.getType()))
+      result.reset = arg;
   }
 
-  for (unsigned i = 0, e = module.getNumPorts(); i != e; ++i) {
-    auto arg = body->getArgument(i);
-    auto name = module.getPortName(i).str();
+  // Second pass: fallback to any matching type
+  for (auto arg : body->getArguments()) {
+    if (!result.clock && isClockType(arg.getType()))
+      result.clock = arg;
 
-    if (!result.clock.value && isClockType(arg.getType()))
-      result.clock = {arg, name};
-
-    if (!result.reset.value && isResetLikeType(arg.getType()))
-      result.reset = {arg, name};
+    if (!result.reset && isResetLikeType(arg.getType()))
+      result.reset = arg;
   }
 
   return result;
@@ -157,6 +146,11 @@ static bool isBooleanLikeTargetType(FIRRTLType type) {
   return false;
 }
 
+/// Return the module path from circuit root down to the module containing
+/// `apv`. Example:
+///   top -> A -> B
+/// represented by instances [top->A inst, A->B inst]
+/// then this returns [top, A, B]
 static llvm::SmallVector<FModuleLike, 8>
 getModulePath(CircuitOp circuit, const AnnoPathValue &apv) {
   llvm::SmallVector<FModuleLike, 8> mods;
@@ -181,6 +175,7 @@ getModulePath(CircuitOp circuit, const AnnoPathValue &apv) {
   return mods;
 }
 
+/// Lowest common module from AnnoPathValue.instance chains.
 static FModuleLike
 findLowestCommonModule(CircuitOp circuit,
                        llvm::ArrayRef<const AnnoPathValue *> paths) {
@@ -208,7 +203,9 @@ findLowestCommonModule(CircuitOp circuit,
 
   return base[commonLen - 1];
 }
-
+/// Try to recover the targeted SSA value from the annotation target.
+/// This assumes the target is an op target with exactly one result or a block
+/// arg. You may need to specialize this for your exact annotations.
 static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
   if (auto opRef = llvm::dyn_cast<OpAnnoTarget>(apv.ref)) {
     Operation *op = opRef.getOp();
@@ -218,11 +215,11 @@ static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
     if (op->getNumResults() == 1)
       return op->getResult(0);
 
+    // If your annotations target named wires/nodes/regs with one result, this
+    // is enough. Otherwise this needs refinement.
     return {};
   }
-
-  if (auto portRef = llvm::dyn_cast<PortAnnoTarget>(apv.ref)) {
-    auto module = llvm::dyn_cast<FModuleOp>(portRef.getModule().getOperation());
+  if (auto portRef = apv.ref.dyn_cast<PortAnnoTarget>()) {
     if (!module)
       return {};
 
@@ -240,6 +237,7 @@ static mlir::Value getValueFromAnnoPathValue(const AnnoPathValue &apv) {
   return {};
 }
 
+/// Insert a new input port on `module`.
 static BlockArgument addInputPort(FModuleLike module, StringRef name,
                                   FIRRTLType type) {
   auto fmodule = dyn_cast<FModuleOp>(module.getOperation());
@@ -253,7 +251,9 @@ static BlockArgument addInputPort(FModuleLike module, StringRef name,
 
   return fmodule.getBodyBlock()->getArgument(newPortIdx);
 }
-
+/// Placeholder for actual cross-module plumbing.
+/// Structural port insertion through instance chains is the hard part and is
+/// left as a TODO, but this helper centralizes that work.
 static mlir::Value makeValueVisibleInModule(const AnnoPathValue &apv,
                                             mlir::Value value,
                                             FModuleLike targetModule,
@@ -269,6 +269,7 @@ static mlir::Value makeValueVisibleInModule(const AnnoPathValue &apv,
                << sourceModule.getModuleName() << " to module "
                << targetModule.getModuleName()
                << " using ports along path: " << apv << "\n";
+
   return {};
 }
 
@@ -286,8 +287,8 @@ planExprIntoModule(const z3::expr &e,
   };
 
   if (isAtomicVar(e)) {
-    LLVM_DEBUG(llvm::dbgs() << "[WARN] Atomic Z3 leaf not found in leafMap: "
-                            << e.to_string() << "\n");
+    llvm::errs() << "[WARN] Atomic Z3 leaf not found in leafMap: "
+                 << e.to_string() << "\n";
     return nullptr;
   }
 
@@ -380,161 +381,36 @@ planExprIntoModule(const z3::expr &e,
     return nullptr;
   }
 }
-
-static bool isRegionAncestorOf(mlir::Region *ancestor,
-                               mlir::Region *descendant) {
-  if (!ancestor || !descendant)
-    return false;
-  for (mlir::Region *cur = descendant; cur;) {
-    if (cur == ancestor)
-      return true;
-    auto *parentOp = cur->getParentOp();
-    cur = parentOp ? parentOp->getParentRegion() : nullptr;
-  }
-  return false;
-}
-
-static bool isValueDefinedInsideRegionSubtree(mlir::Value v,
-                                              mlir::Region *region) {
-  if (!v || !region)
-    return false;
-
-  if (auto barg = llvm::dyn_cast<mlir::BlockArgument>(v)) {
-    auto *ownerBlock = barg.getOwner();
-    auto *ownerRegion = ownerBlock ? ownerBlock->getParent() : nullptr;
-    return ownerRegion && isRegionAncestorOf(region, ownerRegion);
-  }
-
-  auto *defOp = v.getDefiningOp();
-  if (!defOp)
-    return false;
-
-  auto *defRegion = defOp->getParentRegion();
-  return defRegion && isRegionAncestorOf(region, defRegion);
-}
-
-static bool isValueVisibleAtEndOfRegion(mlir::Value v, mlir::Region *region) {
-  if (!v || !region || region->empty())
-    return false;
-
-  auto *block = &region->front();
-
-  if (auto barg = llvm::dyn_cast<mlir::BlockArgument>(v)) {
-    auto *ownerBlock = barg.getOwner();
-    if (ownerBlock == block)
-      return true;
-
-    auto *ownerRegion = ownerBlock ? ownerBlock->getParent() : nullptr;
-    if (!ownerRegion)
-      return false;
-
-    // Values from ancestor regions are visible in nested regions.
-    return isRegionAncestorOf(ownerRegion, region);
-  }
-
-  auto *defOp = v.getDefiningOp();
-  if (!defOp)
-    return false;
-
-  if (defOp->getBlock() == block)
-    return true;
-
-  // Walk from the current region outward. A value defined in the parent block
-  // before the op that owns the nested region is visible inside that region.
-  for (mlir::Region *cur = region; cur;) {
-    auto *parentOp = cur->getParentOp();
-    if (!parentOp)
-      break;
-
-    auto *parentBlock = parentOp->getBlock();
-    if (defOp->getBlock() == parentBlock && defOp->isBeforeInBlock(parentOp))
-      return true;
-
-    cur = parentOp->getParentRegion();
-  }
-
-  return false;
-}
-
-static void collectExprLeaves(const std::shared_ptr<LoweredExpr> &expr,
-                              llvm::SmallVectorImpl<mlir::Value> &out) {
-  if (!expr)
-    return;
-
-  switch (expr->kind) {
-  case LoweredExpr::Leaf:
-    out.push_back(expr->leafValue);
-    return;
-  case LoweredExpr::Constant:
-    return;
-  case LoweredExpr::Not:
-  case LoweredExpr::And:
-  case LoweredExpr::Or:
-  case LoweredExpr::Xor:
-  case LoweredExpr::Eq:
-    for (auto &child : expr->children)
-      collectExprLeaves(child, out);
-    return;
-  }
-}
-
-static bool
-canMaterializeExprAtEndOfRegion(const std::shared_ptr<LoweredExpr> &expr,
-                                mlir::Region *region) {
-  llvm::SmallVector<mlir::Value> leaves;
-  collectExprLeaves(expr, leaves);
-  for (auto v : leaves)
-    if (!isValueVisibleAtEndOfRegion(v, region))
-      return false;
-  return true;
-}
-
-static bool exprTouchesRegionSubtree(const std::shared_ptr<LoweredExpr> &expr,
-                                     mlir::Region *region) {
-  llvm::SmallVector<mlir::Value> leaves;
-  collectExprLeaves(expr, leaves);
-  for (auto v : leaves)
-    if (isValueDefinedInsideRegionSubtree(v, region))
-      return true;
-  return false;
-}
-
 static mlir::Value
-materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
-                          mlir::Region *region,
+materializeExprIntoModule(mlir::OpBuilder &b, mlir::Location loc,
                           const std::shared_ptr<LoweredExpr> &expr) {
   if (!expr)
     return {};
 
   switch (expr->kind) {
   case LoweredExpr::Leaf:
-    if (!isValueVisibleAtEndOfRegion(expr->leafValue, region))
-      return {};
     return expr->leafValue;
 
   case LoweredExpr::Constant: {
     auto ty = UIntType::get(b.getContext(), expr->constWidth);
-
-    auto attrTy = mlir::IntegerType::get(b.getContext(), expr->constWidth,
-                                         mlir::IntegerType::Unsigned);
-    auto attr = mlir::IntegerAttr::get(attrTy, expr->constValue);
-
+    auto attr = b.getIntegerAttr(b.getIntegerType(expr->constWidth),
+                                 expr->constValue.getZExtValue());
     return b.create<ConstantOp>(loc, ty, attr);
   }
 
   case LoweredExpr::Not: {
-    auto a = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto a = materializeExprIntoModule(b, loc, expr->children[0]);
     if (!a)
       return {};
     return b.create<NotPrimOp>(loc, a);
   }
 
   case LoweredExpr::And: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<AndPrimOp>(loc, acc, rhs);
@@ -543,11 +419,11 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Or: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<OrPrimOp>(loc, acc, rhs);
@@ -556,11 +432,11 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Xor: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExprIntoModule(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExprIntoModule(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<XorPrimOp>(loc, acc, rhs);
@@ -569,8 +445,8 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Eq: {
-    auto a = materializeExprIntoRegion(b, loc, region, expr->children[0]);
-    auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[1]);
+    auto a = materializeExprIntoModule(b, loc, expr->children[0]);
+    auto rhs = materializeExprIntoModule(b, loc, expr->children[1]);
     if (!a || !rhs)
       return {};
     return b.create<EQPrimOp>(loc, a, rhs);
@@ -580,143 +456,30 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   return {};
 }
 
-static mlir::Value createUInt1Const(mlir::OpBuilder &b, mlir::Location loc,
-                                    bool bit) {
-  auto ty = UIntType::get(b.getContext(), 1);
-
-  auto attrTy =
-      mlir::IntegerType::get(b.getContext(), 1, mlir::IntegerType::Unsigned);
-  auto attr = mlir::IntegerAttr::get(attrTy, bit ? 1 : 0);
-
-  return b.create<ConstantOp>(loc, ty, attr);
-}
-
-static bool connectExprAtEndOfRegion(mlir::Region *region, mlir::Location loc,
-                                     const std::shared_ptr<LoweredExpr> &expr,
-                                     mlir::Value destWire) {
-  if (!region || region->empty() || !destWire)
-    return false;
-
-  if (!canMaterializeExprAtEndOfRegion(expr, region))
-    return false;
-
-  auto *block = &region->front();
-  mlir::OpBuilder b(block, block->end());
-  auto v = materializeExprIntoRegion(b, loc, region, expr);
-  if (!v)
-    return false;
-
-  b.create<ConnectOp>(loc, destWire, v);
-  return true;
-}
-
-static bool
-recursivelyMaterializeIntoBranches(mlir::Region *region, mlir::Location loc,
-                                   const std::shared_ptr<LoweredExpr> &expr,
-                                   mlir::Value destWire) {
-  if (!region || !destWire)
-    return false;
-
-  // Fast path: if everything needed by this expression is visible here,
-  // materialize directly at the end of this region.
-  if (connectExprAtEndOfRegion(region, loc, expr, destWire))
-    return true;
-
-  if (region->empty())
-    return false;
-
-  bool madeProgress = false;
-  auto *block = &region->front();
-
-  for (auto &op : *block) {
-    auto whenOp = llvm::dyn_cast<WhenOp>(&op);
-    if (!whenOp)
-      continue;
-
-    auto *thenRegion = &whenOp->getRegion(0);
-    mlir::Region *elseRegion =
-        whenOp->getNumRegions() > 1 ? &whenOp->getRegion(1) : nullptr;
-
-    bool thenRelevant = exprTouchesRegionSubtree(expr, thenRegion);
-    bool elseRelevant =
-        elseRegion && exprTouchesRegionSubtree(expr, elseRegion);
-
-    if (!thenRelevant && !elseRelevant)
-      continue;
-
-    bool anyBranchSucceeded = false;
-
-    if (thenRelevant) {
-      if (recursivelyMaterializeIntoBranches(thenRegion, loc, expr, destWire))
-        anyBranchSucceeded = true;
-    }
-
-    if (elseRelevant) {
-      if (recursivelyMaterializeIntoBranches(elseRegion, loc, expr, destWire))
-        anyBranchSucceeded = true;
-    }
-
-    madeProgress |= anyBranchSucceeded;
-  }
-
-  return madeProgress;
-}
-
-static mlir::Value buildNamedCounterWire(FModuleLike module, mlir::Location loc,
-                                         StringRef counterName,
-                                         StringRef exprNodeName) {
-  auto lcaFModule = llvm::dyn_cast<FModuleOp>(module.getOperation());
-  if (!lcaFModule)
-    return {};
-
-  mlir::Block *body = lcaFModule.getBodyBlock();
-  if (!body)
-    return {};
-
-  mlir::OpBuilder b(body, body->end());
-  auto *ctx = b.getContext();
-
-  auto emptyAnnos = b.getArrayAttr({});
-  auto wireNameAttr = b.getStringAttr(counterName);
-  auto exprNodeNameAttr = b.getStringAttr(exprNodeName);
-
-  auto nameKindAttr = circt::firrtl::NameKindEnumAttr::get(
-      ctx, circt::firrtl::NameKindEnum::InterestingName);
-
-  mlir::OperationState wireState(loc,
-                                 circt::firrtl::WireOp::getOperationName());
-  wireState.addTypes(UIntType::get(ctx, 1));
-  wireState.addAttribute("name", wireNameAttr);
-  wireState.addAttribute("nameKind", nameKindAttr);
-  wireState.addAttribute("annotations", emptyAnnos);
-
-  auto *wireRaw = b.create(wireState);
-  auto wireOp = llvm::cast<circt::firrtl::WireOp>(wireRaw);
-  mlir::Value wiredCond = wireOp.getResult();
-
-  auto zero = createUInt1Const(b, loc, false);
-
-  mlir::OperationState nodeState(loc,
-                                 circt::firrtl::NodeOp::getOperationName());
-  nodeState.addOperands(zero);
-  nodeState.addTypes(zero.getType());
-  nodeState.addAttribute("name", exprNodeNameAttr);
-  nodeState.addAttribute("nameKind", nameKindAttr);
-  nodeState.addAttribute("annotations", emptyAnnos);
-
-  auto *nodeRaw = b.create(nodeState);
-  auto nodeOp = llvm::cast<circt::firrtl::NodeOp>(nodeRaw);
-  mlir::Value namedZero = nodeOp.getResult();
-
-  b.create<ConnectOp>(loc, wiredCond, namedZero);
-  return wiredCond;
-}
-
 } // namespace
 
 void CounterInserter::insertPerfCounters(
     z3::expr counterExpr, const std::string &counterName,
     const std::map<std::string, circt::firrtl::AnnoPathValue> &annoMap) {
+
+  // Step 1:
+  // Go through the entire expression. For each variable, look up the value in
+  // the annoMap and check that is is there, and that is a bitvector with width
+  // one and a boolean.
+
+  // Step 2:
+  // If everything all the values are not in the same module, we need to create
+  // additional ports to make them accessible. If they are not all in the same
+  // module, we must create additional ports to get every signal to the lowest
+  // common denominator module in the calltree (i.e in this case the instance
+  // graph.)
+
+  // Step 3: Create new operations so that we translate this z3 expression into
+  // FIRRTL IR.
+
+  // Step 4: Insert `prof/perf dialect` operations.
+  // llvm::errs() << "Insert counter: " << counterName
+  //              << " with expr: " << counterExpr.to_string() << "\n";
 
   auto circuitOp = llvm::dyn_cast<circt::firrtl::CircuitOp>(module);
   if (!circuitOp) {
@@ -724,6 +487,7 @@ void CounterInserter::insertPerfCounters(
     return;
   }
 
+  // Step 1: collect referenced leaves and validate against annoMap.
   llvm::SmallVector<z3::expr, 16> leaves;
   llvm::SmallPtrSet<Z3_ast, 16> seen;
   collectReferencedLeaves(counterExpr, leaves, seen);
@@ -775,6 +539,7 @@ void CounterInserter::insertPerfCounters(
     annoPaths.push_back(&apv);
   }
 
+  // Step 2: find lowest common denominator module from AnnoPathValue.instances.
   FModuleLike lcaModule = findLowestCommonModule(circuitOp, annoPaths);
   if (!lcaModule) {
     llvm::errs() << "CounterInserter: failed to compute common module for '"
@@ -782,9 +547,10 @@ void CounterInserter::insertPerfCounters(
     return;
   }
 
-  LLVM_DEBUG(llvm::dbgs() << "CounterInserter: chosen insertion module: "
-                          << lcaModule.getModuleName() << "\n");
+  llvm::errs() << "CounterInserter: chosen insertion module: "
+               << lcaModule.getModuleName() << "\n";
 
+  // Build leaf -> visible FIRRTL value mapping in the LCA module.
   llvm::DenseMap<Z3_ast, mlir::Value> leafMap;
 
   for (const auto &leaf : leaves) {
@@ -811,6 +577,7 @@ void CounterInserter::insertPerfCounters(
     leafMap[(Z3_ast)leaf] = visibleValue;
   }
 
+  // Step 3: lower the Z3 expression into FIRRTL IR in the LCA module.
   auto lcaFModule = llvm::dyn_cast<FModuleOp>(lcaModule.getOperation());
   if (!lcaFModule) {
     llvm::errs() << "CounterInserter: insertion module is not an FModuleOp\n";
@@ -823,6 +590,7 @@ void CounterInserter::insertPerfCounters(
     return;
   }
 
+  mlir::OpBuilder b(body, body->end());
   mlir::Location loc = lcaModule.getLoc();
 
   auto plan = planExprIntoModule(counterExpr, leafMap);
@@ -833,52 +601,54 @@ void CounterInserter::insertPerfCounters(
     return;
   }
 
+  mlir::Value cond = materializeExprIntoModule(b, loc, plan);
+  if (!cond) {
+    llvm::errs() << "[WARN] CounterInserter: skipping counter '" << counterName
+                 << "' because expression materialization failed\n";
+    return;
+  }
+
+  // llvm::errs()
+  //     << "CounterInserter: successfully emitted counter condition for '"
+  //     << counterName << "' in module " << lcaModule.getModuleName() << "\n";
+  // Step 4: insert perf ops here.
   auto clockReset = findModuleClockAndReset(lcaFModule);
-  if (!clockReset.clock.value) {
+  if (!clockReset.clock) {
     llvm::errs() << "CounterInserter: could not find visible clock in module "
                  << lcaModule.getModuleName() << "\n";
     return;
   }
 
-  // Create one module-scope destination wire, default it to 0, and then
-  // recursively override it inside nested when branches wherever the full
-  // expression becomes visible.
-  mlir::Value wiredCond = buildNamedCounterWire(lcaModule, loc, counterName,
-                                                counterName + "_expr_default");
-  if (!wiredCond) {
-    llvm::errs() << "[ERROR] CounterInserter: failed to create counter wire '"
-                 << counterName << "'\n";
-    return;
-  }
-
-  bool success = recursivelyMaterializeIntoBranches(body->getParent(), loc,
-                                                    plan, wiredCond);
-  if (!success) {
-    llvm::errs()
-        << "[WARN] CounterInserter: could not materialize expression for '"
-        << counterName
-        << "' in any valid region. This usually means the expression depends "
-           "on values from mutually exclusive sibling when branches and needs "
-           "an explicit merge strategy.\n";
-    return;
-  }
-
+  // Materialize the condition as a named FIRRTL node first.
   mlir::OpBuilder perfBuilder(body, body->end());
-  auto wireNameAttr = perfBuilder.getStringAttr(counterName);
+  auto *ctx = perfBuilder.getContext();
+
+  auto emptyAnnos = perfBuilder.getArrayAttr({});
+  auto nameAttr = perfBuilder.getStringAttr(counterName);
+  auto nameKindAttr = circt::firrtl::NameKindEnumAttr::get(
+      ctx, circt::firrtl::NameKindEnum::InterestingName);
+
+  // Build firrtl.node manually to avoid null optional attrs.
+  mlir::OperationState nodeState(loc,
+                                 circt::firrtl::NodeOp::getOperationName());
+  nodeState.addOperands(cond);
+  nodeState.addTypes(cond.getType());
+  nodeState.addAttribute("name", nameAttr);
+  nodeState.addAttribute("nameKind", nameKindAttr);
+  nodeState.addAttribute("annotations", emptyAnnos);
+
+  auto *nodeRaw = perfBuilder.create(nodeState);
+  auto nodeOp = llvm::cast<circt::firrtl::NodeOp>(nodeRaw);
+  mlir::Value namedCond = nodeOp.getResult();
+
   auto descAttr = perfBuilder.getStringAttr(counterExpr.to_string());
 
   perfBuilder.create<circt::perf::PerfCounterOp>(
-      loc, wiredCond, clockReset.clock.value, clockReset.reset.value,
-      wireNameAttr, descAttr);
+      loc, namedCond, clockReset.clock, clockReset.reset, nameAttr, descAttr);
 
-  LLVM_DEBUG({
-    llvm::dbgs() << "CounterInserter: inserted branch-aware counter '"
-                 << counterName << "' in module " << lcaModule.getModuleName()
-                 << " using clock port '" << clockReset.clock.portName << "'";
-    if (clockReset.reset.value)
-      llvm::dbgs() << " and reset port '" << clockReset.reset.portName << "'";
-    llvm::dbgs() << "\n";
-  });
+  llvm::errs() << "CounterInserter: inserted NodeOp + PerfCounterOp '"
+               << counterName << "' in module " << lcaModule.getModuleName()
+               << "\n";
 }
 
 std::unique_ptr<CounterInserter>
