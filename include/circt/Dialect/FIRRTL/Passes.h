@@ -148,6 +148,8 @@ createMergeConnectionsPass(bool enableAggressiveMerging = false);
 
 std::unique_ptr<mlir::Pass> createVectorizationPass();
 
+std::unique_ptr<mlir::Pass> createStripNameAttributesPass();
+
 std::unique_ptr<mlir::Pass> createInjectDUTHierarchyPass();
 
 std::unique_ptr<mlir::Pass> createDropConstPass();

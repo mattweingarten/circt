@@ -218,6 +218,12 @@ public:
 
   void writeGraph(llvm::raw_ostream &os) const;
 
+  void writeTransitionToPlaceMatrixCSV(llvm::raw_ostream &os) const;
+  
+  void writePlaceToTransitionSlotMatrixCSV(llvm::raw_ostream &os) const;
+
+  void writePlaceIdNameCSV(llvm::raw_ostream &os) const;
+
   void setDepth();
 
   template <typename StateT, typename MakeInitialStateFn, typename VisitFn,

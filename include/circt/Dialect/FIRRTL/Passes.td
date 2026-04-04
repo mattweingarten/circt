@@ -367,6 +367,16 @@ def ExpandWhens : InterfacePass<"firrtl-expand-whens", "firrtl::FModuleLike"> {
   let constructor = "circt::firrtl::createExpandWhensPass()";
 }
 
+def StripNameAttributes : Pass<"firrtl-strip-name-attrs", "circt::firrtl::CircuitOp"> {
+  let summary = "Remove FIRRTL name attributes from operations";
+  let description = [{
+    Removes the `name` attribute from FIRRTL operations such as wires, nodes,
+    registers, and similar named objects. This is useful when later lowering
+    stages would otherwise create duplicate reference names.
+  }];
+  let constructor = "circt::firrtl::createStripNameAttributesPass()";
+}
+
 def LowerCHIRRTLPass : Pass<"firrtl-lower-chirrtl", "firrtl::FModuleOp"> {
   let summary = "Infer the memory ports of SeqMem and CombMem";
   let description = [{
