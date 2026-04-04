@@ -10,6 +10,7 @@
 #include "circt/Dialect/FIRRTL/Passes.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "mlir/IR/BuiltinAttributes.h"
@@ -43,6 +44,42 @@ static std::string makeUniqueName(llvm::StringRef base,
 
   usedNames[candidate] = 1;
   return candidate;
+}
+
+static std::string makeGloballyUniqueBuiltinName(llvm::StringSet<> &usedNames,
+                                                 uint64_t &nextId) {
+  std::string candidate;
+  do {
+    candidate = "builtin_" + std::to_string(nextId++);
+  } while (usedNames.contains(candidate));
+
+  usedNames.insert(candidate);
+  return candidate;
+}
+
+static void rewriteBuiltinNamesGlobally(mlir::Operation *root) {
+  llvm::StringSet<> usedNames;
+  uint64_t nextId = 0;
+
+  // First collect all existing explicit names so we avoid collisions.
+  root->walk([&](mlir::Operation *op) {
+    if (auto nameAttr = op->getAttrOfType<mlir::StringAttr>("name"))
+      usedNames.insert(nameAttr.getValue());
+  });
+
+  // Then rewrite any chisel3_builtin* names to globally unique ones.
+  root->walk([&](mlir::Operation *op) {
+    auto nameAttr = op->getAttrOfType<mlir::StringAttr>("name");
+    if (!nameAttr)
+      return;
+
+    llvm::StringRef name = nameAttr.getValue();
+    if (!name.starts_with("chisel3_builtin"))
+      return;
+
+    std::string newName = makeGloballyUniqueBuiltinName(usedNames, nextId);
+    op->setAttr("name", mlir::StringAttr::get(op->getContext(), newName));
+  });
 }
 
 static void uniquifyNamesInBlock(mlir::Block *block) {
@@ -97,10 +134,6 @@ static void uniquifyNamesInBlock(mlir::Block *block) {
 
     std::string newName = makeUniqueName(explicitNameStr, allUsedNames);
 
-    // llvm::errs() << "[STRIP NAMES] In block @" << block << " rename explicit "
-    //              << "name \"" << explicitNameStr << "\" -> \"" << newName
-    //              << "\" on op " << op.getName().getStringRef() << "\n";
-
     op.setAttr("name", mlir::StringAttr::get(op.getContext(), newName));
   }
 
@@ -116,6 +149,10 @@ static void uniquifyNamesInBlock(mlir::Block *block) {
 void StripNameAttributesPass::runOnOperation() {
   auto circuit = getOperation();
 
+  // First, rewrite all chisel3_builtin* names to globally unique names.
+  rewriteBuiltinNamesGlobally(circuit);
+
+  // Then do the existing block-local collision cleanup.
   circuit.walk([&](firrtl::FModuleOp module) {
     for (mlir::Region &region : module->getRegions()) {
       for (mlir::Block &block : region)
