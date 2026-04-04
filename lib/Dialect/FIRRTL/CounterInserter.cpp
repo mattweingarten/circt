@@ -6,7 +6,6 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Operation.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
@@ -267,8 +266,7 @@ static mlir::Value makeValueVisibleInModule(const AnnoPathValue &apv,
 
   llvm::errs() << "[TODO] plumb signal '" << debugName << "' from module "
                << sourceModule.getModuleName() << " to module "
-               << targetModule.getModuleName()
-               << " using ports along path: " << apv << "\n";
+               << targetModule.getModuleName() << "\n";
   return {};
 }
 
@@ -381,160 +379,36 @@ planExprIntoModule(const z3::expr &e,
   }
 }
 
-static bool isRegionAncestorOf(mlir::Region *ancestor,
-                               mlir::Region *descendant) {
-  if (!ancestor || !descendant)
-    return false;
-  for (mlir::Region *cur = descendant; cur;) {
-    if (cur == ancestor)
-      return true;
-    auto *parentOp = cur->getParentOp();
-    cur = parentOp ? parentOp->getParentRegion() : nullptr;
-  }
-  return false;
-}
-
-static bool isValueDefinedInsideRegionSubtree(mlir::Value v,
-                                              mlir::Region *region) {
-  if (!v || !region)
-    return false;
-
-  if (auto barg = llvm::dyn_cast<mlir::BlockArgument>(v)) {
-    auto *ownerBlock = barg.getOwner();
-    auto *ownerRegion = ownerBlock ? ownerBlock->getParent() : nullptr;
-    return ownerRegion && isRegionAncestorOf(region, ownerRegion);
-  }
-
-  auto *defOp = v.getDefiningOp();
-  if (!defOp)
-    return false;
-
-  auto *defRegion = defOp->getParentRegion();
-  return defRegion && isRegionAncestorOf(region, defRegion);
-}
-
-static bool isValueVisibleAtEndOfRegion(mlir::Value v, mlir::Region *region) {
-  if (!v || !region || region->empty())
-    return false;
-
-  auto *block = &region->front();
-
-  if (auto barg = llvm::dyn_cast<mlir::BlockArgument>(v)) {
-    auto *ownerBlock = barg.getOwner();
-    if (ownerBlock == block)
-      return true;
-
-    auto *ownerRegion = ownerBlock ? ownerBlock->getParent() : nullptr;
-    if (!ownerRegion)
-      return false;
-
-    // Values from ancestor regions are visible in nested regions.
-    return isRegionAncestorOf(ownerRegion, region);
-  }
-
-  auto *defOp = v.getDefiningOp();
-  if (!defOp)
-    return false;
-
-  if (defOp->getBlock() == block)
-    return true;
-
-  // Walk from the current region outward. A value defined in the parent block
-  // before the op that owns the nested region is visible inside that region.
-  for (mlir::Region *cur = region; cur;) {
-    auto *parentOp = cur->getParentOp();
-    if (!parentOp)
-      break;
-
-    auto *parentBlock = parentOp->getBlock();
-    if (defOp->getBlock() == parentBlock && defOp->isBeforeInBlock(parentOp))
-      return true;
-
-    cur = parentOp->getParentRegion();
-  }
-
-  return false;
-}
-
-static void collectExprLeaves(const std::shared_ptr<LoweredExpr> &expr,
-                              llvm::SmallVectorImpl<mlir::Value> &out) {
-  if (!expr)
-    return;
-
-  switch (expr->kind) {
-  case LoweredExpr::Leaf:
-    out.push_back(expr->leafValue);
-    return;
-  case LoweredExpr::Constant:
-    return;
-  case LoweredExpr::Not:
-  case LoweredExpr::And:
-  case LoweredExpr::Or:
-  case LoweredExpr::Xor:
-  case LoweredExpr::Eq:
-    for (auto &child : expr->children)
-      collectExprLeaves(child, out);
-    return;
-  }
-}
-
-static bool
-canMaterializeExprAtEndOfRegion(const std::shared_ptr<LoweredExpr> &expr,
-                                mlir::Region *region) {
-  llvm::SmallVector<mlir::Value> leaves;
-  collectExprLeaves(expr, leaves);
-  for (auto v : leaves)
-    if (!isValueVisibleAtEndOfRegion(v, region))
-      return false;
-  return true;
-}
-
-static bool exprTouchesRegionSubtree(const std::shared_ptr<LoweredExpr> &expr,
-                                     mlir::Region *region) {
-  llvm::SmallVector<mlir::Value> leaves;
-  collectExprLeaves(expr, leaves);
-  for (auto v : leaves)
-    if (isValueDefinedInsideRegionSubtree(v, region))
-      return true;
-  return false;
-}
-
-static mlir::Value
-materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
-                          mlir::Region *region,
-                          const std::shared_ptr<LoweredExpr> &expr) {
+static mlir::Value materializeExpr(mlir::OpBuilder &b, mlir::Location loc,
+                                   const std::shared_ptr<LoweredExpr> &expr) {
   if (!expr)
     return {};
 
   switch (expr->kind) {
   case LoweredExpr::Leaf:
-    if (!isValueVisibleAtEndOfRegion(expr->leafValue, region))
-      return {};
     return expr->leafValue;
 
   case LoweredExpr::Constant: {
     auto ty = UIntType::get(b.getContext(), expr->constWidth);
-
     auto attrTy = mlir::IntegerType::get(b.getContext(), expr->constWidth,
                                          mlir::IntegerType::Unsigned);
     auto attr = mlir::IntegerAttr::get(attrTy, expr->constValue);
-
     return b.create<ConstantOp>(loc, ty, attr);
   }
 
   case LoweredExpr::Not: {
-    auto a = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto a = materializeExpr(b, loc, expr->children[0]);
     if (!a)
       return {};
     return b.create<NotPrimOp>(loc, a);
   }
 
   case LoweredExpr::And: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExpr(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExpr(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<AndPrimOp>(loc, acc, rhs);
@@ -543,11 +417,11 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Or: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExpr(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExpr(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<OrPrimOp>(loc, acc, rhs);
@@ -556,11 +430,11 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Xor: {
-    auto acc = materializeExprIntoRegion(b, loc, region, expr->children[0]);
+    auto acc = materializeExpr(b, loc, expr->children[0]);
     if (!acc)
       return {};
     for (size_t i = 1; i < expr->children.size(); ++i) {
-      auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[i]);
+      auto rhs = materializeExpr(b, loc, expr->children[i]);
       if (!rhs)
         return {};
       acc = b.create<XorPrimOp>(loc, acc, rhs);
@@ -569,8 +443,8 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
   }
 
   case LoweredExpr::Eq: {
-    auto a = materializeExprIntoRegion(b, loc, region, expr->children[0]);
-    auto rhs = materializeExprIntoRegion(b, loc, region, expr->children[1]);
+    auto a = materializeExpr(b, loc, expr->children[0]);
+    auto rhs = materializeExpr(b, loc, expr->children[1]);
     if (!a || !rhs)
       return {};
     return b.create<EQPrimOp>(loc, a, rhs);
@@ -583,93 +457,20 @@ materializeExprIntoRegion(mlir::OpBuilder &b, mlir::Location loc,
 static mlir::Value createUInt1Const(mlir::OpBuilder &b, mlir::Location loc,
                                     bool bit) {
   auto ty = UIntType::get(b.getContext(), 1);
-
   auto attrTy =
       mlir::IntegerType::get(b.getContext(), 1, mlir::IntegerType::Unsigned);
   auto attr = mlir::IntegerAttr::get(attrTy, bit ? 1 : 0);
-
   return b.create<ConstantOp>(loc, ty, attr);
-}
-
-static bool connectExprAtEndOfRegion(mlir::Region *region, mlir::Location loc,
-                                     const std::shared_ptr<LoweredExpr> &expr,
-                                     mlir::Value destWire) {
-  if (!region || region->empty() || !destWire)
-    return false;
-
-  if (!canMaterializeExprAtEndOfRegion(expr, region))
-    return false;
-
-  auto *block = &region->front();
-  mlir::OpBuilder b(block, block->end());
-  auto v = materializeExprIntoRegion(b, loc, region, expr);
-  if (!v)
-    return false;
-
-  b.create<ConnectOp>(loc, destWire, v);
-  return true;
-}
-
-static bool
-recursivelyMaterializeIntoBranches(mlir::Region *region, mlir::Location loc,
-                                   const std::shared_ptr<LoweredExpr> &expr,
-                                   mlir::Value destWire) {
-  if (!region || !destWire)
-    return false;
-
-  // Fast path: if everything needed by this expression is visible here,
-  // materialize directly at the end of this region.
-  if (connectExprAtEndOfRegion(region, loc, expr, destWire))
-    return true;
-
-  if (region->empty())
-    return false;
-
-  bool madeProgress = false;
-  auto *block = &region->front();
-
-  for (auto &op : *block) {
-    auto whenOp = llvm::dyn_cast<WhenOp>(&op);
-    if (!whenOp)
-      continue;
-
-    auto *thenRegion = &whenOp->getRegion(0);
-    mlir::Region *elseRegion =
-        whenOp->getNumRegions() > 1 ? &whenOp->getRegion(1) : nullptr;
-
-    bool thenRelevant = exprTouchesRegionSubtree(expr, thenRegion);
-    bool elseRelevant =
-        elseRegion && exprTouchesRegionSubtree(expr, elseRegion);
-
-    if (!thenRelevant && !elseRelevant)
-      continue;
-
-    bool anyBranchSucceeded = false;
-
-    if (thenRelevant) {
-      if (recursivelyMaterializeIntoBranches(thenRegion, loc, expr, destWire))
-        anyBranchSucceeded = true;
-    }
-
-    if (elseRelevant) {
-      if (recursivelyMaterializeIntoBranches(elseRegion, loc, expr, destWire))
-        anyBranchSucceeded = true;
-    }
-
-    madeProgress |= anyBranchSucceeded;
-  }
-
-  return madeProgress;
 }
 
 static mlir::Value buildNamedCounterWire(FModuleLike module, mlir::Location loc,
                                          StringRef counterName,
                                          StringRef exprNodeName) {
-  auto lcaFModule = llvm::dyn_cast<FModuleOp>(module.getOperation());
-  if (!lcaFModule)
+  auto fmodule = llvm::dyn_cast<FModuleOp>(module.getOperation());
+  if (!fmodule)
     return {};
 
-  mlir::Block *body = lcaFModule.getBodyBlock();
+  mlir::Block *body = fmodule.getBodyBlock();
   if (!body)
     return {};
 
@@ -710,6 +511,25 @@ static mlir::Value buildNamedCounterWire(FModuleLike module, mlir::Location loc,
 
   b.create<ConnectOp>(loc, wiredCond, namedZero);
   return wiredCond;
+}
+
+static bool connectExprInModule(FModuleOp module, mlir::Location loc,
+                                const std::shared_ptr<LoweredExpr> &expr,
+                                mlir::Value destWire) {
+  if (!module || !destWire || !expr)
+    return false;
+
+  mlir::Block *body = module.getBodyBlock();
+  if (!body)
+    return false;
+
+  mlir::OpBuilder b(body, body->end());
+  auto v = materializeExpr(b, loc, expr);
+  if (!v)
+    return false;
+
+  b.create<ConnectOp>(loc, destWire, v);
+  return true;
 }
 
 } // namespace
@@ -840,26 +660,18 @@ void CounterInserter::insertPerfCounters(
     return;
   }
 
-  // Create one module-scope destination wire, default it to 0, and then
-  // recursively override it inside nested when branches wherever the full
-  // expression becomes visible.
   mlir::Value wiredCond = buildNamedCounterWire(lcaModule, loc, counterName,
-                                                counterName + "_expr_default");
+                                                counterName + "_expr");
   if (!wiredCond) {
     llvm::errs() << "[ERROR] CounterInserter: failed to create counter wire '"
                  << counterName << "'\n";
     return;
   }
 
-  bool success = recursivelyMaterializeIntoBranches(body->getParent(), loc,
-                                                    plan, wiredCond);
-  if (!success) {
-    llvm::errs()
-        << "[WARN] CounterInserter: could not materialize expression for '"
-        << counterName
-        << "' in any valid region. This usually means the expression depends "
-           "on values from mutually exclusive sibling when branches and needs "
-           "an explicit merge strategy.\n";
+  if (!connectExprInModule(lcaFModule, loc, plan, wiredCond)) {
+    llvm::errs() << "[WARN] CounterInserter: failed to materialize expression "
+                 << "for '" << counterName << "' in module "
+                 << lcaModule.getModuleName() << "\n";
     return;
   }
 
@@ -872,8 +684,8 @@ void CounterInserter::insertPerfCounters(
       wireNameAttr, descAttr);
 
   LLVM_DEBUG({
-    llvm::dbgs() << "CounterInserter: inserted branch-aware counter '"
-                 << counterName << "' in module " << lcaModule.getModuleName()
+    llvm::dbgs() << "CounterInserter: inserted counter '" << counterName
+                 << "' in module " << lcaModule.getModuleName()
                  << " using clock port '" << clockReset.clock.portName << "'";
     if (clockReset.reset.value)
       llvm::dbgs() << " and reset port '" << clockReset.reset.portName << "'";
