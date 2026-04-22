@@ -221,7 +221,7 @@ struct AutoCounterAnnotationHelper {
             std::make_error_code(std::errc::invalid_argument));
       resetTarget = *rstTarget;
     } else {
-      resetTarget = "~<unknown>|<unknown> >reset";
+      resetTarget = "~<unknown>|<unknown>>reset";
     }
 
     std::string label = op.getName() ? op.getName()->str() : "<unknown>";
@@ -229,15 +229,35 @@ struct AutoCounterAnnotationHelper {
   }
 };
 
-static void addAnnotationToOp(mlir::Operation *targetOp,
-                              mlir::DictionaryAttr anno) {
+struct DontTouchAnnotationHelper {
+  static constexpr llvm::StringLiteral annotationClass =
+      "firrtl.transforms.DontTouchAnnotation";
+
+  static mlir::DictionaryAttr build(mlir::MLIRContext *ctx) {
+    mlir::Builder b(ctx);
+    return mlir::DictionaryAttr::get(
+        ctx,
+        {b.getNamedAttr("class", b.getStringAttr(annotationClass))});
+  }
+};
+
+static void
+addAnnotationsToOp(mlir::Operation *targetOp,
+                   llvm::ArrayRef<mlir::DictionaryAttr> annosToAdd) {
   firrtl::AnnotationSet annos(targetOp);
-  annos.addAnnotations(mlir::ArrayAttr::get(targetOp->getContext(), {anno}));
+
+  llvm::SmallVector<mlir::Attribute> attrs;
+  attrs.reserve(annosToAdd.size());
+  for (auto anno : annosToAdd)
+    attrs.push_back(anno);
+
+  annos.addAnnotations(mlir::ArrayAttr::get(targetOp->getContext(), attrs));
   annos.applyToOperation(targetOp);
 }
 
-static mlir::LogicalResult addAnnotationToBlockArg(mlir::BlockArgument arg,
-                                                   mlir::DictionaryAttr anno) {
+static mlir::LogicalResult
+addAnnotationsToBlockArg(mlir::BlockArgument arg,
+                         llvm::ArrayRef<mlir::DictionaryAttr> annosToAdd) {
   auto *block = arg.getOwner();
   if (!block)
     return mlir::failure();
@@ -263,7 +283,9 @@ static mlir::LogicalResult addAnnotationToBlockArg(mlir::BlockArgument arg,
   if (auto arr = llvm::dyn_cast<mlir::ArrayAttr>(allPortAnnos[portIdx]))
     thisPortAnnos.assign(arr.begin(), arr.end());
 
-  thisPortAnnos.push_back(anno);
+  for (auto anno : annosToAdd)
+    thisPortAnnos.push_back(anno);
+
   allPortAnnos[portIdx] = mlir::ArrayAttr::get(ctx, thisPortAnnos);
 
   module->setAttr("portAnnotations", mlir::ArrayAttr::get(ctx, allPortAnnos));
@@ -272,7 +294,7 @@ static mlir::LogicalResult addAnnotationToBlockArg(mlir::BlockArgument arg,
 
 static mlir::LogicalResult
 annotateInputSource(circt::perf::PerfCounterOp perfOp,
-                    mlir::DictionaryAttr anno) {
+                    llvm::ArrayRef<mlir::DictionaryAttr> annos) {
   if (perfOp->getNumOperands() == 0) {
     perfOp.emitError("PerfCounterOp has no operands");
     return mlir::failure();
@@ -281,13 +303,13 @@ annotateInputSource(circt::perf::PerfCounterOp perfOp,
   mlir::Value input = perfOp->getOperand(0);
 
   if (mlir::Operation *defOp = input.getDefiningOp()) {
-    addAnnotationToOp(defOp, anno);
+    addAnnotationsToOp(defOp, annos);
     return mlir::success();
   }
 
   if (auto blockArg = llvm::dyn_cast<mlir::BlockArgument>(input)) {
-    if (mlir::failed(addAnnotationToBlockArg(blockArg, anno))) {
-      perfOp.emitError("failed to attach annotation to input block argument");
+    if (mlir::failed(addAnnotationsToBlockArg(blockArg, annos))) {
+      perfOp.emitError("failed to attach annotations to input block argument");
       return mlir::failure();
     }
     return mlir::success();
@@ -320,11 +342,11 @@ void EmitAutoCounterAnnotationsPass::runOnOperation() {
   llvm::SmallVector<mlir::Operation *> opsToErase;
 
   module.walk([&](perf::PerfCounterOp op) {
-    auto annoOrErr = AutoCounterAnnotationHelper::buildFor(op);
-    if (!annoOrErr) {
+    auto autoCounterAnnoOrErr = AutoCounterAnnotationHelper::buildFor(op);
+    if (!autoCounterAnnoOrErr) {
       llvm::errs() << "EmitAutoCounterAnnotations: failed to create "
                       "AutoCounter annotation: "
-                   << llvm::toString(annoOrErr.takeError()) << "\n";
+                   << llvm::toString(autoCounterAnnoOrErr.takeError()) << "\n";
       llvm::errs() << "Offending PerfCounterOp:\n";
       op.print(llvm::errs());
       llvm::errs() << "\n";
@@ -334,11 +356,16 @@ void EmitAutoCounterAnnotationsPass::runOnOperation() {
       return;
     }
 
-    mlir::DictionaryAttr anno = *annoOrErr;
+    mlir::DictionaryAttr autoCounterAnno = *autoCounterAnnoOrErr;
+    mlir::DictionaryAttr dontTouchAnno =
+        DontTouchAnnotationHelper::build(op->getContext());
 
-    if (mlir::failed(annotateInputSource(op, anno))) {
+    llvm::SmallVector<mlir::DictionaryAttr, 2> annos = {autoCounterAnno,
+                                                        dontTouchAnno};
+
+    if (mlir::failed(annotateInputSource(op, annos))) {
       llvm::errs() << "EmitAutoCounterAnnotations: failed to attach "
-                      "annotation to source\n";
+                      "annotations to source\n";
       llvm::errs() << "Offending PerfCounterOp:\n";
       op.print(llvm::errs());
       llvm::errs() << "\n";

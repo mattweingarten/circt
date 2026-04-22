@@ -138,10 +138,13 @@ void Z3Graph::buildZ3Graph() {
     const z3::expr &expr = nodeExprs[i];
 
     const z3::expr canonicalized = canonicalizer.canonicalize(expr);
-
     bool isReg = registers.count(name) > 0;
-    auto node = std::make_shared<Z3Graph::Node>(name, canonicalized, isReg);
 
+    auto node = std::make_shared<Z3Graph::Node>(name, canonicalized, isReg);
+    // if (isReg) {
+    //   llvm::errs() << "We created node for '" << name
+    //                << "'that is a register node.\n";
+    // }
     if (name == rootName)
       root = node;
 

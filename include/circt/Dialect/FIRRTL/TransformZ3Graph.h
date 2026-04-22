@@ -2,15 +2,16 @@
 #ifndef CIRCT_DIALECT_FIRRTL_TransformZ3Graph_H
 #define CIRCT_DIALECT_FIRRTL_TransformZ3Graph_H
 
+#include "llvm/Support/raw_ostream.h"
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include <z3++.h>
-#include <optional>
 
 namespace llvm {
 class raw_ostream;

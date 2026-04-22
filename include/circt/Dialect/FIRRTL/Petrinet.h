@@ -78,24 +78,24 @@ public:
   };
 
   class Node : public GraphElement {
-    public:
+  public:
     explicit Node(Kind k, std::string name)
-    : GraphElement(k, std::move(name)), id(nodeID++) {}
+        : GraphElement(k, std::move(name)), id(nodeID++) {}
     ~Node() override = default;
 
     static bool classof(const GraphElement *ge) {
       if (!ge)
         return false;
       switch (ge->getKind()) {
-        case GE_Node:
-        case GE_Place:
+      case GE_Node:
+      case GE_Place:
       case GE_Transition:
         return true;
       default:
         return false;
       }
     }
-    
+
     unsigned getId() const { return id; }
 
     unsigned numIncoming = 0;
@@ -142,7 +142,7 @@ public:
     }
 
     void writeGraph(llvm::raw_ostream &os) const;
-
+    
     z3::expr expr;
     bool final = false;
   };
@@ -158,41 +158,17 @@ public:
     }
     void writeGraph(llvm::raw_ostream &os) const;
   };
-
-  auto getPlaces() {
-    return llvm::make_filter_range(nodes,
-                                   [](const std::shared_ptr<GraphElement> &n) {
-                                     return llvm::isa<Place>(n.get());
-                                   });
-  }
-
-  auto getTransitions() {
-    return llvm::make_filter_range(nodes,
-                                   [](const std::shared_ptr<GraphElement> &n) {
-                                     return llvm::isa<Transition>(n.get());
-                                   });
-  }
-
-  auto getArcs() {
-    return llvm::make_filter_range(nodes,
-                                   [](const std::shared_ptr<GraphElement> &n) {
-                                     return llvm::isa<Arc>(n.get());
-                                   });
-  }
-
-  auto getInhibitorArcs() {
-    return llvm::make_filter_range(nodes,
-                                   [](const std::shared_ptr<GraphElement> &n) {
-                                     return llvm::isa<InhibitorArc>(n.get());
-                                   });
-  }
-
-  auto getNodes() {
+  template <typename T>
+  auto getFilteredAs() {
     auto range = llvm::make_filter_range(
-        nodes, [](auto &n) { return llvm::isa<Node>(n.get()); });
+        nodes, [](const std::shared_ptr<GraphElement> &n) {
+          return llvm::isa<T>(n.get());
+        });
 
     return llvm::map_range(range,
-                           [](auto &n) { return llvm::cast<Node>(n.get()); });
+                           [](const std::shared_ptr<GraphElement> &n) -> T * {
+                             return llvm::cast<T>(n.get());
+                           });
   }
 
   std::shared_ptr<GraphElement> getNodeByName(const std::string &name) const {
@@ -211,6 +187,12 @@ public:
     return llvm::dyn_cast<T>(node);
   }
 
+  auto getPlaces() { return getFilteredAs<Place>(); }
+  auto getTransitions() { return getFilteredAs<Transition>(); }
+  auto getArcs() { return getFilteredAs<Arc>(); }
+  auto getInhibitorArcs() { return getFilteredAs<InhibitorArc>(); }
+  auto getNodes() { return getFilteredAs<Node>(); }
+
   static std::unique_ptr<Petrinet> createFromZ3(const z3::expr &e,
                                                 const std::string &name);
 
@@ -219,7 +201,7 @@ public:
   void writeGraph(llvm::raw_ostream &os) const;
 
   void writeTransitionToPlaceMatrixCSV(llvm::raw_ostream &os) const;
-  
+
   void writePlaceToTransitionSlotMatrixCSV(llvm::raw_ostream &os) const;
 
   void writePlaceIdNameCSV(llvm::raw_ostream &os) const;

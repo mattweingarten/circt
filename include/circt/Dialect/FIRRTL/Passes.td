@@ -967,12 +967,16 @@ def PrintPetriNet : Pass<"firrtl-print-petri-net", "firrtl::CircuitOp"> {
       "Name of module to run the pass on.">,
     Option<"progressSignal", "progress-signal", "std::string", "\"\"",
       "Name of signal to track as progress.">,
+    Option<"topModule", "top-module", "std::string", "\"\"",
+      "Name of top module. If not specified, the module name will be used as the top module.">,
     Option<"petriFile", "petri-file", "std::string", "\"\"",
       "Name of output file for petrinet.">,
     Option<"debugDirectory", "debug-directory", "std::string", "\".\"",
       "Directory to output debug files to.">,
     Option<"levels", "levels", "int", "-1",
-      "Number of levels to print.">
+      "Number of levels to print.">,
+    Option<"counterMode", "counter-mode", "std::string", "\"place\"",
+      "Counter instrumentation mode: 'place' or 'incoming-transition-edge'.">
   ];
 }
 

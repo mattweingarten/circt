@@ -210,9 +210,11 @@ std::unique_ptr<mlir::Pass> createLowerFireSimAnnotationTypesPass();
 
 std::unique_ptr<mlir::Pass> createCreateCompanionAssume();
 
-std::unique_ptr<mlir::Pass>
-createFIRRTLPrintPetriNetPass(std::string moduleName = "",
-    std::string progressSignal = "", std::string petriFile = "", std::string debugDirectory = "", int levels = -1);
+std::unique_ptr<mlir::Pass> createFIRRTLPrintPetriNetPass(
+    std::string moduleName = "", std::string progressSignal = "",
+    std::string topModule = "", std::string petriFile = "",
+    std::string debugDirectory = "", int levels = -1,
+    std::string counterMode = "place");
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION
 #include "circt/Dialect/FIRRTL/Passes.h.inc"

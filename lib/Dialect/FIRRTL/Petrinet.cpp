@@ -455,22 +455,43 @@ buildIncomingEdgePredicates(const std::shared_ptr<Petrinet::Transition> &t) {
 
     auto place = std::static_pointer_cast<Petrinet::Place>(arc->from);
 
-    auto isBoolLike = [](const z3::expr &e) {
+    auto toBool = [&](const z3::expr &e) -> std::optional<z3::expr> {
       if (e.is_bool())
-        return true;
+        return e;
 
-      if (e.is_bv() && e.get_sort().bv_size() == 1)
-        return true;
+      if (e.is_bv()) {
+        unsigned w = e.get_sort().bv_size();
 
-      return false;
+        if (w == 1)
+          return e == e.ctx().bv_val(1, 1);
+
+        // fallback: non-zero check
+        z3::expr zero = e.ctx().bv_val(0, w);
+
+        llvm::errs() << "\n\n[PETRINET WARNING] Non-boolean place expr "
+                     << "used as predicate (width=" << w << ")\n"
+                     << "  expr: " << e.to_string() << "\n"
+                     << "  -> converting via (expr != 0)\n\n";
+
+        return e != zero;
+      }
+
+      llvm::errs() << "\n\n[PETRINET ERROR] Unsupported predicate type\n"
+                   << "  expr: " << e.to_string() << "\n\n";
+
+      return std::nullopt;
     };
-    if (!isBoolLike(place->expr))
+
+    auto maybeBool = toBool(place->expr);
+    if (!maybeBool)
       continue;
 
+    z3::expr cond = *maybeBool;
+
     if (llvm::isa<Petrinet::InhibitorArc>(arc.get()))
-      preds.push_back(place->expr);
+      preds.push_back(cond);
     else
-      preds.push_back(!place->expr);
+      preds.push_back(!cond);
   }
 
   return preds;
@@ -855,7 +876,6 @@ void Petrinet::writePlaceToTransitionSlotMatrixCSV(
     os << "\n";
   }
 }
-
 
 void Petrinet::writePlaceIdNameCSV(llvm::raw_ostream &os) const {
   std::vector<std::shared_ptr<Place>> places;

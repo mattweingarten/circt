@@ -59,13 +59,16 @@ namespace {
 struct FIRRTLPrintPetriNetPass
     : public circt::firrtl::PrintPetriNetBase<FIRRTLPrintPetriNetPass> {
   FIRRTLPrintPetriNetPass(std::string moduleName, std::string progressSignal,
-                          std::string petriFile, std::string debugDirectory,
-                          int levels) {
+                          std::string topModule, std::string petriFile,
+                          std::string debugDirectory, int levels,
+                          std::string counterMode) {
     moduleName = moduleName;
     progressSignal = progressSignal;
+    topModule = topModule;
     petriFile = petriFile;
     debugDirectory = debugDirectory;
     levels = levels;
+    counterMode = counterMode;
   }
   void runOnOperation() override;
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
@@ -349,13 +352,13 @@ private:
     std::shared_ptr<Z3Graph> subgraph;
     std::shared_ptr<Z3Graph> quasiSubgraph;
     z3::expr finalExpr;
-    z3::expr normalizedExpr;
+    z3::expr normalized_expr;
     std::unique_ptr<Petrinet> petri;
     std::vector<
         std::pair<std::shared_ptr<Petrinet::Transition>, std::vector<z3::expr>>>
         counterExpressions;
 
-    RegisterArtifacts(z3::context &ctx) : finalExpr(ctx), normalizedExpr(ctx) {}
+    RegisterArtifacts(z3::context &ctx) : finalExpr(ctx), normalized_expr(ctx) {}
   };
 
   static bool ensureDir(StringRef dir, mlir::Operation *op, mlir::Pass *pass) {
@@ -405,6 +408,73 @@ private:
     return true;
   }
 
+  static void insertPlaceCounters(
+      FIRRTLPrintPetriNetPassState &state,
+      std::unordered_map<std::string, RegisterArtifacts> &artifactsMap,
+      CounterInserter &counterInserter) {
+
+    int totalPlanned = 0;
+
+    for (auto &[reg, art] : artifactsMap) {
+      for (const auto &place : art.petri->getPlaces()) {
+        auto expr = place->expr;
+        std::string name = "p" + std::to_string(place->id);
+        llvm::errs() << "Inserting counter for place " << place->name
+                     << " of register " << reg << "\n";
+
+        counterInserter.insertPerfCounters(
+            expr, name, state.globalState.targetCache, place->name, false);
+        totalPlanned++;
+      }
+    }
+
+    llvm::errs() << "Finished inserting counters for places: "
+                 << counterInserter.numCountersInserted << "/" << totalPlanned
+                 << "\n";
+  }
+
+  static void insertIncomingTransitionEdgeCounters(
+      FIRRTLPrintPetriNetPassState &state,
+      std::unordered_map<std::string, RegisterArtifacts> &artifactsMap,
+      CounterInserter &counterInserter) {
+    int totalPlanned = 0;
+
+    for (auto &[reg, art] : artifactsMap) {
+      for (auto &[transition, expressions] : art.counterExpressions) {
+        const auto &incomingEdges = transition->incomingEdges;
+
+        if (incomingEdges.size() != expressions.size()) {
+          llvm::errs() << "[WARN] transition " << transition->id
+                       << " has mismatched incomingEdges ("
+                       << incomingEdges.size() << ") and expressions ("
+                       << expressions.size() << ")\n";
+        }
+
+        size_t n = std::min(incomingEdges.size(), expressions.size());
+        for (size_t i = 0; i < n; ++i) {
+          auto &expr = expressions[i];
+          auto &edge = incomingEdges[i];
+          auto &place = edge->from;
+
+          (void)place;
+
+          std::string name =
+              "t" + std::to_string(transition->id) + "_" + std::to_string(i);
+
+          counterInserter.insertPerfCounters(expr, name,
+                                             state.globalState.targetCache);
+          totalPlanned++;
+        }
+      }
+    }
+
+    llvm::errs()
+        << "Finished inserting counters for incoming transition edges, "
+           "with total of "
+        << counterInserter.numCountersInserted << "/" << totalPlanned
+        << " counters inserted.\n";
+  }
+
   static bool computeRegisterArtifacts(
       Z3Graph &z3graph, z3::context &ctx,
       llvm::function_ref<void(const Twine &)> emitErrorFn,
@@ -418,9 +488,14 @@ private:
       auto subgraph = z3graph.createSubgraph(node->name);
       if (!subgraph)
         continue;
+      // llvm::errs() << "Is subgraph: " << node->name
+      //              << " with size: " << subgraph->size() << "\n";
 
       if (subgraph->size() <= 1)
         continue;
+
+      // llvm::errs() << "Is subgraph: " << node->name << "1"
+      //              << "\n";
 
       if (!subgraph->valid) {
         emitErrorFn("failed to create subgraph for register '" + node->name +
@@ -452,16 +527,16 @@ private:
       // z3::set_param("pp.max_num_lines", 1000000);
       // z3::set_param("pp.min_alias_size", 1000000000);
 
-      // auto normalizedExpr = Z3Graph::Canonicalizer::toNNF(finalExpr);
+      auto normalized_expr = Z3Graph::Canonicalizer::toNNF(finalExpr);
       auto can = Z3Graph::Canonicalizer(ctx);
-      auto normalized_expr = finalExpr.simplify();
+      // auto normalized_expr = finalExpr.simplify();
       normalized_expr = can.canonicalize(normalized_expr);
       // llvm::errs() << "Running toDNF for " << node->name << " with original
       // size: " << normalized_expr.to_string().size() << "\n";
-      normalized_expr =
-          Z3Graph::Canonicalizer::toNNF(normalized_expr).simplify();
+      normalized_expr = Z3Graph::Canonicalizer::toNNF(normalized_expr);
 
       normalized_expr = can.canonicalize(normalized_expr);
+      normalized_expr = normalized_expr.simplify();
       // llvm::errs() << "Finished toDNF for " << node->name << " with CNF size:
       // " << normalized_expr.to_string().size() << "\n";
       // TODO: Use CNF or not?
@@ -476,9 +551,9 @@ private:
       auto petri = Petrinet::createFromZ3(normalized_expr, node->name);
 
       // --- Naive ---
-      auto counters = petri->getCountersNaive();
-      llvm::errs() << "Naive counter exprs for: " << node->name << " "
-                   << countExprs(counters) << "\n";
+      // auto counters = petri->getCountersNaive();
+      // llvm::errs() << "Naive counter exprs for: " << node->name << " "
+      //              << countExprs(counters) << "\n";
 
       // // --- Pairs ---
       // counters = petri->getCountersPairs();
@@ -508,10 +583,11 @@ private:
       artifacts.subgraph = std::move(subgraph);
       artifacts.quasiSubgraph = std::move(quasiSubgraph);
       artifacts.finalExpr = finalExpr;
-      artifacts.normalizedExpr = normalized_expr;
+      artifacts.normalized_expr = normalized_expr;
       artifacts.petri = std::move(petri);
-      artifacts.counterExpressions = std::move(counters);
+      // artifacts.counterExpressions = std::move(counters);
 
+      llvm::dbgs() << "Inserting rootgraph with name: " << node->name << "\n";
       artifactsMap.emplace(node->name, std::move(artifacts));
     }
 
@@ -535,15 +611,15 @@ private:
       if (!artifacts.subgraph || !artifacts.quasiSubgraph || !artifacts.petri)
         continue;
 
-      std::string subgraphFile =
-          regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".dot";
-      if (!withOutputFile(
-              subgraphFile,
-              [&](llvm::raw_ostream &os) {
-                artifacts.subgraph->printFullGraphDot(os);
-              },
-              op, pass))
-        return false;
+      // std::string subgraphFile =
+      //     regDir + "/" + normalizeRegisterSubgraphName(rootName) + ".dot";
+      // if (!withOutputFile(
+      //         subgraphFile,
+      //         [&](llvm::raw_ostream &os) {
+      //           artifacts.subgraph->printFullGraphDot(os);
+      //         },
+      //         op, pass))
+      //   return false;
 
       std::string quasiFile =
           regDir + "/" + normalizeRegisterSubgraphName(rootName) + "_quasi.dot";
@@ -606,7 +682,7 @@ private:
       if (!withOutputFile(
               exprFilename,
               [&](llvm::raw_ostream &os) {
-                os << artifacts.normalizedExpr.to_string();
+                os << artifacts.normalized_expr.to_string();
               },
               op, pass))
         return false;
@@ -629,26 +705,27 @@ private:
               op, pass))
         return false;
 
-      if (artifacts.subgraph->domTree) {
-        std::string domFile = domDir + "/" + rootName + "_dom.dot";
-        if (!withOutputFile(
-                domFile,
-                [&](llvm::raw_ostream &os) {
-                  artifacts.subgraph->domTree->printFullGraphDot(os);
-                },
-                op, pass))
-          return false;
-      }
+      // if (artifacts.subgraph->domTree) {
+      //   std::string domFile = domDir + "/" + rootName + "_dom.dot";
+      //   if (!withOutputFile(
+      //           domFile,
+      //           [&](llvm::raw_ostream &os) {
+      //             artifacts.subgraph->domTree->printFullGraphDot(os);
+      //           },
+      //           op, pass))
+      //     return false;
+      // }
 
-      llvm::errs() << "Subgraph create for " << rootName << " with size: "
-                   << (artifacts.quasiSubgraph
-                           ? artifacts.quasiSubgraph->nodes.size()
-                           : 0)
-                   << " and root node: "
-                   << (artifacts.quasiSubgraph && artifacts.quasiSubgraph->root
-                           ? artifacts.quasiSubgraph->root->name
-                           : "null")
-                   << "\n";
+      // llvm::errs() << "Subgraph create for " << rootName << " with size: "
+      //              << (artifacts.quasiSubgraph
+      //                      ? artifacts.quasiSubgraph->nodes.size()
+      //                      : 0)
+      //              << " and root node: "
+      //              << (artifacts.quasiSubgraph &&
+      //              artifacts.quasiSubgraph->root
+      //                      ? artifacts.quasiSubgraph->root->name
+      //                      : "null")
+      //              << "\n";
     }
 
     return true;
@@ -659,9 +736,11 @@ private:
   using CallInfo =
       FIRRTLPrintPetriNetPassState::LocalState::InterproceduralState::CallInfo;
 
-  FIRRTLPrintPetriNetPassState initializeState(CircuitOp circuit, FModuleOp top,
-                                               mlir::Operation *op) {
+  FIRRTLPrintPetriNetPassState
+  initializeState(CircuitOp circuit, FModuleOp top, mlir::Operation *op,
+                  std::vector<CallInfo> &startingCallerContext) {
     FIRRTLPrintPetriNetPassState state(circuit, top);
+    state.localState.interproceduralState.callerContext = startingCallerContext;
     auto starting_activation = ActivationPoint::create(state, op);
 
     state.stageState.activePoints.insert(starting_activation);
@@ -917,9 +996,11 @@ private:
   }
 
   void init();
-  mlir::Operation *findProgressSignal(circt::firrtl::CircuitOp circuitOp,
-                                      std::string progressSignal,
-                                      std::string moduleName);
+  mlir::Operation *findProgressSignal(
+      circt::firrtl::CircuitOp circuitOp, std::string progressSignal,
+      std::string moduleName, std::string topModule,
+      std::vector<FIRRTLPrintPetriNetPassState::LocalState::
+                      InterproceduralState::CallInfo> &callerContext);
 
   static bool isEnd(mlir::Operation *op) {
     return llvm::isa<firrtl::RegOp>(op) || llvm::isa<firrtl::RegResetOp>(op);
@@ -1216,7 +1297,14 @@ private:
     }
 
     if (auto arg = llvm::dyn_cast<mlir::BlockArgument>(value)) {
-      return handleBlockArgument(arg, state);
+      // Special case where we don't go through handleOp, we setup the correct
+      // state here.
+      FIRRTLPrintPetriNetPassState::LocalState ls =
+          state.localState; // copy current local state for potential use in
+                            // recursive calls
+      auto res = handleBlockArgument(arg, state);
+      state.localState = ls;
+      return res;
     }
     ASSERT_STATE_DEBUG(false &&
                        "Value has no defining op and is not a block argument");
@@ -1352,12 +1440,13 @@ private:
     // this a correct assumption?
 
     // Look for connect that has this block argument as a destination
-    LLVM_DEBUG(llvm::dbgs()
-               << "[PETRINET] Stepping into module: " << moduleOp.getName()
-               << " via injected port argument #" << state.getCurrInjectedPort()
-               << " ("
-               << moduleOp.getPortName(state.getCurrInjectedPort()).str()
-               << ")\n");
+    LLVM_DEBUG({
+      llvm::dbgs() << "[PETRINET] Stepping into module: " << moduleOp.getName()
+                   << " via injected port argument #"
+                   << state.getCurrInjectedPort() << " ("
+                   << moduleOp.getPortName(state.getCurrInjectedPort()).str()
+                   << ")\n";
+    });
     auto *body = moduleOp.getBodyBlock();
     assert(body && "FModuleOp must have a body block");
     assert(state.getCurrInjectedPort() < body->getNumArguments() &&
@@ -1431,9 +1520,6 @@ private:
         parentOp, op, FModuleOpt->getOperation(), matchingResultIdx};
 
     state.callerContext().push_back(ci);
-    LLVM_DEBUG(llvm::dbgs()
-               << "[PETRINET] Resolved target module for instance: "
-               << FModuleOpt->getName() << "\n");
 
     return stepIntoModule(*FModuleOpt, state);
   }
@@ -1459,6 +1545,9 @@ private:
         llvm::isa<circt::firrtl::RegOp>(op)) {
       LLVM_DEBUG(llvm::dbgs() << "[PETRINET] This is a reg or regreset op, "
                                  "adding to initial state\n");
+
+      // llvm::errs() << "[PETRINET] Adding register to initial state: " << name
+      //              << "\n";
       state.globalState.registers.insert(name);
     }
 
@@ -1649,9 +1738,11 @@ private:
     // llvm::dbgs() << "Stepping out to: " << callinfo.caller->getName() <<
     // "\n";
     assert(callinfo.callee && "Callee module in callsite context is null");
-
+    auto calleeName =
+        callinfo.callsite->getParentOfType<circt::firrtl::FModuleOp>()
+            .getName();
     LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Stepping out of module into "
-                            << *callinfo.callsite << "\n");
+                            << calleeName << "\n");
 
     unsigned portIdx = barg.getArgNumber();
     auto callsiteResult = callinfo.callsite->getResult(portIdx);
@@ -1731,11 +1822,28 @@ private:
 
     std::optional<unsigned> wOpt = getFIRRTLBitWidth(fieldType);
     auto name = getQualifiedPortNameFromBlockArg(barg, state);
-    LLVM_DEBUG(llvm::dbgs()
-               << "[PETRINET] Handling block argument: " << name
-               << ", bit width: " << (wOpt ? std::to_string(*wOpt) : "unknown")
-               << "\n");
 
+    LLVM_DEBUG({
+      llvm::dbgs() << "[PETRINET] Handling block argument: " << name
+                   << ", bit width: "
+                   << (wOpt ? std::to_string(*wOpt) : "unknown") << "\n";
+      llvm::dbgs() << indent(2) << "callerContext:\n";
+      for (const auto &ci :
+           state.localState.interproceduralState.callerContext) {
+        llvm::dbgs() << indent(3) << "CallInfo\n";
+        llvm::dbgs() << indent(4) << "caller    : " << ci.caller->getName()
+                     << "\n";
+        llvm::dbgs() << indent(4) << "callsite  : " << *ci.callsite << "\n";
+        llvm::dbgs() << indent(4) << "callee    : " << ci.callee->getName()
+                     << "\n";
+        llvm::dbgs() << indent(4) << "injectIdx : " << ci.injectPortIdx << "\n";
+      }
+      state.dump(llvm::dbgs());
+      LLVM_DEBUG(llvm::dbgs()
+                 << "[PETRINET] Handling block argument: " << name
+                 << ", bit width: "
+                 << (wOpt ? std::to_string(*wOpt) : "unknown") << "\n");
+    });
     if (wOpt && *wOpt > 1) {
       z3::expr e = state.ctx().bv_const(name.c_str(), *wOpt);
 
@@ -2067,7 +2175,6 @@ private:
       ASSERT_STATE_DEBUG(ops.size() == 2 && "geq expects exactly 2 operands");
       mlir::Value lhsVal = ops[0];
       mlir::Value rhsVal = ops[1];
-
       auto [lhs, rhs] = typeConflictResolutionForceBV(
           handleValue(lhsVal, state), handleValue(rhsVal, state), state);
       return (lhs >= rhs);
@@ -2117,6 +2224,30 @@ private:
       z3::expr is_all_ones = (input == all_ones);
       return z3::ite(is_all_ones, state.ctx().bv_val(1, 1),
                      state.ctx().bv_val(0, 1));
+    }
+
+    if (auto xorrOp = llvm::dyn_cast<circt::firrtl::XorRPrimOp>(op)) {
+      auto inputVal = xorrOp.getOperand();
+      z3::expr input = handleValue(inputVal, state);
+
+      if (input.is_bool()) {
+        return input;
+      }
+
+      unsigned w = input.get_sort().bv_size();
+      z3::expr parity = state.ctx().bv_val(0, 1);
+
+      for (unsigned i = 0; i < w; ++i) {
+        z3::expr bit = input.extract(i, i);
+        parity = parity ^ bit;
+      }
+
+      LLVM_DEBUG(llvm::dbgs()
+                 << "[PETRINET] Handling XorRPrimOp, input: "
+                 << input.to_string() << ", parity: " << parity.to_string()
+                 << " for op " << *op << "\n");
+
+      return parity;
     }
 
     if (auto shrOp = llvm::dyn_cast<circt::firrtl::ShrPrimOp>(op)) {
@@ -2304,6 +2435,17 @@ private:
 
       auto e = in.extract(hi, lo);
       return e;
+    }
+
+    if (auto cvtPrimOp = llvm::dyn_cast<circt::firrtl::CvtPrimOp>(op)) {
+      mlir::Value inVal = cvtPrimOp.getInput();
+      unsigned inWidth = getFIRRTLBitWidth(inVal).value_or(1);
+      z3::expr in = asBV(handleValue(inVal, state), inWidth, state);
+
+      if (mlir::isa<circt::firrtl::UIntType>(inVal.getType()))
+        return z3::zext(in, 1);
+
+      return in;
     }
 
     // TODO: FIX THIS
@@ -3021,44 +3163,101 @@ void FIRRTLPrintPetriNetPass::init() {
 
   os << "# Petri net...\n";
 }
+mlir::Operation *FIRRTLPrintPetriNetPass::findProgressSignal(
+    circt::firrtl::CircuitOp circuitOp, std::string progressSignal,
+    std::string moduleName, std::string topModule,
+    std::vector<FIRRTLPrintPetriNetPassState::LocalState::InterproceduralState::
+                    CallInfo> &startingCallerContext) {
 
-mlir::Operation *
-FIRRTLPrintPetriNetPass::findProgressSignal(circt::firrtl::CircuitOp circuitOp,
-                                            std::string progressSignal,
-                                            std::string moduleName) {
+  using CallInfo =
+      FIRRTLPrintPetriNetPassState::LocalState::InterproceduralState::CallInfo;
 
   mlir::Operation *progressOp = nullptr;
-  circuitOp.walk([&](firrtl::FModuleOp moduleOP) {
-    if (moduleOP.getName() != moduleName)
-      return;
-    moduleOP.walk([&](mlir::Operation *op) {
-      if (auto nameableOp = llvm::dyn_cast<firrtl::FNamableOp>(op)) {
-        if (nameableOp.getNameAttr().getValue() == progressSignal) {
-          progressOp = op;
-          return;
-        }
-      }
-    });
+  startingCallerContext.clear();
+
+  llvm::DenseMap<llvm::StringRef, firrtl::FModuleOp> moduleMap;
+  circuitOp.walk([&](firrtl::FModuleOp moduleOp) {
+    moduleMap[moduleOp.getName()] = moduleOp;
   });
+
+  auto topIt = moduleMap.find(topModule);
+  if (topIt == moduleMap.end()) {
+    emitError(circuitOp.getLoc()) << "could not find top module: " << topModule;
+    signalPassFailure();
+    return nullptr;
+  }
+
+  auto targetIt = moduleMap.find(moduleName);
+  if (targetIt == moduleMap.end()) {
+    emitError(circuitOp.getLoc())
+        << "could not find target module: " << moduleName;
+    signalPassFailure();
+    return nullptr;
+  }
+
+  std::function<bool(firrtl::FModuleOp, std::vector<CallInfo> &)> dfs =
+      [&](firrtl::FModuleOp currentModule,
+          std::vector<CallInfo> &callerContext) -> bool {
+    // Only search for the signal inside the requested target module.
+    if (currentModule.getName() == moduleName) {
+      bool foundInThisModule = false;
+      currentModule.walk([&](mlir::Operation *op) {
+        if (foundInThisModule)
+          return;
+
+        if (auto nameableOp = llvm::dyn_cast<firrtl::FNamableOp>(op)) {
+          auto nameAttr = nameableOp.getNameAttr();
+          if (nameAttr && nameAttr.getValue() == progressSignal) {
+            progressOp = op;
+            startingCallerContext = callerContext;
+            foundInThisModule = true;
+          }
+        }
+      });
+
+      if (foundInThisModule)
+        return true;
+    }
+
+    // Recurse through instances reachable from the current module.
+    for (auto &op : *currentModule.getBodyBlock()) {
+      auto inst = llvm::dyn_cast<firrtl::InstanceOp>(&op);
+      if (!inst)
+        continue;
+
+      auto calleeIt = moduleMap.find(inst.getModuleName());
+      if (calleeIt == moduleMap.end())
+        continue;
+
+      firrtl::FModuleOp calleeModule = calleeIt->second;
+
+      CallInfo ci{
+          currentModule.getOperation(), // caller
+          inst.getOperation(),          // callsite
+          calleeModule.getOperation(),  // callee
+          0                             // injectPortIdx placeholder
+      };
+
+      callerContext.push_back(ci);
+      if (dfs(calleeModule, callerContext))
+        return true;
+      callerContext.pop_back();
+    }
+
+    return false;
+  };
+
+  std::vector<CallInfo> callerContext;
+  dfs(topIt->second, callerContext);
+
   if (!progressOp) {
     emitError(circuitOp.getLoc())
-        << "could not find progress signal: " << progressSignal;
+        << "could not find progress signal: " << progressSignal
+        << " inside module: " << moduleName
+        << " reachable from top module: " << topModule;
     signalPassFailure();
   }
 
-  if (progressOp->getNumResults() != 1) {
-    progressOp->emitError() << "progressOp must have exactly one result";
-    signalPassFailure();
-  }
-
-  mlir::Type ty = progressOp->getResult(0).getType();
-
-  auto uintTy = ty.dyn_cast<UIntType>();
-  if (!uintTy || uintTy.getWidth() != 1) {
-    progressOp->emitError()
-        << "progressOp result must be UInt<1>, but got " << ty;
-    signalPassFailure();
-  }
   return progressOp;
 }
 
@@ -3068,11 +3267,19 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
   LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Progress signal: " << progressSignal
                           << "\n");
   init();
+  using CallInfo =
+      FIRRTLPrintPetriNetPassState::LocalState::InterproceduralState::CallInfo;
+  std::vector<CallInfo> startingCallerContext;
   mlir::Operation *op =
-      findProgressSignal(getOperation(), progressSignal, moduleName);
+      findProgressSignal(getOperation(), progressSignal, moduleName, topModule,
+                         startingCallerContext);
 
-  LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Progress signal found " << *op
-                          << "\n");
+  for (auto &ci : startingCallerContext) {
+    llvm::errs() << "  caller module: "
+                 << llvm::cast<firrtl::FModuleOp>(ci.caller).getName() << ", "
+                 << "callee module: "
+                 << llvm::cast<firrtl::FModuleOp>(ci.callee).getName() << "\n";
+  }
   auto circuit = llvm::cast<circt::firrtl::CircuitOp>(getOperation());
   mlir::StringAttr topNameAttr = circuit.getNameAttr();
   auto topModule =
@@ -3080,12 +3287,27 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
           circuit, topNameAttr);
 
   assert(topModule && "Top module not found");
-  FIRRTLPrintPetriNetPassState state = initializeState(circuit, topModule, op);
+  // Add this so we can exit the progress signal at the start:
+
+  FIRRTLPrintPetriNetPassState state =
+      initializeState(circuit, topModule, op, startingCallerContext);
+  // auto progressAnnoPathValue = createAnnoPathForCallerContext(state, op);
+  // auto progressAnnoName = annoToString(progressAnnoPathValue);
+  // llvm::dbgs() << "[PETRINET] Progress annotation name: " << progressAnnoName
+  //              << "\n";
+  // LLVM_DEBUG(llvm::dbgs() << "[PETRINET] Progress signal found " << *op
+  //                         << "\n");
+  // llvm::errs() << "With starting callercontext: "
+  //              << "\n";
+
   auto target = getTargetAnno(op, state);
   auto rootGraphName = annoToString(target);
+  llvm::dbgs() << "[PETRINET] Root graph name: " << rootGraphName << "\n";
   state.globalState.targetCache[rootGraphName] = target;
 
   if (llvm::isa<firrtl::RegResetOp>(op) || llvm::isa<firrtl::RegOp>(op)) {
+    llvm::errs() << "We see register op, so we insert " << annoToString(target)
+                 << " into registers set directly.\n";
     state.globalState.registers.insert(annoToString(target));
   }
 
@@ -3115,8 +3337,7 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
     }
   }
 
-  // Cleanup to add the final registers at the analysis boundary:
-
+  // Cleanup to add the final registers at the analysis boundary?
   for (const auto &ap : state.activePoints()) {
     z3::expr edge_node_expr = handleRegisterLike(ap.op, state);
     auto edge_target = getTargetAnno(ap.op, state);
@@ -3124,6 +3345,8 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
     state.globalState.targetCache[edge_node_name] = edge_target;
     state.finalExprs().push_back(edge_node_expr);
     state.nodeNames().push_back(edge_node_name);
+    // llvm::errs() << "Inserting final edge node for active point: " << *ap.op
+    //              << " with name: " << edge_node_name << "\n";
     state.globalState.registers.insert(edge_node_name);
   }
 
@@ -3133,7 +3356,7 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
   z3::context &ctx = state.ctx();
 
   auto z3graph = std::make_unique<Z3Graph>(
-      ctx, state.globalState.nodeNames, progressSignal,
+      ctx, state.globalState.nodeNames, rootGraphName,
       state.globalState.finalExprs, state.globalState.registers);
   z3graph->buildZ3Graph();
 
@@ -3177,25 +3400,16 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
 
   auto &ig = getAnalysis<circt::firrtl::InstanceGraph>();
 
-  auto counterInserter = CounterInserter::create(circuit, ig);
-  if (!counterInserter)
+  auto counterInserter = CounterInserter(circuit, ig);
+
+  if (counterMode == "place") {
+    insertPlaceCounters(state, artifactsMap, counterInserter);
+  } else if (counterMode == "transition") {
+    insertIncomingTransitionEdgeCounters(state, artifactsMap, counterInserter);
+  } else {
+    llvm::errs() << "Unknown counter mode: " << this->counterMode << "\n";
+    signalPassFailure();
     return;
-
-  for (auto &[reg, art] : artifactsMap) {
-    for (auto &[transition, expressions] : art.counterExpressions) {
-      const auto &incomingEdges = transition->incomingEdges;
-      int i = 0;
-      for (auto &expr : expressions) {
-        auto &p = incomingEdges[i]->from;
-        std::string name =
-            "t" + std::to_string(transition->id) + "_" + std::to_string(i);
-
-        counterInserter->insertPerfCounters(expr, name,
-                                            state.globalState.targetCache);
-
-        i++;
-      }
-    }
   }
 
   llvm::errs() << "Finished pass\n";
@@ -3211,18 +3425,21 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
   if (rootArtifact == artifactsMap.end()) {
     emitError(getOperation()->getLoc())
         << "could not find root graph for progress signal: " << rootGraphName;
+    for (auto &[name, artifact] : artifactsMap) {
+      llvm::errs() << "  available graph: " << name << "\n";
+    }
     signalPassFailure();
     return;
   }
 
   // auto normalized_expr = rootArtifact->second.finalExpr.simplify();
 
-  auto normalized_expr = rootArtifact->second.finalExpr.simplify();
+  auto normalized_expr = rootArtifact->second.finalExpr;
   auto can = Z3Graph::Canonicalizer(ctx);
-  normalized_expr = can.canonicalize(normalized_expr).simplify();
-  // normalized_expr = Z3Graph::Canonicalizer::toNNF(normalized_expr);
-  // auto normalized_expr =
-  //     Z3Graph::Canonicalizer::toNNF(rootArtifact->second.finalExpr.simplify());
+  normalized_expr = can.canonicalize(normalized_expr);
+  normalized_expr = normalized_expr.simplify();
+  normalized_expr = Z3Graph::Canonicalizer::toNNF(normalized_expr);
+  normalized_expr = normalized_expr.simplify();
 
   z3::set_param("pp.max_depth", 1000000);
   z3::set_param("pp.max_num_lines", 1000000);
@@ -3306,8 +3523,10 @@ void FIRRTLPrintPetriNetPass::runOnOperation() {
 };
 
 std::unique_ptr<mlir::Pass> circt::firrtl::createFIRRTLPrintPetriNetPass(
-    std::string moduleName, std::string progressSignal, std::string petriFile,
-    std::string debugDirectory, int levels) {
+    std::string moduleName, std::string progressSignal, std::string topModule,
+    std::string petriFile, std::string debugDirectory, int levels,
+    std::string counterMode) {
   return std::make_unique<FIRRTLPrintPetriNetPass>(
-      moduleName, progressSignal, petriFile, debugDirectory, levels);
+      moduleName, progressSignal, topModule, petriFile, debugDirectory, levels,
+      counterMode);
 }
