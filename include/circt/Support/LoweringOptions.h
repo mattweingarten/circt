@@ -61,7 +61,7 @@ struct LoweringOptions {
 
   /// If true, emits `sv.alwayscomb` as Verilog `always @(*)` statements.
   /// Otherwise, print them as `always_comb`.
-  bool noAlwaysComb = false;
+  bool noAlwaysComb = true;
 
   /// If true, expressions are allowed in the sensitivity list of `always`
   /// statements, otherwise they are forced to be simple wires. Some EDA
@@ -70,15 +70,15 @@ struct LoweringOptions {
 
   /// If true, eliminate packed arrays for tools that don't support them (e.g.
   /// Yosys).
-  bool disallowPackedArrays = false;
+  bool disallowPackedArrays = true;
 
   /// If true, eliminate packed struct assignments in favor of a wire +
   /// assignments to the individual fields.
-  bool disallowPackedStructAssignments = false;
+  bool disallowPackedStructAssignments = true;
 
   /// If true, do not emit SystemVerilog locally scoped "automatic" or logic
   /// declarations - emit top level wire and reg's instead.
-  bool disallowLocalVariables = false;
+  bool disallowLocalVariables = true;
 
   /// If true, verification statements like `assert`, `assume`, and `cover` will
   /// always be emitted with a label. If the statement has no label in the IR, a

@@ -255,6 +255,10 @@ def LowerMemory : Pass<"firrtl-lower-memory", "firrtl::CircuitOp"> {
     This pass lowers FIRRTL memory operations to generated modules.
   }];
   let constructor = "circt::firrtl::createLowerMemoryPass()";
+  let options = [
+    Option<"fakeramCfgFile", "fakeram-cfg-file", "std::string", "\"~/fakeram-cfg.json\"",
+      "Output file to which the tool writes the FakeRAM configuration.">
+  ];
   let statistics = [
     Statistic<"numCreatedMemModules", "num-created-mem-modules",
       "Number of modules created">,

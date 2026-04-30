@@ -4810,7 +4810,8 @@ LogicalResult StmtEmitter::visitSV(AlwaysCombOp op) {
   startStatement();
 
   ps.addCallback({op, true});
-  StringRef opString = "always_comb";
+  //StringRef opString = "always_comb";
+  StringRef opString = "always @(*)";
   if (state.options.noAlwaysComb)
     opString = "always @(*)";
 
@@ -4911,10 +4912,12 @@ LogicalResult StmtEmitter::visitSV(CaseOp op) {
     opname = "case";
     break;
   case CaseStmtType::CaseXStmt:
-    opname = "casex";
+    //opname = "casex";
+    opname = "case";
     break;
   case CaseStmtType::CaseZStmt:
-    opname = "casez";
+    //opname = "casez";
+    opname = "case";
     break;
   }
   ps << opname << " (";
@@ -6068,7 +6071,7 @@ public:
   explicit FileEmitter(VerilogEmitterState &state) : EmitterBase(state) {}
 
   void emit(emit::FileOp op) {
-    emit(op.getBody());
+    //emit(op.getBody());
     ps.eof();
   }
   void emit(emit::FragmentOp op) { emit(op.getBody()); }
@@ -6209,6 +6212,8 @@ void SharedEmitterState::gatherFiles(bool separateModules) {
     auto info = OpFileInfo{&op, replicatedOps.size()};
 
     bool isFileOp = isa<emit::FileOp, emit::FileListOp>(&op);
+
+    if (isFileOp) continue;
 
     bool hasFileName = false;
     bool emitReplicatedOps = !isFileOp;
@@ -6440,7 +6445,7 @@ static void emitOperation(VerilogEmitterState &state, Operation *op) {
         ModuleEmitter(state).emitStatement(typedecls);
       })
       .Case<emit::FileOp, emit::FileListOp, emit::FragmentOp>(
-          [&](auto op) { FileEmitter(state).emit(op); })
+          [&](auto op) { /*FileEmitter(state).emit(op);*/ })
       .Case<MacroDefOp>(
           [&](auto op) { ModuleEmitter(state).emitStatement(op); })
       .Default([&](auto *op) {

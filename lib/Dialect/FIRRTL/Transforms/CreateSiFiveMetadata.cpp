@@ -30,6 +30,8 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/Path.h"
 
+#include <fstream>
+
 using namespace circt;
 using namespace firrtl;
 
@@ -520,6 +522,7 @@ CreateSiFiveMetadataPass::emitMemoryMetadata(ObjectModelIR &omir) {
     jsonStream.object([&] {
       jsonStream.attribute("module_name",
                            addSymbolToVerbatimOp(mem, jsonSymbols));
+      jsonStream.attribute("name", std::string(SymbolTable::getSymbolName(mem).data()));
       jsonStream.attribute("depth", (int64_t)mem.getDepth());
       jsonStream.attribute("width", (int64_t)width);
       jsonStream.attribute("masked", isMasked);
@@ -597,6 +600,10 @@ CreateSiFiveMetadataPass::emitMemoryMetadata(ObjectModelIR &omir) {
       createMemMetadata(mem, dutJson, seqMemConfStr, jsonSymbols,
                         seqMemSymbols);
   });
+
+  std::ofstream f("metadata/mem_modules.json");
+  f << dutJsonBuffer << std::endl;
+  f.close();
 
   auto *context = &getContext();
   auto builder = ImplicitLocOpBuilder::atBlockEnd(UnknownLoc::get(context),
