@@ -17,7 +17,6 @@
 #include "circt/Dialect/FIRRTL/FIRRTLVisitors.h"
 #include "circt/Dialect/FIRRTL/Passes.h"
 #include "circt/Support/FieldRef.h"
-#include "circt/Support/Namespace.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
 
@@ -29,20 +28,6 @@ using namespace firrtl;
 static void mergeBlock(Block &destination, Block::iterator insertPoint,
                        Block &source) {
   destination.getOperations().splice(insertPoint, source.getOperations());
-}
-
-static void uniquifyBlockNames(Block &block, circt::Namespace &names) {
-  for (auto &op : block) {
-    auto nameAttr = op.getAttrOfType<StringAttr>("name");
-    if (!nameAttr)
-      continue;
-
-    auto oldName = nameAttr.getValue();
-    auto newName = names.newName(oldName);
-
-    if (newName != oldName)
-      op.setAttr("name", StringAttr::get(op.getContext(), newName));
-  }
 }
 
 /// This is a stack of hashtables, if lookup fails in the top-most hashtable,
@@ -633,6 +618,11 @@ void WhenOpVisitor::visitStmt(RefReleaseInitialOp op) {
   op.getPredicateMutable().assign(andWithCondition(op, op.getPredicate()));
 }
 
+/// This is a common helper that is dispatched to by the concrete visitors.
+/// This condition should be the conjunction of all surrounding WhenOp
+/// condititions.
+///
+/// This requires WhenOpVisitor to be fully defined.
 template <typename ConcreteT>
 void LastConnectResolver<ConcreteT>::processWhenOp(WhenOp whenOp,
                                                    Value outerCondition) {
@@ -642,44 +632,43 @@ void LastConnectResolver<ConcreteT>::processWhenOp(WhenOp whenOp,
   auto condition = whenOp.getCondition();
   auto ui1Type = condition.getType();
 
+  // Process both sides of the WhenOp, fixing up all simulation constructs,
+  // and resolving last connect semantics in each block. This process returns
+  // the set of connects in each side of the when op.
+
+  // Process the `then` block. If we are already in a whenblock, the we need to
+  // conjoin ('and') the outer conditions.
   Value thenCondition = whenOp.getCondition();
   if (outerCondition)
     thenCondition =
         b.createOrFold<AndPrimOp>(loc, ui1Type, outerCondition, thenCondition);
 
-  circt::Namespace names;
-  for (auto &op : *parentBlock)
-    if (auto nameAttr = op.getAttrOfType<StringAttr>("name"))
-      (void)names.newName(nameAttr.getValue());
-      
   auto &thenBlock = whenOp.getThenBlock();
   driverMap.pushScope();
   WhenOpVisitor(driverMap, thenCondition).process(thenBlock);
-
-  uniquifyBlockNames(thenBlock, names);
-
   mergeBlock(*parentBlock, Block::iterator(whenOp), thenBlock);
   auto thenScope = driverMap.popScope();
 
+  // Process the `else` block.
   DriverMap elseScope;
   if (whenOp.hasElseRegion()) {
+    // Else condition is the complement of the then condition.
     auto elseCondition =
         b.createOrFold<NotPrimOp>(loc, condition.getType(), condition);
+    // Conjoin the when condition with the outer condition.
     if (outerCondition)
       elseCondition = b.createOrFold<AndPrimOp>(loc, ui1Type, outerCondition,
                                                 elseCondition);
-
     auto &elseBlock = whenOp.getElseBlock();
     driverMap.pushScope();
     WhenOpVisitor(driverMap, elseCondition).process(elseBlock);
-
-    uniquifyBlockNames(elseBlock, names);
-
     mergeBlock(*parentBlock, Block::iterator(whenOp), elseBlock);
     elseScope = driverMap.popScope();
   }
 
   mergeScopes(loc, thenScope, elseScope, condition);
+
+  // Delete the now empty WhenOp.
   whenOp.erase();
 }
 
