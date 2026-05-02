@@ -23,9 +23,10 @@ namespace circt {
 namespace perf {
 
 std::unique_ptr<mlir::Pass>
-createEmitAutoCounterAnnotationsPass(llvm::StringRef outputDir = "");
+createEmitFireSimAnnotationsPass(llvm::StringRef outputDir = "");
 
 std::unique_ptr<mlir::Pass> createInsertCounterPass();
+std::unique_ptr<mlir::Pass> createInsertTracePass();
 
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION

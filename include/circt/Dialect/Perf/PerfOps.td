@@ -95,29 +95,27 @@ def PerfSamplerOp : PerfOp<"sampler", [Clocked, AttrSizedOperandSegments]> {
   }];
 }
 
-def PerfTraceOp : PerfOp<"trace", [Clocked, AttrSizedOperandSegments]> {
+def PerfTraceOp : PerfOp<"trace", [
+  Clocked,
+]> {
   let summary = "conditional trace event";
   let description = [{}];
 
   let arguments = (ins
-    AnyType:$value,
-    Optional<AnyBoolType>:$cond,
+    AnyBoolType:$cond,
     AnyClockType:$clk,
     Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
     OptionalAttr<StrAttr>:$desc
   );
-
+  let results = (outs);
   let assemblyFormat = [{
-    $value `:` type($value)
-    (`,` $cond^ `:` type($cond))?
+    $cond `:` type($cond)
+    (`,` $name^ (`,` $desc^)? )? 
     `,` $clk `:` type($clk)
-    (`,` $reset^ `:` type($reset))?
-    (`,` $name^  (`,` $desc^)?)?
+    (`,` $reset^ `:` type($reset) )?
     attr-dict
   }];
-
-  let results = (outs);
 }
 
 #endif // CIRCT_DIALECT_PERF_PERFOPS_TD

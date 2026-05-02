@@ -1,6 +1,7 @@
 add_circt_dialect_library(CIRCTPerfTransforms
-  EmitAutoCounterAnnotations.cpp
+  EmitFireSimAnnotations.cpp
   InsertCounterPass.cpp
+  InsertTracePass.cpp
   PerfHelpers.cpp
   
 
