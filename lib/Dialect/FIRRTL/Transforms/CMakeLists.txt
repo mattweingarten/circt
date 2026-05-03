@@ -47,6 +47,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   MergeConnections.cpp
   ModuleInliner.cpp
   PassiveWires.cpp
+  PowerTrace.cpp
   PrefixModules.cpp
   PrintFIRRTLFieldSource.cpp
   PrintInstanceGraph.cpp
@@ -64,6 +65,8 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
 
   DEPENDS
   CIRCTFIRRTLTransformsIncGen
+  CIRCTPerfTransformsIncGen
+  CIRCTPerfTransforms
   MLIROMIncGen
   MLIROMAttrIncGen
   MLIROMOpInterfacesIncGen
@@ -74,6 +77,7 @@ add_circt_dialect_library(CIRCTFIRRTLTransforms
   CIRCTEmit
   CIRCTHW
   CIRCTOM
+  CIRCTPerfTransforms
   CIRCTSV
   CIRCTSupport
   MLIRIR

@@ -256,7 +256,7 @@ def LowerMemory : Pass<"firrtl-lower-memory", "firrtl::CircuitOp"> {
   }];
   let constructor = "circt::firrtl::createLowerMemoryPass()";
   let options = [
-    Option<"fakeramCfgFile", "fakeram-cfg-file", "std::string", "\"~/fakeram-cfg.json\"",
+    Option<"fakeramCfgFile", "fakeram-cfg-file", "std::string", "\"fakeram-cfg.json\"",
       "Output file to which the tool writes the FakeRAM configuration.">
   ];
   let statistics = [
@@ -278,6 +278,28 @@ def LowerMultibitMux : Pass<"firrtl-lower-multibitmux", "firrtl::FModuleOp"> {
     Statistic<"numLoweredMuxes", "num-lowered-multibit-muxes",
       "Number of multibit muxes lowered">,
   ];
+}
+
+def PowerTrace : Pass<"firrtl-power-trace", "firrtl::CircuitOp"> {
+  let summary = "Cluster circuit into power-significant regions";
+  let description = [{
+    This pass lowers FIRRTL mux operations with multibit result types into
+    equivalent compositions of single-bit muxes.
+  }];
+  let constructor = "circt::firrtl::createPowerTracePass()";
+  let statistics = [
+    Statistic<"numLoweredMuxes", "num-lowered-multibit-muxes",
+      "Number of multibit muxes lowered">,
+  ];
+  let options = [
+    Option<"powerFilename", "power-file", "std::string", "\"power.csv\"",
+      "Input CSV file name for the per-signal power characterization.">,
+    Option<"logFilename", "log-file", "std::string", "\"firrtl-power-trace.log\"",
+      "Log file.">,
+    Option<"pnrTop", "pnr-top", "std::string", "\"DigitalTop\"",
+      "Module name for the top-level instance in the placed and routed design.">,
+    Option<"maxNumClusters", "num-clusters", "int", "512",
+      "Number of clusters to form">];
 }
 
 def Dedup : Pass<"firrtl-dedup", "firrtl::CircuitOp"> {
@@ -745,10 +767,10 @@ def LowerXMR : Pass<"firrtl-lower-xmr", "firrtl::CircuitOp"> {
 def LowerIntmodules : Pass<"firrtl-lower-intmodules", "firrtl::CircuitOp"> {
   let summary = "Lower instances instances of intrinsic modules to ops.";
   let description = [{
-    This pass replaces instances of intrinsic modules (intmodule) with 
+    This pass replaces instances of intrinsic modules (intmodule) with
     `firrtl.int.generic` operations, and removes the intmodule's from
     the circuit.
- 
+
     Use this before running LowerIntrinsics.
   }];
   let constructor = "circt::firrtl::createLowerIntmodulesPass()";
@@ -996,8 +1018,8 @@ def PrintPetriNet : Pass<"firrtl-print-petri-net", "firrtl::CircuitOp"> {
     The Petri net is a representation of the module's control flow and data
     dependencies, which can be useful for debugging and analysis.
   }];
-  let constructor =  "circt::firrtl::createFIRRTLPrintPetriNetPass()"; 
-  let options = [   
+  let constructor =  "circt::firrtl::createFIRRTLPrintPetriNetPass()";
+  let options = [
     Option<"moduleName", "module-name", "std::string", "\"\"",
       "Name of module to run the pass on.">,
     Option<"progressSignal", "progress-signal", "std::string", "\"\"",
