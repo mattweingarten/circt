@@ -202,6 +202,8 @@ std::unique_ptr<mlir::Pass> createLayerSinkPass();
 
 std::unique_ptr<mlir::Pass> createMaterializeDebugInfoPass();
 
+std::unique_ptr<mlir::Pass> createMaterializeExpressionsPass();
+
 std::unique_ptr<mlir::Pass> createLintingPass();
 
 std::unique_ptr<mlir::Pass> createSpecializeOptionPass();

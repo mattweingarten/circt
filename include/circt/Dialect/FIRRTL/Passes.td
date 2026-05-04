@@ -922,6 +922,37 @@ def MaterializeDebugInfo :
   let dependentDialects = ["debug::DebugDialect"];
 }
 
+def MaterializeExpressions :
+    Pass<"firrtl-materialize-expressions", "firrtl::FModuleOp"> {
+  let summary = "Make often reused expressions into nodes to make translation back to FIRRTL feasible.";
+
+  let description = [{
+    This pass materializes selected FIRRTL expression results as firrtl.node
+    operations. This preserves sharing that would otherwise exist only as MLIR
+    SSA values and prevents translation back to FIRRTL from producing very large
+    inlined expressions.
+
+    An expression is materialized when its result has more than the configured
+    number of users, or when its expression-chain length exceeds the configured
+    maximum chain length.
+  }];
+
+  let options = [
+    Option<"numUsers", "num-users", "unsigned", /*default=*/"2",
+           "Materialize expression results with more than this many users">,
+
+    Option<"maxChainLength", "max-chain-length", "unsigned", /*default=*/"8",
+           "Materialize expression results whose expression-chain length exceeds this value">
+  ];
+
+  let constructor = "circt::firrtl::createMaterializeExpressionsPass()";
+
+  let statistics = [
+    Statistic<"numNodesAdded", "num-nodes-added",
+              "Number of firrtl.node operations added">
+  ];
+}
+
 def Lint :
     Pass<"firrtl-lint", "firrtl::FModuleOp"> {
   let summary = "An analysis pass to detect static simulation failures.";
