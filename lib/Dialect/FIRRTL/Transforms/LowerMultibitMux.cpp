@@ -26,9 +26,8 @@ void LowerMultibitMuxPass::runOnOperation() {
   bool anyFailure = false;
 
   llvm::SmallVector<circt::firrtl::MultibitMuxOp> multibitMuxes;
-  module.walk([&](circt::firrtl::MultibitMuxOp op) {
-    multibitMuxes.push_back(op);
-  });
+  module.walk(
+      [&](circt::firrtl::MultibitMuxOp op) { multibitMuxes.push_back(op); });
 
   for (auto op : multibitMuxes) {
     mlir::OpBuilder builder(op);
@@ -65,20 +64,22 @@ void LowerMultibitMuxPass::runOnOperation() {
       continue;
     }
 
-    // The maximum selector value we need to materialize is inputs.size() - 1.
-    // Make sure it is representable by the index width.
+    // The maximum number of selector values representable by the index.
     //
     // Example:
-    //   width 1 can select values 0..1, so it can only address 2 inputs.
-    //   width 3 can select values 0..7, so it can address 8 inputs.
-    if (indexWidth < 64 && inputs.size() > (uint64_t(1) << indexWidth)) {
-      op.emitError() << "firrtl.multibit_mux has " << inputs.size()
-                     << " inputs, but index width " << indexWidth
-                     << " can only select " << (uint64_t(1) << indexWidth)
-                     << " inputs";
-      anyFailure = true;
-      continue;
-    }
+    //   width 1 can select values 0..1, so only the first 2 logical inputs are
+    //   reachable.
+    //   width 3 can select values 0..7, so the first 8 logical inputs are
+    //   reachable.
+    //
+    // If there are more inputs than representable selector values, do not
+    // error. Those trailing logical inputs are unreachable by construction, so
+    // do not materialize comparisons for them.
+    uint64_t maxSelectableInputs = inputs.size();
+
+    if (indexWidth < 64)
+      maxSelectableInputs =
+          std::min<uint64_t>(inputs.size(), uint64_t(1) << indexWidth);
 
     // Mux definition is:
     //
@@ -98,54 +99,44 @@ void LowerMultibitMuxPass::runOnOperation() {
     //   ...
     llvm::SmallVector<mlir::Value> logicalInputs;
     logicalInputs.reserve(inputs.size());
-    
+
     for (size_t i = inputs.size(); i > 0; --i)
       logicalInputs.push_back(inputs[i - 1]);
-    
+
     mlir::Value result = logicalInputs[0];
 
     auto eqType = circt::firrtl::UIntType::get(builder.getContext(), 1);
 
-    for (uint64_t selectorValue = 1, e = logicalInputs.size();
-         selectorValue < e; ++selectorValue) {
-
-
-      // Build constant for each possible index
+    for (uint64_t selectorValue = 1; selectorValue < maxSelectableInputs;
+         ++selectorValue) {
+      // Build constant for each reachable index value.
       auto constAttrType = mlir::IntegerType::get(
-          builder.getContext(),
-          indexWidth,
-          mlir::IntegerType::Unsigned);
-      
-      auto constAttr = mlir::IntegerAttr::get(
-          constAttrType,
-          llvm::APInt(indexWidth, selectorValue));
+          builder.getContext(), indexWidth, mlir::IntegerType::Unsigned);
 
-      mlir::Value constIndex =
-          builder
-              .create<circt::firrtl::ConstantOp>(
-                  loc,
-                  index.getType(),
-                  constAttr)
-              .getResult();
-      // Equals check for each index
+      auto constAttr = mlir::IntegerAttr::get(
+          constAttrType, llvm::APInt(indexWidth, selectorValue));
+
+      mlir::Value constIndex = builder
+                                   .create<circt::firrtl::ConstantOp>(
+                                       loc, index.getType(), constAttr)
+                                   .getResult();
+
+      // Equals check for each reachable index.
       mlir::Value eq =
           builder
-              .create<circt::firrtl::EQPrimOp>(
-                  loc,
-                  eqType,
-                  index,
-                  constIndex)
+              .create<circt::firrtl::EQPrimOp>(loc, eqType, index, constIndex)
               .getResult();
-      // Build the mux chain
-      result =
-          builder
-              .create<circt::firrtl::MuxPrimOp>(
-                  loc,
-                  result.getType(),
-                  eq,
-                  logicalInputs[selectorValue],
-                  result)
-              .getResult();
+      // Build mux chain.
+      auto mux = builder.create<circt::firrtl::MuxPrimOp>(
+          loc, result.getType(), eq, logicalInputs[selectorValue], result);
+
+      // We must build node at each point, otherwise we blow up expression size.
+      std::string nodeName = ("GEN_MB_" + llvm::Twine(selectorValue)).str();
+
+      auto node =
+          builder.create<circt::firrtl::NodeOp>(loc, mux.getResult(), nodeName);
+
+      result = node.getResult();
     }
 
     op.replaceAllUsesWith(result);
