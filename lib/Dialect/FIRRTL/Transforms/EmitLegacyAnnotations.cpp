@@ -10,9 +10,11 @@
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
 #include "circt/Dialect/FIRRTL/Passes.h"
 
+#include "circt/Dialect/HW/HWOps.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/TypeSwitch.h"
@@ -72,10 +74,6 @@ static FModuleLike getEnclosingModule(mlir::Operation *op) {
   return {};
 }
 
-
-// Very hacky, but for some reason these have an outdated ModuleName-style target that doesn't match the new convention? What is a good fix for this?
-/// Annotation classes that should keep the old ModuleName-style textual target,
-/// e.g. "Circuit.Module".
 static const llvm::StringSet<> oldModuleNameStyleAnnoClasses = {
     "firrtl.transforms.BlackBoxInlineAnno",
     "freechips.rocketchip.util.AddressMapAnnotation",
@@ -89,9 +87,11 @@ static const llvm::StringSet<> oldModuleNameStyleAnnoClasses = {
 
 static bool usesOldModuleNameStyle(mlir::DictionaryAttr anno) {
   auto cls = anno.getAs<mlir::StringAttr>("class");
-  if (!cls)
-    return false;
-  return oldModuleNameStyleAnnoClasses.contains(cls.getValue());
+  return cls && oldModuleNameStyleAnnoClasses.contains(cls.getValue());
+}
+
+static std::string getCircuitTarget(CircuitOp circuit) {
+  return "~" + circuit.getName().str();
 }
 
 static std::string getOldModuleNameTarget(CircuitOp circuit,
@@ -99,16 +99,24 @@ static std::string getOldModuleNameTarget(CircuitOp circuit,
   return circuit.getName().str() + "." + module.getModuleName().str();
 }
 
-static std::string getLegacyModuleTarget(CircuitOp circuit, FModuleLike module) {
-  return "~" + circuit.getName().str() + "|" + module.getModuleName().str();
+static std::string getLegacyModuleTarget(CircuitOp circuit,
+                                         FModuleLike module) {
+  return getCircuitTarget(circuit) + "|" + module.getModuleName().str();
 }
 
-static std::string getAnnotationTarget(CircuitOp circuit, mlir::Operation *op,
-                                       mlir::DictionaryAttr anno) {
-  auto circuitName = circuit.getName().str();
+static std::string getInstanceTarget(CircuitOp circuit, InstanceOp inst) {
+  auto parentModule = getEnclosingModule(inst->getParentOp());
+  if (!parentModule)
+    return getCircuitTarget(circuit);
 
+  return getCircuitTarget(circuit) + "|" + parentModule.getModuleName().str() +
+         "/" + inst.getName().str() + ":" + inst.getModuleName().str();
+}
+
+static std::string getLocalTarget(CircuitOp circuit, mlir::Operation *op,
+                                  mlir::DictionaryAttr anno) {
   if (op == circuit.getOperation())
-    return "~" + circuitName;
+    return getCircuitTarget(circuit);
 
   if (auto module = mlir::dyn_cast<FModuleLike>(op)) {
     if (usesOldModuleNameStyle(anno))
@@ -116,37 +124,172 @@ static std::string getAnnotationTarget(CircuitOp circuit, mlir::Operation *op,
     return getLegacyModuleTarget(circuit, module);
   }
 
-  if (auto inst = mlir::dyn_cast<InstanceOp>(op)) {
-    auto parentModule = getEnclosingModule(op->getParentOp());
-    if (!parentModule)
-      return "~" + circuitName;
-
-    return "~" + circuitName + "|" + parentModule.getModuleName().str() + "/" +
-           inst.getName().str() + ":" + inst.getModuleName().str();
-  }
+  if (auto inst = mlir::dyn_cast<InstanceOp>(op))
+    return getInstanceTarget(circuit, inst);
 
   auto parentModule = getEnclosingModule(op);
   if (!parentModule)
-    return "~" + circuitName;
+    return getCircuitTarget(circuit);
 
+  auto target = getLegacyModuleTarget(circuit, parentModule);
   if (auto nameAttr = op->getAttrOfType<mlir::StringAttr>("name"))
-    return "~" + circuitName + "|" + parentModule.getModuleName().str() + ">" +
-           nameAttr.getValue().str();
+    target += ">" + nameAttr.getValue().str();
 
-  return "~" + circuitName + "|" + parentModule.getModuleName().str();
+  return target;
+}
+
+static hw::HierPathOp getNonLocalAnnotationHierPath(CircuitOp circuit,
+                                                    mlir::DictionaryAttr anno) {
+  auto nonLocal = anno.getAs<mlir::FlatSymbolRefAttr>("circt.nonlocal");
+  if (!nonLocal)
+    return {};
+
+  auto res = mlir::SymbolTable::lookupNearestSymbolFrom<hw::HierPathOp>(
+      circuit.getOperation(), nonLocal);
+  if (!res)
+    return {};
+
+  return res;
+}
+
+static FModuleLike lookupModule(CircuitOp circuit, mlir::StringAttr moduleName) {
+  FModuleLike result;
+  circuit.walk([&](FModuleLike module) {
+    if (result)
+      return;
+    if (module.getModuleNameAttr() == moduleName)
+      result = module;
+  });
+  return result;
+}
+
+static std::optional<std::string>
+getInnerRefTargetName(CircuitOp circuit, hw::InnerRefAttr ref) {
+  auto module = lookupModule(circuit, ref.getModule());
+  if (!module)
+    return std::nullopt;
+
+  mlir::Operation *innerOp = nullptr;
+  module->walk([&](mlir::Operation *op) {
+    if (innerOp)
+      return;
+
+    auto innerSym = op->getAttrOfType<hw::InnerSymAttr>("inner_sym");
+    if (!innerSym)
+      return;
+
+    if (innerSym.getSymName() == ref.getName())
+      innerOp = op;
+  });
+
+  if (!innerOp)
+    return ref.getName().getValue().str();
+
+  if (auto inst = mlir::dyn_cast<InstanceOp>(innerOp))
+    return inst.getName().str();
+
+  if (auto nameAttr = innerOp->getAttrOfType<mlir::StringAttr>("name"))
+    return nameAttr.getValue().str();
+
+  return ref.getName().getValue().str();
+}
+
+static std::optional<std::string>
+getNonLocalAnnotationTarget(CircuitOp circuit, mlir::DictionaryAttr anno) {
+  auto hierPath = getNonLocalAnnotationHierPath(circuit, anno);
+  if (!hierPath)
+    return std::nullopt;
+
+  auto namepath = hierPath.getNamepath();
+  if (namepath.size() == 0)
+    return std::nullopt;
+
+  auto firstRef = mlir::dyn_cast<hw::InnerRefAttr>(namepath[0]);
+  if (!firstRef)
+    return std::nullopt;
+
+  std::string target = getCircuitTarget(circuit);
+  target += "|";
+  target += firstRef.getModule().getValue().str();
+
+  for (unsigned i = 0, e = namepath.size(); i < e; ++i) {
+    auto ref = mlir::dyn_cast<hw::InnerRefAttr>(namepath[i]);
+    if (!ref) {
+      if (mlir::dyn_cast<mlir::FlatSymbolRefAttr>(namepath[i]))
+        return target;
+
+      return std::nullopt;
+    }
+
+    auto refName = getInnerRefTargetName(circuit, ref);
+    if (!refName)
+      refName = ref.getName().getValue().str();
+
+    if (i + 1 == e) {
+      target += ">";
+      target += *refName;
+      break;
+    }
+
+    auto nextRef = mlir::dyn_cast<hw::InnerRefAttr>(namepath[i + 1]);
+    if (!nextRef) {
+      if (auto moduleRef =
+              mlir::dyn_cast<mlir::FlatSymbolRefAttr>(namepath[i + 1])) {
+        target += "/";
+        target += *refName;
+        target += ":";
+        target += moduleRef.getValue().str();
+        continue;
+      }
+
+      return std::nullopt;
+    }
+
+    target += "/";
+    target += *refName;
+    target += ":";
+    target += nextRef.getModule().getValue().str();
+  }
+
+  return target;
+}
+
+static std::string getAnnotationTarget(CircuitOp circuit, mlir::Operation *op,
+                                       mlir::DictionaryAttr anno) {
+  if (auto nonLocalTarget = getNonLocalAnnotationTarget(circuit, anno))
+    return *nonLocalTarget;
+
+  return getLocalTarget(circuit, op, anno);
+}
+
+static bool shouldDropAnnotationField(llvm::StringRef name) {
+  return name == "target" || name == "circt.nonlocal";
+}
+
+static llvm::json::Object
+convertAnnotationWithTarget(mlir::DictionaryAttr anno, llvm::StringRef target,
+                            bool dropFieldID = false) {
+  llvm::json::Object obj;
+
+  for (auto named : anno) {
+    auto name = named.getName().strref();
+    if (shouldDropAnnotationField(name))
+      continue;
+    if (dropFieldID && name == "circt.fieldID")
+      continue;
+
+    obj[name.str()] = attrToJson(named.getValue());
+  }
+
+  obj["target"] = target.str();
+  return obj;
 }
 
 static llvm::json::Object convertAnnotation(CircuitOp circuit,
                                             mlir::Operation *op,
                                             mlir::DictionaryAttr anno) {
-  llvm::json::Object obj;
-  for (auto named : anno) {
-    if (named.getName() == "target")
-      continue;
-    obj[named.getName().str()] = attrToJson(named.getValue());
-  }
-  obj["target"] = getAnnotationTarget(circuit, op, anno);
-  return obj;
+  return convertAnnotationWithTarget(anno,
+                                     getAnnotationTarget(circuit, op, anno));
 }
 
 static std::optional<std::string>
@@ -179,32 +322,60 @@ getTargetSuffixFromFieldID(FIRRTLBaseType type, uint64_t fieldID) {
   return suffix;
 }
 
-static std::optional<std::string>
-getPortTarget(CircuitOp circuit, FModuleLike module, llvm::StringRef portName,
-              FIRRTLBaseType portType, mlir::DictionaryAttr anno) {
-  std::string target = "~" + circuit.getName().str() + "|" +
-                       module.getModuleName().str() + ">" + portName.str();
-
-  auto fieldID = anno.getAs<IntegerAttr>("circt.fieldID");
+static std::optional<std::string> getFieldIDSuffix(FIRRTLBaseType type,
+                                                   mlir::DictionaryAttr anno) {
+  auto fieldID = anno.getAs<mlir::IntegerAttr>("circt.fieldID");
   if (!fieldID)
-    return target;
+    return std::string();
 
   uint64_t id = fieldID.getInt();
   if (id == 0)
-    return target;
+    return std::string();
 
-  auto suffix = getTargetSuffixFromFieldID(portType, id);
+  return getTargetSuffixFromFieldID(type, id);
+}
+
+static std::optional<std::string> getPortBaseTarget(CircuitOp circuit,
+                                                    FModuleLike module,
+                                                    llvm::StringRef portName,
+                                                    mlir::DictionaryAttr anno) {
+  if (auto nonLocalTarget = getNonLocalAnnotationTarget(circuit, anno))
+    return *nonLocalTarget;
+
+  return getLegacyModuleTarget(circuit, module) + ">" + portName.str();
+}
+
+static std::optional<std::string>
+getPortTarget(CircuitOp circuit, FModuleLike module, llvm::StringRef portName,
+              FIRRTLBaseType portType, mlir::DictionaryAttr anno) {
+  auto target = getPortBaseTarget(circuit, module, portName, anno);
+  if (!target)
+    return std::nullopt;
+
+  auto suffix = getFieldIDSuffix(portType, anno);
   if (!suffix)
     return std::nullopt;
 
-  target += *suffix;
+  *target += *suffix;
   return target;
+}
+
+static std::optional<llvm::json::Object>
+convertPortAnnotation(CircuitOp circuit, FModuleLike module,
+                      llvm::StringRef portName, FIRRTLBaseType portType,
+                      mlir::DictionaryAttr anno) {
+  auto target = getPortTarget(circuit, module, portName, portType, anno);
+  if (!target)
+    return std::nullopt;
+
+  return convertAnnotationWithTarget(anno, *target, true);
 }
 
 struct EmitLegacyAnnotationsPass
     : public EmitLegacyAnnotationsBase<EmitLegacyAnnotationsPass> {
   using EmitLegacyAnnotationsBase::EmitLegacyAnnotationsBase;
   using EmitLegacyAnnotationsBase::outputFilename;
+
   void runOnOperation() override;
 };
 
@@ -231,12 +402,14 @@ void EmitLegacyAnnotationsPass::runOnOperation() {
       auto dict = mlir::dyn_cast<mlir::DictionaryAttr>(attr);
       if (!dict)
         continue;
+
       annotations.push_back(convertAnnotation(circuit, op, dict));
     }
   });
 
   circuit.walk([&](FModuleLike module) {
     unsigned numPorts = module.getNumPorts();
+
     for (unsigned i = 0; i < numPorts; ++i) {
       auto annos = module.getAnnotationsForPort(i);
       if (annos.empty())
@@ -246,33 +419,28 @@ void EmitLegacyAnnotationsPass::runOnOperation() {
       if (!portNameAttr)
         continue;
 
-      auto portName = portNameAttr.getValue();
       auto portType = mlir::dyn_cast<FIRRTLBaseType>(module.getPortType(i));
       if (!portType)
         continue;
+
+      auto portName = portNameAttr.getValue();
 
       for (auto attr : annos) {
         auto dict = mlir::dyn_cast<mlir::DictionaryAttr>(attr);
         if (!dict)
           continue;
 
-        auto target = getPortTarget(circuit, module, portName, portType, dict);
-        if (!target) {
+        auto obj =
+            convertPortAnnotation(circuit, module, portName, portType, dict);
+        if (!obj) {
           module->emitWarning()
-              << "skipping port annotation on '" << portName
-              << "' in module '" << module.getModuleName()
+              << "skipping port annotation on '" << portName << "' in module '"
+              << module.getModuleName()
               << "' because circt.fieldID could not be decoded";
           continue;
         }
 
-        llvm::json::Object obj;
-        for (auto named : dict) {
-          if (named.getName() == "target" || named.getName() == "circt.fieldID")
-            continue;
-          obj[named.getName().str()] = attrToJson(named.getValue());
-        }
-        obj["target"] = *target;
-        annotations.push_back(std::move(obj));
+        annotations.push_back(std::move(*obj));
       }
     }
   });

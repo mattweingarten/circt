@@ -408,9 +408,11 @@ void Emitter::emitCircuit(CircuitOp op) {
           })
           .Case<LayerOp>([&](auto op) { emitDeclaration(op); })
           .Case<OptionOp>([&](auto op) { emitDeclaration(op); })
-          .Case<hw::HierPathOp>([&](auto op) {
-            // Do nothing — skip emitting this op
-          })
+          // Do nothing, skip emitting this op. From my understanding, it is
+          // legal to have HierPathOps, but they do not contribute
+          // to any emissions for non-annotations,
+          // which is handled in a seperate pass
+          .Case<hw::HierPathOp>([&](auto op) {})
           .Default([&](auto op) {
             emitOpError(op, "not supported for emission inside circuit");
           });
