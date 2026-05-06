@@ -5,8 +5,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "circt/Dialect/FIRRTL/FIRRTLAnnotationHelper.h"
 #include "circt/Dialect/FIRRTL/FIRRTLAnnotations.h"
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
+#include "circt/Dialect/HW/HWOps.h"
 #include "circt/Dialect/Perf/PerfHelpers.h"
 #include "circt/Dialect/Perf/PerfOps.h"
 #include "circt/Dialect/Perf/PerfPasses.h"
@@ -15,7 +17,9 @@
 
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
+
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
@@ -71,49 +75,6 @@ static llvm::json::Array arrayAttrToJsonArray(mlir::ArrayAttr arr) {
   for (auto elt : arr)
     out.push_back(attrToJson(elt));
   return out;
-}
-
-static std::optional<std::string> getFIRRTLTargetForValue(
-    mlir::Value value,
-    std::optional<llvm::StringRef> fallbackRefName = std::nullopt) {
-  if (!value)
-    return std::nullopt;
-
-  circt::firrtl::FModuleOp module;
-  std::string refName;
-
-  if (auto blockArg = llvm::dyn_cast<mlir::BlockArgument>(value)) {
-    module = llvm::dyn_cast<circt::firrtl::FModuleOp>(
-        blockArg.getOwner()->getParentOp());
-    if (!module)
-      return std::nullopt;
-
-    unsigned portIdx = blockArg.getArgNumber();
-
-    if (portIdx < module.getNumPorts()) {
-      refName = module.getPortName(portIdx).str();
-    } else if (fallbackRefName) {
-      refName = fallbackRefName->str();
-    } else {
-      return std::nullopt;
-    }
-
-  } else if (auto *defOp = value.getDefiningOp()) {
-    module = defOp->getParentOfType<circt::firrtl::FModuleOp>();
-    if (!module || !fallbackRefName)
-      return std::nullopt;
-
-    refName = fallbackRefName->str();
-  } else {
-    return std::nullopt;
-  }
-
-  auto circuit = module->getParentOfType<circt::firrtl::CircuitOp>();
-  if (!circuit)
-    return std::nullopt;
-
-  return "~" + circuit.getName().str() + "|" + module.getModuleName().str() +
-         ">" + refName;
 }
 
 static llvm::json::Value attrToJson(mlir::Attribute attr) {
@@ -173,6 +134,216 @@ static mlir::LogicalResult writeAnnotationsToFileForModule(
   return mlir::success();
 }
 
+static mlir::FailureOr<llvm::SmallVector<circt::firrtl::InstanceOp>>
+getInstancesFromHierPathContext(mlir::Operation *anchorOp,
+                                mlir::FlatSymbolRefAttr context) {
+  llvm::SmallVector<circt::firrtl::InstanceOp> instances;
+
+  if (!context)
+    return instances;
+
+  mlir::Operation *target =
+      mlir::SymbolTable::lookupNearestSymbolFrom(anchorOp, context);
+  if (!target)
+    return mlir::failure();
+
+  auto hierPath = llvm::dyn_cast<circt::hw::HierPathOp>(target);
+  if (!hierPath)
+    return mlir::failure();
+
+  auto circuit = anchorOp->getParentOfType<circt::firrtl::CircuitOp>();
+  if (!circuit)
+    return mlir::failure();
+
+  mlir::SymbolTable symbolTable(circuit);
+
+  for (auto attr : hierPath.getNamepath()) {
+    auto innerRef = llvm::dyn_cast<circt::hw::InnerRefAttr>(attr);
+    if (!innerRef)
+      return mlir::failure();
+
+    auto moduleRef = innerRef.getModuleRef();
+    auto innerName = innerRef.getName();
+
+    auto parentModule =
+        symbolTable.lookup<circt::firrtl::FModuleOp>(moduleRef.getValue());
+    if (!parentModule)
+      return mlir::failure();
+
+    circt::firrtl::InstanceOp matchedInst;
+
+    parentModule.walk([&](circt::firrtl::InstanceOp inst) {
+      if (matchedInst)
+        return;
+
+      auto innerSym = inst.getInnerSymAttr();
+      if (!innerSym)
+        return;
+
+      if (innerSym.getSymName() == innerName)
+        matchedInst = inst;
+    });
+
+    if (!matchedInst)
+      return mlir::failure();
+
+    instances.push_back(matchedInst);
+  }
+
+  return instances;
+}
+
+static std::optional<circt::firrtl::AnnoPathValue>
+getAnnoPathValueForValue(mlir::Operation *anchorOp, mlir::Value value,
+                         mlir::FlatSymbolRefAttr context) {
+  if (!value)
+    return std::nullopt;
+
+  circt::firrtl::AnnoTarget ref;
+  circt::firrtl::FModuleOp localModule;
+
+  if (auto blockArg = llvm::dyn_cast<mlir::BlockArgument>(value)) {
+    localModule = llvm::dyn_cast<circt::firrtl::FModuleOp>(
+        blockArg.getOwner()->getParentOp());
+    if (!localModule)
+      return std::nullopt;
+
+    unsigned portIdx = blockArg.getArgNumber();
+    if (portIdx >= localModule.getNumPorts())
+      return std::nullopt;
+
+    ref = circt::firrtl::PortAnnoTarget(localModule, portIdx);
+  } else if (auto *defOp = value.getDefiningOp()) {
+    localModule = defOp->getParentOfType<circt::firrtl::FModuleOp>();
+    if (!localModule)
+      return std::nullopt;
+
+    if (!llvm::isa<circt::firrtl::FNamableOp>(defOp))
+      return std::nullopt;
+
+    ref = circt::firrtl::OpAnnoTarget(defOp);
+  } else {
+    return std::nullopt;
+  }
+
+  llvm::SmallVector<circt::firrtl::InstanceOp> instances;
+  if (context) {
+    auto instancesOrFailure =
+        getInstancesFromHierPathContext(anchorOp, context);
+    if (mlir::failed(instancesOrFailure))
+      return std::nullopt;
+
+    instances = *instancesOrFailure;
+  }
+
+  return circt::firrtl::AnnoPathValue(instances, ref, /*fieldIdx=*/0);
+}
+
+static std::optional<std::string>
+annoPathValueToFIRRTLTarget(const circt::firrtl::AnnoPathValue &pathValue) {
+  circt::firrtl::FModuleOp targetModule;
+  std::string refName;
+
+  if (auto opRef = llvm::dyn_cast<circt::firrtl::OpAnnoTarget>(pathValue.ref)) {
+    mlir::Operation *op = opRef.getOp();
+
+    targetModule = op->getParentOfType<circt::firrtl::FModuleOp>();
+    if (!targetModule)
+      return std::nullopt;
+
+    auto namable = llvm::dyn_cast<circt::firrtl::FNamableOp>(op);
+    if (!namable)
+      return std::nullopt;
+
+    refName = namable.getName().str();
+  } else if (auto portRef =
+                 llvm::dyn_cast<circt::firrtl::PortAnnoTarget>(pathValue.ref)) {
+    auto moduleLike = portRef.getModule();
+
+    targetModule =
+        llvm::dyn_cast<circt::firrtl::FModuleOp>(moduleLike.getOperation());
+    if (!targetModule)
+      return std::nullopt;
+
+    unsigned portIdx = portRef.getPortNo();
+
+    if (portIdx >= targetModule.getNumPorts())
+      return std::nullopt;
+
+    refName = targetModule.getPortName(portIdx).str();
+  } else {
+    return std::nullopt;
+  }
+
+  auto circuit = targetModule->getParentOfType<circt::firrtl::CircuitOp>();
+  if (!circuit)
+    return std::nullopt;
+
+  std::string target = "~";
+  target += circuit.getName().str();
+  target += "|";
+
+  if (pathValue.instances.empty()) {
+    target += targetModule.getModuleName().str();
+  } else {
+    auto rootModule = pathValue.instances.front()
+                          ->getParentOfType<circt::firrtl::FModuleOp>();
+    if (!rootModule)
+      return std::nullopt;
+
+    target += rootModule.getModuleName().str();
+
+    for (auto inst : pathValue.instances) {
+      target += "/";
+      target += inst.getName().str();
+      target += ":";
+      target += inst.getModuleName().str();
+    }
+  }
+
+  target += ">";
+  target += refName;
+
+  return target;
+}
+
+struct PerfOpInfo {
+  mlir::Operation *op = nullptr;
+  mlir::Value cond;
+  mlir::Value clk;
+  mlir::Value reset;
+  mlir::FlatSymbolRefAttr context;
+  std::string label;
+  std::string description;
+  bool isTrace = false;
+};
+
+static PerfOpInfo getPerfOpInfo(perf::PerfCounterOp op) {
+  return PerfOpInfo{
+      /*op=*/op.getOperation(),
+      /*cond=*/op.getCond(),
+      /*clk=*/op.getClk(),
+      /*reset=*/op.getReset(),
+      /*context=*/op->getAttrOfType<mlir::FlatSymbolRefAttr>("context"),
+      /*label=*/op.getName().value_or("<unknown>").str(),
+      /*description=*/op.getDesc().value_or("").str(),
+      /*isTrace=*/false,
+  };
+}
+
+static PerfOpInfo getPerfOpInfo(perf::PerfTraceOp op) {
+  return PerfOpInfo{
+      /*op=*/op.getOperation(),
+      /*cond=*/op.getCond(),
+      /*clk=*/op.getClk(),
+      /*reset=*/op.getReset(),
+      /*context=*/op->getAttrOfType<mlir::FlatSymbolRefAttr>("context"),
+      /*label=*/op.getName().value_or("<unknown>").str(),
+      /*description=*/op.getDesc().value_or("").str(),
+      /*isTrace=*/true,
+  };
+}
+
 struct FireSimAnnotationHelper {
   static constexpr llvm::StringLiteral autoCounterAnnoClass =
       "midas.targetutils.AutoCounterFirrtlAnnotation";
@@ -180,6 +351,10 @@ struct FireSimAnnotationHelper {
       "midas.targetutils.PerfCounterOps$Accumulate$";
   static constexpr llvm::StringLiteral traceDoctorAnnoClass =
       "midas.targetutils.TraceDoctorFirrtlAnnotation";
+
+  static std::string buildDescription(llvm::StringRef description) {
+    return description.str();
+  }
 
   static mlir::DictionaryAttr
   buildAutoCounterAttr(mlir::MLIRContext *ctx, llvm::StringRef clock,
@@ -191,12 +366,6 @@ struct FireSimAnnotationHelper {
     auto opType = mlir::DictionaryAttr::get(
         ctx, {b.getNamedAttr("class", b.getStringAttr(counterOpTypeClass))});
 
-    std::string desc = label.str();
-    if (!description.empty()) {
-      desc += " ";
-      desc += description.str();
-    }
-
     return mlir::DictionaryAttr::get(
         ctx,
         {
@@ -204,7 +373,8 @@ struct FireSimAnnotationHelper {
             b.getNamedAttr("clock", b.getStringAttr(clock)),
             b.getNamedAttr("reset", b.getStringAttr(reset)),
             b.getNamedAttr("label", b.getStringAttr(label)),
-            b.getNamedAttr("description", b.getStringAttr(desc)),
+            b.getNamedAttr("description",
+                           b.getStringAttr(buildDescription(description))),
             b.getNamedAttr("opType", opType),
             b.getNamedAttr("coverGenerated", b.getBoolAttr(coverGenerated)),
         });
@@ -217,12 +387,6 @@ struct FireSimAnnotationHelper {
                        bool coverGenerated = false) {
     mlir::Builder b(ctx);
 
-    std::string desc = label.str();
-    if (!description.empty()) {
-      desc += " ";
-      desc += description.str();
-    }
-
     return mlir::DictionaryAttr::get(
         ctx,
         {
@@ -230,53 +394,64 @@ struct FireSimAnnotationHelper {
             b.getNamedAttr("clock", b.getStringAttr(clock)),
             b.getNamedAttr("reset", b.getStringAttr(reset)),
             b.getNamedAttr("label", b.getStringAttr(label)),
-            b.getNamedAttr("description", b.getStringAttr(desc)),
+            b.getNamedAttr("description",
+                           b.getStringAttr(buildDescription(description))),
             b.getNamedAttr("coverGenerated", b.getBoolAttr(coverGenerated)),
         });
   }
 
-  static llvm::Expected<mlir::DictionaryAttr> buildFor(mlir::Operation *op) {
-    auto counter = llvm::dyn_cast<PerfCounterOp>(op);
-    auto trace = llvm::dyn_cast<PerfTraceOp>(op);
-
-    if (!counter && !trace) {
+  static llvm::Expected<mlir::DictionaryAttr>
+  buildForPerfOp(const PerfOpInfo &info) {
+    auto clkPath = getAnnoPathValueForValue(info.op, info.clk, info.context);
+    if (!clkPath) {
       return llvm::make_error<llvm::StringError>(
-          "unsupported Perf Dialect operation",
+          "failed to compute AnnoPathValue for PerfOp clock",
           std::make_error_code(std::errc::invalid_argument));
     }
 
-    mlir::Value clk = counter ? counter.getClk() : trace.getClk();
-    auto clkTarget = getFIRRTLTargetForValue(clk, "clock");
+    auto clkTarget = annoPathValueToFIRRTLTarget(*clkPath);
     if (!clkTarget) {
       return llvm::make_error<llvm::StringError>(
-          "failed to compute FIRRTL target for PerfOp clock",
+          "failed to stringify FIRRTL target for PerfOp clock",
           std::make_error_code(std::errc::invalid_argument));
     }
 
-    std::string label = (counter ? counter.getName() : trace.getName())
-                            .value_or("<unknown>")
-                            .str();
-
     std::string resetTarget;
-    mlir::Value reset = counter ? counter.getReset() : trace.getReset();
-    if (reset) {
-      auto rstTarget = getFIRRTLTargetForValue(reset, "reset");
-      if (!rstTarget) {
+    if (info.reset) {
+      auto rstPath =
+          getAnnoPathValueForValue(info.op, info.reset, info.context);
+      if (!rstPath) {
         return llvm::make_error<llvm::StringError>(
-            "failed to compute FIRRTL target for PerfOp reset",
+            "failed to compute AnnoPathValue for PerfOp reset",
             std::make_error_code(std::errc::invalid_argument));
       }
+
+      auto rstTarget = annoPathValueToFIRRTLTarget(*rstPath);
+      if (!rstTarget) {
+        return llvm::make_error<llvm::StringError>(
+            "failed to stringify FIRRTL target for PerfOp reset",
+            std::make_error_code(std::errc::invalid_argument));
+      }
+
       resetTarget = *rstTarget;
     } else {
       resetTarget = "~<unknown>|<unknown>>reset";
     }
 
-    if (counter)
-      return buildAutoCounterAttr(op->getContext(), *clkTarget, resetTarget,
-                                  label);
+    if (info.isTrace)
+      return buildTraceDoctorAttr(info.op->getContext(), *clkTarget,
+                                  resetTarget, info.label, info.description);
 
-    return buildTraceDoctorAttr(op->getContext(), *clkTarget, resetTarget,
-                                label);
+    return buildAutoCounterAttr(info.op->getContext(), *clkTarget, resetTarget,
+                                info.label, info.description);
+  }
+
+  static llvm::Expected<mlir::DictionaryAttr> buildFor(perf::PerfCounterOp op) {
+    return buildForPerfOp(getPerfOpInfo(op));
+  }
+
+  static llvm::Expected<mlir::DictionaryAttr> buildFor(perf::PerfTraceOp op) {
+    return buildForPerfOp(getPerfOpInfo(op));
   }
 };
 
@@ -342,16 +517,13 @@ addAnnotationsToBlockArg(mlir::BlockArgument arg,
   return mlir::success();
 }
 
-template <typename PerfOpTy>
 static mlir::LogicalResult
-annotateInputSource(PerfOpTy perfOp,
+annotateInputSource(mlir::Operation *perfOp, mlir::Value input,
                     llvm::ArrayRef<mlir::DictionaryAttr> annos) {
-  if (perfOp->getNumOperands() == 0) {
-    perfOp.emitError("Perf op has no operands");
+  if (!input) {
+    perfOp->emitError("Perf op has no input operand");
     return mlir::failure();
   }
-
-  mlir::Value input = perfOp->getOperand(0);
 
   if (mlir::Operation *defOp = input.getDefiningOp()) {
     addAnnotationsToOp(defOp, annos);
@@ -360,14 +532,57 @@ annotateInputSource(PerfOpTy perfOp,
 
   if (auto blockArg = llvm::dyn_cast<mlir::BlockArgument>(input)) {
     if (mlir::failed(addAnnotationsToBlockArg(blockArg, annos))) {
-      perfOp.emitError("failed to attach annotations to input block argument");
+      perfOp->emitError("failed to attach annotations to input block argument");
       return mlir::failure();
     }
     return mlir::success();
   }
 
-  perfOp.emitError("unsupported Perf input kind for annotation target");
+  perfOp->emitError("unsupported Perf input kind for annotation target");
   return mlir::failure();
+}
+
+template <typename PerfOpTy>
+static mlir::LogicalResult
+processPerfOp(PerfOpTy op, llvm::SmallVectorImpl<mlir::Operation *> &opsToErase,
+              llvm::function_ref<void()> signalFailure) {
+  PerfOpInfo info = getPerfOpInfo(op);
+
+  auto fireSimAnnoOrErr = FireSimAnnotationHelper::buildFor(op);
+  if (!fireSimAnnoOrErr) {
+    llvm::errs() << "EmitFireSimAnnotations: failed to create "
+                 << (info.isTrace ? "TraceDoctor" : "AutoCounter")
+                 << " annotation: "
+                 << llvm::toString(fireSimAnnoOrErr.takeError()) << "\n";
+    llvm::errs() << "Offending PerfOp:\n";
+    op.print(llvm::errs());
+    llvm::errs() << "\n";
+
+    opsToErase.push_back(op.getOperation());
+    signalFailure();
+    return mlir::failure();
+  }
+
+  mlir::DictionaryAttr fireSimAnno = *fireSimAnnoOrErr;
+  mlir::DictionaryAttr dontTouchAnno =
+      DontTouchAnnotationHelper::build(op->getContext());
+
+  llvm::SmallVector<mlir::DictionaryAttr, 2> annos = {fireSimAnno,
+                                                      dontTouchAnno};
+
+  if (mlir::failed(annotateInputSource(op.getOperation(), info.cond, annos))) {
+    llvm::errs()
+        << "EmitFireSimAnnotations: failed to attach annotations to source\n";
+    llvm::errs() << "Offending PerfOp:\n";
+    op.print(llvm::errs());
+    llvm::errs() << "\n";
+
+    opsToErase.push_back(op.getOperation());
+    return mlir::failure();
+  }
+
+  opsToErase.push_back(op.getOperation());
+  return mlir::success();
 }
 
 struct EmitFireSimAnnotationsPass
@@ -392,76 +607,14 @@ void EmitFireSimAnnotationsPass::runOnOperation() {
 
   llvm::SmallVector<mlir::Operation *> opsToErase;
 
+  auto signalFailure = [&]() { signalPassFailure(); };
+
   module.walk([&](perf::PerfCounterOp op) {
-    auto autoCounterAnnoOrErr = FireSimAnnotationHelper::buildFor(op);
-    if (!autoCounterAnnoOrErr) {
-      llvm::errs() << "EmitFireSimAnnotations: failed to create "
-                      "AutoCounter annotation: "
-                   << llvm::toString(autoCounterAnnoOrErr.takeError()) << "\n";
-      llvm::errs() << "Offending PerfCounterOp:\n";
-      op.print(llvm::errs());
-      llvm::errs() << "\n";
-
-      opsToErase.push_back(op.getOperation());
-      signalPassFailure();
-      return;
-    }
-
-    mlir::DictionaryAttr autoCounterAnno = *autoCounterAnnoOrErr;
-    mlir::DictionaryAttr dontTouchAnno =
-        DontTouchAnnotationHelper::build(op->getContext());
-
-    llvm::SmallVector<mlir::DictionaryAttr, 2> annos = {autoCounterAnno,
-                                                        dontTouchAnno};
-
-    if (mlir::failed(annotateInputSource(op, annos))) {
-      llvm::errs() << "EmitFireSimAnnotations: failed to attach "
-                      "annotations to source\n";
-      llvm::errs() << "Offending PerfCounterOp:\n";
-      op.print(llvm::errs());
-      llvm::errs() << "\n";
-
-      opsToErase.push_back(op.getOperation());
-      return;
-    }
-
-    opsToErase.push_back(op.getOperation());
+    (void)processPerfOp(op, opsToErase, signalFailure);
   });
 
   module.walk([&](perf::PerfTraceOp op) {
-    auto traceAnnoOrErr = FireSimAnnotationHelper::buildFor(op);
-    if (!traceAnnoOrErr) {
-      llvm::errs() << "EmitFireSimAnnotations: failed to create "
-                      "TraceDoctor annotation: "
-                   << llvm::toString(traceAnnoOrErr.takeError()) << "\n";
-      llvm::errs() << "Offending PerfTraceOp:\n";
-      op.print(llvm::errs());
-      llvm::errs() << "\n";
-
-      opsToErase.push_back(op.getOperation());
-      signalPassFailure();
-      return;
-    }
-
-    mlir::DictionaryAttr traceAnno = *traceAnnoOrErr;
-    mlir::DictionaryAttr dontTouchAnno =
-        DontTouchAnnotationHelper::build(op->getContext());
-
-    llvm::SmallVector<mlir::DictionaryAttr, 2> annos = {traceAnno,
-                                                        dontTouchAnno};
-
-    if (mlir::failed(annotateInputSource(op, annos))) {
-      llvm::errs() << "EmitFireSimAnnotations: failed to attach "
-                      "annotations to source\n";
-      llvm::errs() << "Offending PerfTraceOp:\n";
-      op.print(llvm::errs());
-      llvm::errs() << "\n";
-
-      opsToErase.push_back(op.getOperation());
-      return;
-    }
-
-    opsToErase.push_back(op.getOperation());
+    (void)processPerfOp(op, opsToErase, signalFailure);
   });
 
   for (mlir::Operation *op : opsToErase)

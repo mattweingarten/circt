@@ -32,7 +32,7 @@ def EmitFireSimAnnotations
   ];
 }
 
-def InsertCounter : Pass<"perf-insert-counter", "circt::firrtl::FModuleOp"> {
+def InsertCounter : Pass<"perf-insert-counter", "circt::firrtl::CircuitOp"> {
   let summary = "Insert PerfCounterOps into selected FIRRTL modules/signals.";
   let description = [{
     Takes a list of (module, signal) pairs and inserts a PerfCounterOp
@@ -47,7 +47,7 @@ def InsertCounter : Pass<"perf-insert-counter", "circt::firrtl::FModuleOp"> {
   ];
 }
 
-def InsertTrace : Pass<"perf-insert-trace", "circt::firrtl::FModuleOp"> {
+def InsertTrace : Pass<"perf-insert-trace", "circt::firrtl::CircuitOp"> {
   let summary = "Insert PerfTraceOp into selected FIRRTL modules/signals.";
   let description = [{
     Takes a list of (module, signal) pairs and inserts a TraceCounterOp

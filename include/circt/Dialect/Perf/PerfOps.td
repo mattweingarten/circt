@@ -58,14 +58,32 @@ def PerfCounterOp : PerfOp<"counter", [
     AnyClockType:$clk,
     Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
-    OptionalAttr<StrAttr>:$desc
+    OptionalAttr<StrAttr>:$desc,
+    OptionalAttr<FlatSymbolRefAttr>:$context
   );
+
   let results = (outs);
+
+  let builders = [
+    OpBuilder<(ins
+      "mlir::Value":$cond,
+      "mlir::Value":$clk,
+      "mlir::Value":$reset,
+      "mlir::StringAttr":$name,
+      "mlir::StringAttr":$desc
+    ), [{
+      build($_builder, $_state,
+            cond, clk, reset, name, desc,
+            /*context=*/mlir::FlatSymbolRefAttr());
+    }]>
+  ];
+
   let assemblyFormat = [{
     $cond `:` type($cond)
-    (`,` $name^ (`,` $desc^)? )? 
+    (`,` $name^ (`,` $desc^)? )?
     `,` $clk `:` type($clk)
     (`,` $reset^ `:` type($reset) )?
+    (`context` $context^)?
     attr-dict
   }];
 }
@@ -106,16 +124,35 @@ def PerfTraceOp : PerfOp<"trace", [
     AnyClockType:$clk,
     Optional<AnyResetType>:$reset,
     OptionalAttr<StrAttr>:$name,
-    OptionalAttr<StrAttr>:$desc
+    OptionalAttr<StrAttr>:$desc,
+    OptionalAttr<FlatSymbolRefAttr>:$context
   );
+
   let results = (outs);
+
+  let builders = [
+    OpBuilder<(ins
+      "mlir::Value":$cond,
+      "mlir::Value":$clk,
+      "mlir::Value":$reset,
+      "mlir::StringAttr":$name,
+      "mlir::StringAttr":$desc
+    ), [{
+      build($_builder, $_state,
+            cond, clk, reset, name, desc,
+            /*context=*/mlir::FlatSymbolRefAttr());
+    }]>
+  ];
+
   let assemblyFormat = [{
     $cond `:` type($cond)
-    (`,` $name^ (`,` $desc^)? )? 
+    (`,` $name^ (`,` $desc^)? )?
     `,` $clk `:` type($clk)
     (`,` $reset^ `:` type($reset) )?
+    (`context` $context^)?
     attr-dict
   }];
+
 }
 
 #endif // CIRCT_DIALECT_PERF_PERFOPS_TD

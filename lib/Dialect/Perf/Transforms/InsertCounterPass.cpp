@@ -6,13 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "circt/Dialect/FIRRTL/FIRRTLAnnotationHelper.h"
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
 #include "circt/Dialect/Perf/PerfHelpers.h"
 #include "circt/Dialect/Perf/PerfOps.h"
 #include "circt/Dialect/Perf/PerfPasses.h"
 #include "circt/Support/InstanceGraphInterface.h"
 
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
+
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "perf-insert-counter"
@@ -28,86 +32,123 @@ using namespace circt;
 using namespace circt::perf;
 
 namespace {
-
 struct InsertCounterPass
     : public circt::perf::impl::InsertCounterBase<InsertCounterPass> {
 
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
     registry.insert<circt::perf::PerfDialect>();
     registry.insert<circt::firrtl::FIRRTLDialect>();
-    // registry.insert<circt::seq::SeqDialect>();
   }
 
 private:
   void runOnOperation() override;
-  void createTargets(StringRef moduleName,
-                     llvm::SmallVector<llvm::StringRef, 4> &entries);
-  void insertCounters(circt::firrtl::FModuleOp moduleOp,
-                      llvm::StringRef moduleName,
-                      llvm::ArrayRef<llvm::StringRef> signals);
-};
 
+  mlir::LogicalResult
+  insertCounterForTarget(circt::firrtl::CircuitOp circuit,
+                         mlir::SymbolTable &symbolTable,
+                         circt::firrtl::CircuitTargetCache &targetCache,
+                         llvm::StringRef rawTarget);
+};
 } // namespace
 
-void InsertCounterPass::insertCounters(
-    circt::firrtl::FModuleOp moduleOp, llvm::StringRef moduleName,
-    llvm::ArrayRef<llvm::StringRef> signals) {
+mlir::LogicalResult InsertCounterPass::insertCounterForTarget(
+    circt::firrtl::CircuitOp circuit, mlir::SymbolTable &symbolTable,
+    circt::firrtl::CircuitTargetCache &targetCache, llvm::StringRef rawTarget) {
+  rawTarget = rawTarget.trim();
 
-  moduleOp.walk([&](circt::firrtl::FNamableOp op) {
-    llvm::StringRef signalName = op.getName();
+  if (rawTarget.empty())
+    return mlir::success();
 
-    if (!llvm::is_contained(signals, signalName))
-      return;
-
-    LLVM_DEBUG(llvm::dbgs() << "[PERF] Inserting PerfCounterOp for signal: "
-                            << signalName << "\n");
-
-    mlir::Operation *rawOp = op.getOperation();
-    if (rawOp->getNumResults() == 0) {
-      llvm::errs() << "[PERF] Named op has no result: " << signalName << "\n";
-      signalPassFailure();
-      return;
-    }
-
-    if (!circt::perf::FIRRTLPerfInserter::insertPerfCounterOp(
-            rawOp->getResult(0), moduleOp, signalName)) {
-      llvm::errs() << "[PERF] Failed to insert PerfCounterOp for signal "
-                   << signalName << " in module " << moduleName << "\n";
-      signalPassFailure();
-    }
-  });
-}
-
-void InsertCounterPass::createTargets(
-    StringRef moduleName, llvm::SmallVector<llvm::StringRef, 4> &entries) {
-  for (const std::string &t : this->targets) {
-    llvm::StringRef entry(t);
-    auto split = entry.split(':');
-
-    llvm::StringRef targetModule = split.first.trim();
-    llvm::StringRef signalName = split.second.trim();
-
-    // Must be exactly module:signal
-    if (targetModule.empty() || signalName.empty())
-      continue;
-
-    if (targetModule != moduleName)
-      continue;
-
-    LLVM_DEBUG(llvm::dbgs()
-               << "[PERF] Matched target for module '" << moduleName
-               << "': signal '" << signalName << "'\n");
-
-    entries.push_back(signalName);
+  if (!rawTarget.starts_with("~")) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-counter target must use FIRRTL annotation "
+              "target syntax: "
+           << rawTarget;
   }
+
+  auto pathValue =
+      circt::firrtl::resolvePath(rawTarget, circuit, symbolTable, targetCache);
+
+  if (!pathValue) {
+    return circuit.emitError()
+           << "[PERF] failed to resolve FIRRTL annotation target: "
+           << rawTarget;
+  }
+
+  if (pathValue->isOpOfType<circt::firrtl::CircuitOp>() ||
+      pathValue->isOpOfType<circt::firrtl::FModuleOp>() ||
+      pathValue->isOpOfType<circt::firrtl::FExtModuleOp>()) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-counter target must resolve to a "
+              "signal-like operation, not a circuit or module target: "
+           << rawTarget;
+  }
+
+  if (llvm::isa<circt::firrtl::PortAnnoTarget>(pathValue->ref)) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-counter does not currently support port "
+              "targets: "
+           << rawTarget;
+  }
+
+  auto opRef = llvm::dyn_cast<circt::firrtl::OpAnnoTarget>(pathValue->ref);
+  if (!opRef) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-counter target did not resolve to an "
+              "operation target: "
+           << rawTarget;
+  }
+
+  mlir::Operation *targetOp = opRef.getOp();
+  if (targetOp->getNumResults() == 0) {
+    return targetOp->emitError()
+           << "[PERF] perf-insert-counter target operation has no result: "
+           << rawTarget;
+  }
+
+  auto moduleOp = targetOp->getParentOfType<circt::firrtl::FModuleOp>();
+  if (!moduleOp) {
+    return targetOp->emitError()
+           << "[PERF] perf-insert-counter target operation is not inside a "
+              "FIRRTL module: "
+           << rawTarget;
+  }
+
+  llvm::StringRef label = rawTarget;
+
+  if (auto nameAttr = targetOp->getAttrOfType<mlir::StringAttr>("name")) {
+    if (!nameAttr.getValue().empty())
+      label = nameAttr.getValue();
+  }
+
+  LLVM_DEBUG(
+      llvm::dbgs() << "[PERF] Inserting PerfCounterOp for annotation target: "
+                   << rawTarget << " label=" << label << "\n");
+
+  if (!circt::perf::FIRRTLPerfInserter::insertCounterOp(*pathValue,
+                                                        /*label=*/label)) {
+    return circuit.emitError()
+           << "[PERF] failed to insert PerfCounterOp for target: " << rawTarget;
+  }
+
+  return mlir::success();
 }
 
 void InsertCounterPass::runOnOperation() {
-  firrtl::FModuleOp module = getOperation();
-  StringRef moduleName = module.getName();
-  llvm::SmallVector<llvm::StringRef, 4> entries;
-  createTargets(moduleName, entries);
-  insertCounters(module, moduleName, entries);
+  auto circuit = getOperation();
+
+  mlir::SymbolTable symbolTable(circuit);
+  circt::firrtl::CircuitTargetCache targetCache;
+
+  for (const std::string &targetString : this->targets) {
+    if (mlir::failed(insertCounterForTarget(circuit, symbolTable, targetCache,
+                                            targetString))) {
+      signalPassFailure();
+      return;
+    }
+
+    targetCache.invalidate();
+  }
 }
 
 std::unique_ptr<mlir::Pass> circt::perf::createInsertCounterPass() {

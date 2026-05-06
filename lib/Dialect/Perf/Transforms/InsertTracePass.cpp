@@ -6,13 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "circt/Dialect/FIRRTL/FIRRTLAnnotationHelper.h"
 #include "circt/Dialect/FIRRTL/FIRRTLOps.h"
 #include "circt/Dialect/Perf/PerfHelpers.h"
 #include "circt/Dialect/Perf/PerfOps.h"
 #include "circt/Dialect/Perf/PerfPasses.h"
 #include "circt/Support/InstanceGraphInterface.h"
 
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
+
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "perf-insert-trace"
@@ -34,79 +38,98 @@ struct InsertTracePass
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
     registry.insert<circt::perf::PerfDialect>();
     registry.insert<circt::firrtl::FIRRTLDialect>();
-    // registry.insert<circt::seq::SeqDialect>();
   }
 
 private:
   void runOnOperation() override;
-  void createTargets(StringRef moduleName,
-                     llvm::SmallVector<llvm::StringRef, 4> &entries);
-  void insertTraceOps(circt::firrtl::FModuleOp moduleOp,
-                      llvm::StringRef moduleName,
-                      llvm::ArrayRef<llvm::StringRef> signals);
-};
 
+  mlir::LogicalResult
+  insertTraceForTarget(circt::firrtl::CircuitOp circuit,
+                       mlir::SymbolTable &symbolTable,
+                       circt::firrtl::CircuitTargetCache &targetCache,
+                       llvm::StringRef rawTarget);
+};
 } // namespace
 
-void InsertTracePass::insertTraceOps(circt::firrtl::FModuleOp moduleOp,
-                                     llvm::StringRef moduleName,
-                                     llvm::ArrayRef<llvm::StringRef> signals) {
-  moduleOp.walk([&](circt::firrtl::FNamableOp op) {
-    llvm::StringRef signalName = op.getName();
+mlir::LogicalResult InsertTracePass::insertTraceForTarget(
+    circt::firrtl::CircuitOp circuit, mlir::SymbolTable &symbolTable,
+    circt::firrtl::CircuitTargetCache &targetCache, llvm::StringRef rawTarget) {
+  rawTarget = rawTarget.trim();
 
-    if (!llvm::is_contained(signals, signalName))
-      return;
+  if (rawTarget.empty())
+    return mlir::success();
 
-    LLVM_DEBUG(llvm::dbgs() << "[PERF] Inserting PerfTraceOp for signal: "
-                            << signalName << "\n");
-
-    mlir::Operation *rawOp = op.getOperation();
-
-    if (rawOp->getNumResults() == 0) {
-      llvm::errs() << "[PERF] Named op has no result: " << signalName << "\n";
-      signalPassFailure();
-      return;
-    }
-
-    if (!circt::perf::FIRRTLPerfInserter::insertTraceOp(rawOp->getResult(0),
-                                                        moduleOp, signalName)) {
-      llvm::errs() << "[PERF] Failed to insert PerfTraceOp for signal "
-                   << signalName << " in module " << moduleName << "\n";
-      signalPassFailure();
-    }
-  });
-}
-
-void InsertTracePass::createTargets(
-    StringRef moduleName, llvm::SmallVector<llvm::StringRef, 4> &entries) {
-  for (const std::string &t : this->targets) {
-    llvm::StringRef entry(t);
-    auto split = entry.split(':');
-
-    llvm::StringRef targetModule = split.first.trim();
-    llvm::StringRef signalName = split.second.trim();
-
-    // Must be exactly module:signal
-    if (targetModule.empty() || signalName.empty())
-      continue;
-
-    if (targetModule != moduleName)
-      continue;
-
-    LLVM_DEBUG(llvm::dbgs()
-               << "[PERF] Matched target for module '" << moduleName
-               << "': signal '" << signalName << "'\n");
-
-    entries.push_back(signalName);
+  if (!rawTarget.starts_with("~")) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-trace target must use FIRRTL annotation "
+              "target syntax"
+           << rawTarget;
   }
+
+  auto pathValue =
+      circt::firrtl::resolvePath(rawTarget, circuit, symbolTable, targetCache);
+
+  if (!pathValue) {
+    return circuit.emitError()
+           << "[PERF] failed to resolve FIRRTL annotation target: "
+           << rawTarget;
+  }
+
+  if (pathValue->isOpOfType<circt::firrtl::CircuitOp>() ||
+      pathValue->isOpOfType<circt::firrtl::FModuleOp>() ||
+      pathValue->isOpOfType<circt::firrtl::FExtModuleOp>()) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-trace target must resolve to a signal-like "
+              "operation, not a circuit or module target: "
+           << rawTarget;
+  }
+
+  if (llvm::isa<circt::firrtl::PortAnnoTarget>(pathValue->ref)) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-trace does not currently support port "
+              "targets: "
+           << rawTarget;
+  }
+
+  llvm::StringRef label = rawTarget;
+
+  if (auto opRef =
+          llvm::dyn_cast<circt::firrtl::OpAnnoTarget>(pathValue->ref)) {
+    if (auto nameAttr =
+            opRef.getOp()->getAttrOfType<mlir::StringAttr>("name")) {
+      if (!nameAttr.getValue().empty())
+        label = nameAttr.getValue();
+    }
+  }
+
+  LLVM_DEBUG(
+      llvm::dbgs() << "[PERF] Inserting PerfTraceOp for annotation target: "
+                   << rawTarget << " label=" << label << "\n");
+
+  if (!circt::perf::FIRRTLPerfInserter::insertTraceOp(*pathValue,
+                                                      /*label=*/label)) {
+    return circuit.emitError()
+           << "[PERF] failed to insert PerfTraceOp for target: " << rawTarget;
+  }
+
+  return mlir::success();
 }
 
 void InsertTracePass::runOnOperation() {
-  firrtl::FModuleOp module = getOperation();
-  StringRef moduleName = module.getName();
-  llvm::SmallVector<llvm::StringRef, 4> entries;
-  createTargets(moduleName, entries);
-  insertTraceOps(module, moduleName, entries);
+  auto circuit = getOperation();
+
+  mlir::SymbolTable symbolTable(circuit);
+  circt::firrtl::CircuitTargetCache targetCache;
+
+  for (const std::string &targetString : this->targets) {
+    if (mlir::failed(insertTraceForTarget(circuit, symbolTable, targetCache,
+                                          targetString))) {
+      signalPassFailure();
+      return;
+    }
+
+    targetCache.invalidate();
+  }
 }
 
 std::unique_ptr<mlir::Pass> circt::perf::createInsertTracePass() {
