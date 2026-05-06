@@ -20,7 +20,7 @@
 #include "circt/Dialect/FIRRTL/FIRRTLUtils.h"
 #include "circt/Dialect/FIRRTL/NLATable.h"
 #include "circt/Dialect/FIRRTL/Passes.h"
-#include "circt/Dialect/Perf/PerfHelpers.h"
+#include "circt/Dialect/FIRRTL/Power.h"
 #include "mlir/IR/Threading.h"
 
 #include "circt/Dialect/Perf/PerfDialect.h"
@@ -31,113 +31,9 @@
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
 
-#define DEBUG_TYPE "power-trace"
-
-namespace circt {
-namespace perf {
-#define GEN_PASS_DEF_INSERTTRACE
-#include "circt/Dialect/Perf/PerfPasses.h.inc"
-} // namespace perf
-} // namespace circt
-
+using namespace mlir;
 using namespace circt;
-using namespace circt::perf;
 using namespace firrtl;
-
-inline StringRef getPowerAnnotationAttrName() { return "annotations"; }
-inline StringRef getPowerAttrName() { return "power"; }
-inline StringRef getNumInstancesAttrName() { return "num_instances"; }
-inline StringRef getBusWidthAttrName() { return "bus_width"; }
-
-inline FloatAttr getFloatAttr(MLIRContext *context, double f) { return FloatAttr::get(mlir::FloatType::getF64(context), f); }
-inline IntegerAttr getUintAttr(MLIRContext *context, uint32_t d) {
-  return IntegerAttr::get(
-    mlir::IntegerType::get(
-      context, 32,
-      mlir::IntegerType::Signless),
-    d);
-}
-
-
-
-// strip register and array index from name
-static std::string strip_misc_name(std::string name, bool *is_bus, bool *is_replicated) {
-    // strip bus tag
-    int size = name.length();
-    int idx = name.rfind("[0]/q");
-    std::string ret = name;
-    if (idx == size - 5) {
-        ret = name.substr(0, idx);
-        *is_bus = true;
-    }
-    else {
-        // ret = ret;
-        *is_bus = false;
-    }
-
-    // strip register tag
-    size = ret.length();
-    idx = ret.rfind("/q");
-    if (idx == size - 2) {
-        ret = name.substr(0, idx);
-    }
-
-    // determine if one of many instances
-    size = ret.length();
-    idx = ret.find("[0]");
-    *is_replicated = idx != -1;
-
-    return ret;
-}
-
-// power entry type
-typedef struct {
-  double power;
-  std::string name;
-  uint32_t num_instances;
-  uint32_t bus_width;
-  firrtl::RegOp reg;
-  firrtl::RegResetOp regReset;
-  firrtl::FModuleOp module;
-} register_node_entry_t;
-
-typedef struct {
-
-  firrtl::FModuleOp module;
-  firrtl::FNamableOp reg_op;
-  bool is_reset;
-  double power;
-
-} register_node_t;
-
-// power node
-typedef std::tuple<bool, firrtl::RegOp, firrtl::RegResetOp> reg_node_t;
-#define REG_NODE_T(is_reset, reg_op, reg_reset_op) std::tuple<bool, firrtl::RegOp, firrtl::RegResetOp>{is_reset, reg_op, reg_reset_op}
-#define REG_NODE_T_IS_RESET(n) std::get<0>(n)
-#define REG_NODE_T_GET_REG_OP(n) std::get<1>(n)
-#define REG_NODE_T_GET_REG_RESET_OP(n) std::get<2>(n)
-
-// power cluster
-typedef struct {
-
-  firrtl::FModuleOp module;
-  double power;
-  std::string name;
-  std::vector<reg_node_t> nodes;
-  int indicator_idx;
-
-} power_cluster_t;
-
-static void merge_clusters(std::vector<power_cluster_t> &clusters, int idx0, int idx1, int num_clusters) {
-  // add registers in clusters[idx1] to clusters[idx0]
-  power_cluster_t flattened = clusters[idx1];
-
-  // shift over merged cluster
-  for (int i = idx1; i < num_clusters; ++i) {
-    clusters[i] = clusters[i + 1];
-  }
-  clusters.resize(clusters.size()-1);
-}
 
 namespace {
 class PowerTracePass : public PowerTraceBase<PowerTracePass> {
@@ -190,8 +86,11 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
 
     log_f << "Top module " << top_node->getModule().getOperation()->getName().getIdentifier().str() << std::endl; // firrtl.module
 
+    // =================================================
+    // ===== associate power values with registers =====
+    // =================================================
+
     // iterate through all power entries
-    // associate power values with registers
     std::string line;
     while (!file.eof()) {
         // get line
@@ -316,14 +215,17 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
                 else {
                     // find current segment
                     p = stripped_name.substr(sidx, new_sidx - sidx);
-                    sidx = new_sidx + 1;
-                    log_f << "Searching for segment " << p << std::endl;
 
                     // corner case with element_reset_domain_*tile
                     std::string domain_identifier = "element_reset_domain";
                     if (p.substr(0, domain_identifier.size()) == domain_identifier.c_str()) {
                       p = domain_identifier;
+                      new_sidx = sidx + domain_identifier.size();
                     }
+
+                    // advance index to next segment
+                    sidx = new_sidx + 1;
+                    log_f << "Searching for segment " << p << std::endl;
 
                     // get instances from module in node
                     for (auto it = node->begin(); it != node->end(); it++) {
@@ -365,66 +267,40 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
     }
     file.close();
 
-    // reduce number of clusters
-    int num_clusters = (int)clusters.size();
-    int i = 0;
-    for (; i < maxNumClusters && i < num_clusters; ++i) {
-        // find maximum power cluster
-        int max_power_i = i;
-        double max_power = clusters[i].power;
-        for (int j = i + 1; j < num_clusters; ++j) {
-            if (clusters[j].power > max_power) {
-                max_power_i = j;
-                max_power = clusters[j].power;
-            }
-        }
+    // ==========================
+    // ===== run clustering =====
+    // ==========================
 
-        // swap clusters
-        if (max_power_i != i) {
-            power_cluster_t tmp = clusters[i];
-            clusters[i] = clusters[max_power_i];
-            clusters[max_power_i] = tmp;
-        }
+    PowerClusterer *clusterer;
+    log_f << "Cluster using the " << clusteringAlg << " class" << std::endl;
+    if (clusteringAlg == MaxPowerClusterer::ID) {
+      clusterer = new MaxPowerClusterer(clusteringAlgArgs, maxNumClusters);
     }
-    for (; i < num_clusters; ++i) {
-        idle_power += clusters[i].power;
+    else {
+      log_f << "Unrecognized clustering " << clusteringAlg << std::endl;
+      clusterer = new MaxPowerClusterer(clusteringAlgArgs, maxNumClusters);
     }
-    /*
-    while (num_clusters > numClusters) {
-        // find slot in power array
-        int idx = 0;
-        for (; idx < numClusters; ++idx) {
-            if (power > max_power_entries[idx].power) {
-                break;
-            }
-        }
 
-        // determine "significant enough" so leave as idle
-        if (idx == numClusters) {
-            idle_power += power;
-            continue;
-        }
-        else {
-            log_f << "  Insert at index " << idx << " which has power " << max_power_entries[idx].power << std::endl;
-        }
+    clusterer->runOnCircuit(
+      circuit,
+      inst_graph,
+      clusters,
+      &idle_power,
+      log_f
+    );
 
-        // make space for power-significant event
-        idle_power += max_power_entries[numClusters-1].power;
-        for (int j = numClusters-1; j >= idx + 1; --j) {
-            max_power_entries[j] = max_power_entries[j-1];
-        }
-        max_power_entries[idx] = entry;
-    }
-    */
+    delete clusterer;
+
+    // =========================
+    // ===== write outputs =====
+    // =========================
 
     // create operations
-    i = 0;
-    //for (power_entry_t &entry : max_power_entries) {
+    int i = 0;
     for (power_cluster_t &entry : clusters) {
 
         if (entry.power == 0.0) { break; }
 
-        //log_f << i << ": " << entry.name << " => " << entry.power << ", " << entry.num_instances << "x" << entry.bus_width << std::endl;
         log_f << i << ": " << entry.name << " => " << entry.power << std::endl;
 
         reg_node_t reg_target = entry.nodes[entry.indicator_idx];
@@ -437,8 +313,9 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
         }
         log_f << "  Register " << entry.name << std::endl;
 
+        std::string description = entry.name + ":" + std::to_string(entry.power);
         circt::perf::FIRRTLPerfInserter::insertTraceOp(reg_val, entry.module,
-          llvm::StringRef(entry.name), llvm::StringRef(entry.name + "desc"));
+          llvm::StringRef(entry.name), llvm::StringRef(description));
 
 #ifdef POWER_TRACE_ADD_ANNO
         SmallVector<Attribute> newAnnos;

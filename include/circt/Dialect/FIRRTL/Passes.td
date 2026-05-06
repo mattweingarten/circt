@@ -299,7 +299,10 @@ def PowerTrace : Pass<"firrtl-power-trace", "firrtl::CircuitOp"> {
     Option<"pnrTop", "pnr-top", "std::string", "\"DigitalTop\"",
       "Module name for the top-level instance in the placed and routed design.">,
     Option<"maxNumClusters", "num-clusters", "int", "512",
-      "Number of clusters to form">];
+      "Number of clusters to form">,
+    Option<"clusteringAlg", "clustering-algorithm", "std::string", "\"MaxPowerClusterer\"", "Clustering class name to use for clustering registers.">,
+    Option<"clusteringAlgArgs", "clustering-algorithm-args", "std::string", "\"\"", "Arguments to pass to the clusterer.">
+  ];
 }
 
 def Dedup : Pass<"firrtl-dedup", "firrtl::CircuitOp"> {

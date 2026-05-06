@@ -17,6 +17,7 @@ add_circt_library(CIRCTSupport
   Passes.cpp
   Path.cpp
   PetriNet.cpp
+  Power.cpp
   PrettyPrinter.cpp
   PrettyPrinterHelpers.cpp
   ParsingUtils.cpp
