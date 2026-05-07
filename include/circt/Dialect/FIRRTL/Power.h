@@ -27,6 +27,10 @@ using namespace mlir;
 using namespace circt;
 using namespace firrtl;
 
+// =============================
+// ===== Utility functions =====
+// =============================
+
 inline StringRef getPowerAnnotationAttrName() { return "annotations"; }
 inline StringRef getPowerAttrName() { return "power"; }
 inline StringRef getNumInstancesAttrName() { return "num_instances"; }
@@ -40,6 +44,28 @@ inline IntegerAttr getUintAttr(MLIRContext *context, uint32_t d) {
       context, 32,
       mlir::IntegerType::Signless),
     d);
+}
+
+inline firrtl::InstanceOp find_instance(circt::igraph::InstanceGraphNode *node, std::string inst_name, circt::igraph::InstanceGraphNode **new_node) {
+  // get instances from module in node
+  for (auto it = node->begin(); it != node->end(); it++) {
+    auto inst_node = (*it)->getTarget();
+    auto inst = (*it)->getInstance().getOperation();
+    //auto module = inst_node->getModule().getOperation();
+
+    auto inst_ptr = dyn_cast<firrtl::InstanceOp>(inst);
+    //auto mod_ptr = dyn_cast<firrtl::FModuleLike>(module);
+
+    //log_f << "Instance " << inst_ptr.getName().data() << " of module " << mod_ptr.getModuleName().data() << std::endl;
+
+    if (std::string(inst_ptr.getName().data()) == inst_name) {
+      //std::string modName = std::string(mod_ptr.getModuleName().data());
+      *new_node = inst_node;
+      return inst_ptr;
+    }
+  }
+  *new_node = nullptr;
+  return nullptr;
 }
 
 // strip register and array index from name
@@ -72,6 +98,9 @@ inline std::string strip_misc_name(std::string name, bool *is_bus, bool *is_repl
     return ret;
 }
 
+// =========================
+// ===== Utility types =====
+// =========================
 
 // power node
 typedef std::tuple<bool, firrtl::RegOp, firrtl::RegResetOp> reg_node_t;
@@ -88,10 +117,15 @@ typedef struct {
   std::string name;
   std::vector<reg_node_t> nodes;
   int indicator_idx;
+  circt::firrtl::AnnoPathValue indicator_path;
 
 } power_cluster_t;
 
-// base class providing an API to various clustering
+// ===========================
+// ===== Clusterer types =====
+// ===========================
+
+// base class providing an API to various clustering algorithms
 class PowerClusterer {
 
 private:
@@ -115,8 +149,11 @@ public:
     std::ofstream &log_stream
     );
 
+  static PowerClusterer *create(std::string clustering_alg, std::string args, int max_num_clusters);
+
 };
 
+// Select the maximum power signals
 class MaxPowerClusterer : public PowerClusterer {
 
 public:
@@ -125,6 +162,82 @@ public:
 
   MaxPowerClusterer(std::string args, int max_num_clusters);
   ~MaxPowerClusterer();
+
+  void runOnCircuit(firrtl::CircuitOp circuit,
+    circt::igraph::InstanceGraph *inst_graph,
+    std::vector<power_cluster_t> &clusters,
+    double *idle_power_ptr,
+    std::ofstream &log_stream
+    ) override;
+
+};
+
+// Select the highest power glue logic between the top-level modules. Each cluster is a set of modules.
+class GlueLogicClusterer : public PowerClusterer {
+
+public:
+
+  static std::string ID;
+
+  GlueLogicClusterer(std::string args, int max_num_clusters);
+  ~GlueLogicClusterer();
+
+  void runOnCircuit(firrtl::CircuitOp circuit,
+    circt::igraph::InstanceGraph *inst_graph,
+    std::vector<power_cluster_t> &clusters,
+    double *idle_power_ptr,
+    std::ofstream &log_stream
+    ) override;
+
+};
+
+// Minimize inter-cluster connections
+class MinimizeConnectionsClusterer : public PowerClusterer {
+
+public:
+
+  static std::string ID;
+
+  MinimizeConnectionsClusterer(std::string args, int max_num_clusters);
+  ~MinimizeConnectionsClusterer();
+
+  void runOnCircuit(firrtl::CircuitOp circuit,
+    circt::igraph::InstanceGraph *inst_graph,
+    std::vector<power_cluster_t> &clusters,
+    double *idle_power_ptr,
+    std::ofstream &log_stream
+    ) override;
+
+};
+
+// Cluster based on highest probability of switching through the logic function.
+class SwitchingProbClusterer : public PowerClusterer {
+
+public:
+
+  static std::string ID;
+
+  SwitchingProbClusterer(std::string args, int max_num_clusters);
+  ~SwitchingProbClusterer();
+
+  void runOnCircuit(firrtl::CircuitOp circuit,
+    circt::igraph::InstanceGraph *inst_graph,
+    std::vector<power_cluster_t> &clusters,
+    double *idle_power_ptr,
+    std::ofstream &log_stream
+    ) override;
+
+};
+
+// Use the clustering provided by Simmani, prior work in power modeling
+class SimmaniClusterer : public PowerClusterer {
+
+public:
+
+  static std::string ID;
+
+  SimmaniClusterer(std::string args, int max_num_clusters);
+  ~SimmaniClusterer();
 
   void runOnCircuit(firrtl::CircuitOp circuit,
     circt::igraph::InstanceGraph *inst_graph,

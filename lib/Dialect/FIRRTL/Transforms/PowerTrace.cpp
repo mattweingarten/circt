@@ -66,9 +66,24 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
     double idle_power = 0.0;
     std::vector<power_cluster_t> clusters;
 
+    // find top-level module for the CIRCT IR
+    circt::igraph::InstanceGraphNode *top_node = inst_graph->getTopLevelNode();
+    auto top_mod_ptr = top_node->getModule().getOperation();
+    firrtl::FModuleLike top_module = dyn_cast<firrtl::FModuleLike>(top_mod_ptr);
+    log_f << "Simulation top module " << std::string(top_module.getModuleName().data()) << std::endl; // firrtl.module
+
+    // find path from top-level IR to top-level PNR
+    // TestHarness
+    // ChipTop chiptop0
+    // DigitalTop system
+    llvm::SmallVector<firrtl::InstanceOp, 16> pnr_top_path;
+    circt::igraph::InstanceGraphNode *pnr_top_node = top_node;
+    firrtl::InstanceOp inst_ptr = find_instance(pnr_top_node, "chiptop0", &pnr_top_node);
+    pnr_top_path.push_back(inst_ptr);
+    inst_ptr = find_instance(pnr_top_node, "system", &pnr_top_node);
+    pnr_top_path.push_back(inst_ptr);
+
     // find top-level module in place and route
-    firrtl::FModuleLike top_module;
-    circt::igraph::InstanceGraphNode *top_node;
     auto it = llvm::find_if(*body, [&](Operation &op) -> bool {
         if (auto mod = dyn_cast<firrtl::FModuleLike>(op)) {
             log_f << "Module name " << mod.getModuleName().data() << std::endl;
@@ -84,7 +99,7 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
         top_node = inst_graph->lookup(cast<igraph::ModuleOpInterface>(*it));
     }
 
-    log_f << "Top module " << top_node->getModule().getOperation()->getName().getIdentifier().str() << std::endl; // firrtl.module
+    log_f << "PNR top module " << top_node->getModule().getOperation()->getName().getIdentifier().str() << std::endl; // firrtl.module
 
     // =================================================
     // ===== associate power values with registers =====
@@ -119,8 +134,6 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
             clock_power += power;
         }
         else {
-
-
             // strip array and register tags
             bool is_bus;
             bool is_replicated;
@@ -144,6 +157,8 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
 
             // find module
             circt::igraph::InstanceGraphNode *node = top_node;
+            llvm::SmallVector<firrtl::InstanceOp, 16> insts(pnr_top_path);
+
             int sidx = 0;
             std::string p;
             while (true) {
@@ -180,31 +195,37 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
 
                     // add target to cluster
                     if (it != body->end()) {
+                        // add target to cluster
                         std::string reg_name = "NULL";
                         firrtl::RegOp reg_target;
                         firrtl::RegResetOp reg_reset_target;
                         if ((reg_target = dyn_cast<firrtl::RegOp>(*it))) {
-                            // add target to cluster
+                            // save in cluster
                             entry.nodes[0] = REG_NODE_T(false, reg_target, nullptr);
                             entry.indicator_idx = 0;
+                            entry.indicator_path = circt::firrtl::AnnoPathValue(
+                              insts,
+                              firrtl::AnnoTarget(firrtl::detail:: 	AnnoTargetImpl(reg_target)),
+                              0);
 
-                            //reg_name = reg_target.getName().data();
+                            // track fine-grained information
                             reg_target->setAttr(getPowerAttrName(), getFloatAttr(context, power));
                             reg_target->setAttr(getNumInstancesAttrName(), getUintAttr(context, num_instances));
                             reg_target->setAttr(getBusWidthAttrName(), getUintAttr(context, bus_width));
                         }
                         else if ((reg_reset_target = dyn_cast<firrtl::RegResetOp>(*it))) {
-                            // add target to cluster
                             entry.nodes[0] = REG_NODE_T(true, nullptr, reg_reset_target);
                             entry.indicator_idx = 0;
+                            entry.indicator_path = circt::firrtl::AnnoPathValue(
+                              insts,
+                              firrtl::AnnoTarget(firrtl::detail:: 	AnnoTargetImpl(reg_reset_target)),
+                              0);
 
-                            //reg_name = reg_reset_target.getName().data();
+                            // track fine-grained information
                             reg_reset_target->setAttr(getPowerAttrName(), getFloatAttr(context, power));
                             reg_reset_target->setAttr(getNumInstancesAttrName(), getUintAttr(context, num_instances));
                             reg_reset_target->setAttr(getBusWidthAttrName(), getUintAttr(context, bus_width));
                         }
-
-                        //log_f << "Found target register with name " << reg_name << std::endl;
                     }
                     else {
                         log_f << "Could not find register for path segment " << p << std::endl;
@@ -227,24 +248,9 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
                     sidx = new_sidx + 1;
                     log_f << "Searching for segment " << p << std::endl;
 
-                    // get instances from module in node
-                    for (auto it = node->begin(); it != node->end(); it++) {
-                        auto inst_node = (*it)->getTarget();
-                        auto inst = (*it)->getInstance().getOperation();
-                        auto module = inst_node->getModule().getOperation();
-
-                        auto inst_ptr = dyn_cast<firrtl::InstanceOp>(inst);
-                        auto mod_ptr = dyn_cast<firrtl::FModuleLike>(module);
-
-                        log_f << "Instance " << inst_ptr.getName().data() << " of module " << mod_ptr.getModuleName().data() << std::endl;
-
-                        if (std::string(inst_ptr.getName().data()) == p) {
-                            std::string modName = std::string(mod_ptr.getModuleName().data());
-                            new_node = inst_node;
-                            log_f << "Module for path segment " << p << " is " << modName << std::endl;
-                            break;
-                        }
-                    }
+                    // search for instance
+                    firrtl::InstanceOp inst_ptr = find_instance(node, p, &new_node);
+                    insts.push_back(inst_ptr);
                 }
 
                 // follow chain or break
@@ -271,103 +277,122 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
     // ===== run clustering =====
     // ==========================
 
-    PowerClusterer *clusterer;
+    PowerClusterer *clusterer = PowerClusterer::create(clusteringAlg, clusteringAlgArgs, maxNumClusters);
     log_f << "Cluster using the " << clusteringAlg << " class" << std::endl;
-    if (clusteringAlg == MaxPowerClusterer::ID) {
-      clusterer = new MaxPowerClusterer(clusteringAlgArgs, maxNumClusters);
+    if (clusterer) {
+
+      clusterer->runOnCircuit(
+        circuit,
+        inst_graph,
+        clusters,
+        &idle_power,
+        log_f
+      );
+
+      delete clusterer;
+
     }
     else {
-      log_f << "Unrecognized clustering " << clusteringAlg << std::endl;
-      clusterer = new MaxPowerClusterer(clusteringAlgArgs, maxNumClusters);
+      log_f << "Unrecognized clustering algorithm, aborting" << std::endl;
     }
-
-    clusterer->runOnCircuit(
-      circuit,
-      inst_graph,
-      clusters,
-      &idle_power,
-      log_f
-    );
-
-    delete clusterer;
 
     // =========================
     // ===== write outputs =====
     // =========================
 
+    // List of outputs for each cluster
+    //   perf.trace operation
+    //   name,power,temperature_credit in csv
+    //   list of signals inside the cluster
+    //   signal_<i>,power,temperature_credit in csv
+    //     one line for each signal with same power consumption
+
     // create operations
     int i = 0;
     for (power_cluster_t &entry : clusters) {
 
-        if (entry.power == 0.0) { break; }
+      if (entry.power == 0.0) { break; }
 
-        log_f << i << ": " << entry.name << " => " << entry.power << std::endl;
+      log_f << i << ": " << entry.name << " => " << entry.power << std::endl;
 
-        reg_node_t reg_target = entry.nodes[entry.indicator_idx];
-        mlir::Value reg_val;
-        if (REG_NODE_T_IS_RESET(reg_target)) {
-            reg_val = REG_NODE_T_GET_REG_RESET_OP(reg_target).getResult();
-        }
-        else {
-            reg_val = REG_NODE_T_GET_REG_OP(reg_target).getResult();
-        }
-        log_f << "  Register " << entry.name << std::endl;
+      reg_node_t reg_target = entry.nodes[entry.indicator_idx];
+      mlir::Value reg_val;
+      if (REG_NODE_T_IS_RESET(reg_target)) {
+        reg_val = REG_NODE_T_GET_REG_RESET_OP(reg_target).getResult();
+      }
+      else {
+        reg_val = REG_NODE_T_GET_REG_OP(reg_target).getResult();
+      }
+      log_f << "  Register " << entry.name << std::endl;
 
-        std::string description = entry.name + ":" + std::to_string(entry.power);
-        circt::perf::FIRRTLPerfInserter::insertTraceOp(reg_val, entry.module,
-          llvm::StringRef(entry.name), llvm::StringRef(description));
+      log_f << "  Has path:" << std::endl;
+      for (firrtl::InstanceOp &segment : entry.indicator_path.instances) {
+        auto mod_ptr = segment->getParentOfType<circt::firrtl::FModuleOp>();
+        log_f << "    "
+              << std::string(segment.getName().data())
+              << ": "
+              << (mod_ptr
+                ? std::string(mod_ptr.getModuleName().data())
+                : "UNKNOWN")
+              << std::endl;
+      }
+
+      std::string description = entry.name + ":" + std::to_string(entry.power);
+      //circt::perf::FIRRTLPerfInserter::insertTraceOp(reg_val, entry.module,
+      circt::perf::FIRRTLPerfInserter::insertTraceOp(entry.indicator_path,
+        llvm::StringRef(entry.name), llvm::StringRef(description));
 
 #ifdef POWER_TRACE_ADD_ANNO
-        SmallVector<Attribute> newAnnos;
-        if (!annosAttr) {
-            log_f << "Target " << entry.name << " does not have any annotations" << std::endl;
-            newAnnos.reserve(1);
-        }
-        else {
-            newAnnos.reserve(annosAttr.size() + 1);
+      SmallVector<Attribute> newAnnos;
+      if (!annosAttr) {
+        log_f << "Target " << entry.name << " does not have any annotations" << std::endl;
+        newAnnos.reserve(1);
+      }
+      else {
+        newAnnos.reserve(annosAttr.size() + 1);
 
-            for (Attribute anno : annosAttr) {
-                newAnnos.push_back(anno);
-            }
-
-            SmallVector<NamedAttribute> fields;
-            fields.emplace_back(
-                StringAttr::get(context, "class"),
-                StringAttr::get(context, "freechips.rocketchip.util.PowerAnnotation")
-            );
-            fields.emplace_back(
-                StringAttr::get(context, "power"),
-                FloatAttr::get(mlir::FloatType::getF64(context), entry.power)
-            );
-            fields.emplace_back(
-                StringAttr::get(context, "num_instances"),
-                IntegerAttr::get(
-                    mlir::IntegerType::get(context, 32, mlir::IntegerType::Signless),
-                    entry.num_instances)
-            );
-            fields.emplace_back(
-                StringAttr::get(context, "bus_width"),
-                IntegerAttr::get(
-                    mlir::IntegerType::get(context, 32, mlir::IntegerType::Signless),
-                    entry.bus_width)
-            );
-
-            newAnnos.push_back(DictionaryAttr::get(context, fields));
+        for (Attribute anno : annosAttr) {
+          newAnnos.push_back(anno);
         }
 
-        // attach annotation to target
-        // TODO attach to specific instance, not just the operation
-        log_f << "Attaching " << (newAnnos.size()) << " annotation(s) to " << entry.name << std::endl;
-        if (entry.reg) {
-            entry.reg->setAttr(StringAttr::get(context, getPowerAnnotationAttrName()), ArrayAttr::get(context, newAnnos));
-        }
-        else {
-            entry.regReset->setAttr(StringAttr::get(context, getPowerAnnotationAttrName()), ArrayAttr::get(context, newAnnos));
-        }
+        SmallVector<NamedAttribute> fields;
+        fields.emplace_back(
+          StringAttr::get(context, "class"),
+          StringAttr::get(context, "freechips.rocketchip.util.PowerAnnotation")
+        );
+        fields.emplace_back(
+          StringAttr::get(context, "power"),
+          FloatAttr::get(mlir::FloatType::getF64(context), entry.power)
+        );
+        fields.emplace_back(
+          StringAttr::get(context, "num_instances"),
+          IntegerAttr::get(
+            mlir::IntegerType::get(context, 32, mlir::IntegerType::Signless),
+            entry.num_instances)
+        );
+        fields.emplace_back(
+          StringAttr::get(context, "bus_width"),
+          IntegerAttr::get(
+            mlir::IntegerType::get(context, 32, mlir::IntegerType::Signless),
+            entry.bus_width)
+        );
+
+        newAnnos.push_back(DictionaryAttr::get(context, fields));
+      }
+
+      // attach annotation to target
+      // TODO attach to specific instance, not just the operation
+      log_f << "Attaching " << (newAnnos.size()) << " annotation(s) to " << entry.name << std::endl;
+      if (entry.reg) {
+        entry.reg->setAttr(StringAttr::get(context, getPowerAnnotationAttrName()), ArrayAttr::get(context, newAnnos));
+      }
+      else {
+        entry.regReset->setAttr(StringAttr::get(context, getPowerAnnotationAttrName()), ArrayAttr::get(context, newAnnos));
+      }
 
 #endif // POWER_TRACE_ADD_ANNO
 
-        ++i;
+      ++i;
     }
 
     markAnalysesPreserved<InstanceGraph>();
