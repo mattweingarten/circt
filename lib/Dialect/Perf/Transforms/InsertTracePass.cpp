@@ -111,6 +111,14 @@ mlir::LogicalResult InsertTracePass::insertTraceForTarget(
     return circuit.emitError()
            << "[PERF] failed to insert PerfTraceOp for target: " << rawTarget;
   }
+  ++numTracesInserted;
+
+  if (numTracesInserted >= maxTraceCount) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-trace would insert more than the configured "
+              "maximum number of traces. max-trace-count="
+           << maxTraceCount;
+  }
 
   return mlir::success();
 }

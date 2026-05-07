@@ -35,30 +35,56 @@ def EmitFireSimAnnotations
 def InsertCounter : Pass<"perf-insert-counter", "circt::firrtl::CircuitOp"> {
   let summary = "Insert PerfCounterOps into selected FIRRTL modules/signals.";
   let description = [{
-    Takes a list of (module, signal) pairs and inserts a PerfCounterOp
-    for each matching entry. Each pair is encoded as:
-      <module-name>:<signal-name>
+    Takes a list of FIRRTL annotation targets and inserts PerfCounterOps
+    for each matching entry.
+
+    Each target should use FIRRTL annotation target syntax, e.g.:
+      ~Top|Top>foo
+
+    The n option controls how many duplicate counters are inserted per target.
+    The generated counter labels are suffixed with _0, _1, ..., _{n-1}.
   }];
   let constructor = "circt::perf::createInsertCounterPass()";
 
   let options = [
-    ListOption<"targets", "targets", "std::string", 
-      "Comma-separated list of module:signal pairs (e.g. Top:foo,Core:bar).">
+    ListOption<"targets", "targets", "std::string",
+      "Comma-separated list of FIRRTL annotation targets, e.g. ~Top|Top>foo,~Top|Core>bar.">,
+
+    Option<"n", "n", "unsigned", /*default=*/"1",
+      "Number of duplicate counters to insert per target.">
+  ];
+
+  let statistics = [
+    Statistic<"numCountersInserted", "num-counters-inserted",
+      "Number of PerfCounterOps inserted.">
   ];
 }
 
 def InsertTrace : Pass<"perf-insert-trace", "circt::firrtl::CircuitOp"> {
-  let summary = "Insert PerfTraceOp into selected FIRRTL modules/signals.";
+  let summary = "Insert PerfTraceOps into selected FIRRTL modules/signals.";
   let description = [{
-    Takes a list of (module, signal) pairs and inserts a TraceCounterOp
-    for each matching entry. Each pair is encoded as:
-      <module-name>:<signal-name>
+    Takes a list of FIRRTL annotation targets and inserts PerfTraceOps
+    for each matching entry.
+
+    Each target should use FIRRTL annotation target syntax, e.g.:
+      ~Top|Top>foo
+
+    The max-trace-count option limits the total number of traces inserted by
+    this pass. The default is 512.
   }];
   let constructor = "circt::perf::createInsertTracePass()";
 
   let options = [
-    ListOption<"targets", "targets", "std::string", 
-      "Comma-separated list of module:signal pairs (e.g. Top:foo,Core:bar).">
+    ListOption<"targets", "targets", "std::string",
+      "Comma-separated list of FIRRTL annotation targets, e.g. ~Top|Top>foo,~Top|Core>bar.">,
+
+    Option<"maxTraceCount", "max-trace-count", "unsigned", /*default=*/"512",
+      "Maximum number of PerfTraceOps to insert.">
+  ];
+
+  let statistics = [
+    Statistic<"numTracesInserted", "num-traces-inserted",
+      "Number of PerfTraceOps inserted.">
   ];
 }
 

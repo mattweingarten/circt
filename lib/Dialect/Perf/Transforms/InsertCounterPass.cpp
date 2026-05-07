@@ -47,17 +47,22 @@ private:
   insertCounterForTarget(circt::firrtl::CircuitOp circuit,
                          mlir::SymbolTable &symbolTable,
                          circt::firrtl::CircuitTargetCache &targetCache,
-                         llvm::StringRef rawTarget);
+                         llvm::StringRef rawTarget, unsigned n);
 };
 } // namespace
-
 mlir::LogicalResult InsertCounterPass::insertCounterForTarget(
     circt::firrtl::CircuitOp circuit, mlir::SymbolTable &symbolTable,
-    circt::firrtl::CircuitTargetCache &targetCache, llvm::StringRef rawTarget) {
+    circt::firrtl::CircuitTargetCache &targetCache, llvm::StringRef rawTarget,
+    unsigned n) {
   rawTarget = rawTarget.trim();
 
   if (rawTarget.empty())
     return mlir::success();
+
+  if (n == 0) {
+    return circuit.emitError()
+           << "[PERF] perf-insert-counter parameter n must be greater than 0";
+  }
 
   if (!rawTarget.starts_with("~")) {
     return circuit.emitError()
@@ -114,21 +119,27 @@ mlir::LogicalResult InsertCounterPass::insertCounterForTarget(
            << rawTarget;
   }
 
-  llvm::StringRef label = rawTarget;
+  llvm::StringRef baseLabel = rawTarget;
 
   if (auto nameAttr = targetOp->getAttrOfType<mlir::StringAttr>("name")) {
     if (!nameAttr.getValue().empty())
-      label = nameAttr.getValue();
+      baseLabel = nameAttr.getValue();
   }
 
-  LLVM_DEBUG(
-      llvm::dbgs() << "[PERF] Inserting PerfCounterOp for annotation target: "
-                   << rawTarget << " label=" << label << "\n");
+  for (unsigned i = 0; i < n; ++i) {
+    std::string label = (llvm::Twine(baseLabel) + "_" + llvm::Twine(i)).str();
 
-  if (!circt::perf::FIRRTLPerfInserter::insertCounterOp(*pathValue,
-                                                        /*label=*/label)) {
-    return circuit.emitError()
-           << "[PERF] failed to insert PerfCounterOp for target: " << rawTarget;
+    LLVM_DEBUG(llvm::dbgs()
+               << "[PERF] Inserting PerfCounterOp for annotation target: "
+               << rawTarget << " label=" << label << "\n");
+
+    if (!circt::perf::FIRRTLPerfInserter::insertCounterOp(*pathValue,
+                                                          /*label=*/label)) {
+      return circuit.emitError()
+             << "[PERF] failed to insert PerfCounterOp for target: "
+             << rawTarget << " label=" << label;
+    }
+    ++numCountersInserted;
   }
 
   return mlir::success();
@@ -142,7 +153,7 @@ void InsertCounterPass::runOnOperation() {
 
   for (const std::string &targetString : this->targets) {
     if (mlir::failed(insertCounterForTarget(circuit, symbolTable, targetCache,
-                                            targetString))) {
+                                            targetString, this->n))) {
       signalPassFailure();
       return;
     }
