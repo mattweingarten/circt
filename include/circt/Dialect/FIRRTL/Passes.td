@@ -287,13 +287,13 @@ def PowerTrace : Pass<"firrtl-power-trace", "firrtl::CircuitOp"> {
     equivalent compositions of single-bit muxes.
   }];
   let constructor = "circt::firrtl::createPowerTracePass()";
-  let statistics = [
-    Statistic<"numLoweredMuxes", "num-lowered-multibit-muxes",
-      "Number of multibit muxes lowered">,
-  ];
   let options = [
     Option<"powerFilename", "power-file", "std::string", "\"power.csv\"",
       "Input CSV file name for the per-signal power characterization.">,
+    Option<"indicatorFilename", "indicator-file", "std::string", "\"indicators.csv\"",
+      "Output CSV file indicating the indicator signal for each cluster.">,
+    Option<"clusterFilename", "cluster-file", "std::string", "\"clusters.csv\"",
+      "Output CSV file indicating to which cluster each signal belongs.">,
     Option<"logFilename", "log-file", "std::string", "\"firrtl-power-trace.log\"",
       "Log file.">,
     Option<"pnrTop", "pnr-top", "std::string", "\"DigitalTop\"",
