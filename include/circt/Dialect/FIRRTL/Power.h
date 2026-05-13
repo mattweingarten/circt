@@ -29,6 +29,12 @@ using namespace mlir;
 using namespace circt;
 using namespace firrtl;
 
+// =====================
+// ===== Constants =====
+// =====================
+
+#define VECTOR_DEFAULT_SWITCHING_FACTOR 0.5
+
 // =============================
 // ===== Utility functions =====
 // =============================
@@ -60,6 +66,8 @@ inline IntegerAttr getUintAttr(MLIRContext *context, uint32_t d) {
     d);
 }
 
+Operation *find_one_bit_register(Operation *op, std::ofstream &log_stream);
+
 // traverse the instance graph one level
 inline firrtl::InstanceOp find_instance(circt::igraph::InstanceGraphNode *node, std::string inst_name, circt::igraph::InstanceGraphNode **new_node) {
   // get instances from module in node
@@ -76,6 +84,10 @@ inline firrtl::InstanceOp find_instance(circt::igraph::InstanceGraphNode *node, 
   *new_node = nullptr;
   return nullptr;
 }
+
+// ========================================
+// ===== Register attribute functions =====
+// ========================================
 
 // strip register and array index from name
 inline std::string strip_misc_name(std::string name, bool *is_bus, bool *is_replicated) {
@@ -115,13 +127,16 @@ void tag_register(
   double power,
   uint32_t num_instances,
   uint32_t bus_width,
-  uint32_t cluster_id);
+  uint32_t cluster_id,
+  uint32_t *indicator_fan_out);
 
 // remove fine-grained information
 void untag_register(MLIRContext *context, mlir::Operation *op);
 
 // compute the fan-out of an operation
 uint32_t compute_fan_out(mlir::Operation *op);
+
+uint32_t get_register_cluster_id(mlir::Operation *op);
 
 // =========================
 // ===== Utility types =====
@@ -151,7 +166,8 @@ typedef struct {
   std::string name;
   std::vector<reg_node_t> nodes;
   uint32_t indicator_idx;
-  uint32_t indicator_fanout;
+  uint32_t indicator_fan_out;
+  uint32_t indicator_bus_width;
   circt::firrtl::AnnoPathValue indicator_path;
 
 } power_cluster_t;

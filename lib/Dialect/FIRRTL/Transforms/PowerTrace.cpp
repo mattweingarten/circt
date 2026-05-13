@@ -144,10 +144,11 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
             log_f << "Signal name is " << stripped_name << " is_bus = " << (is_bus ? "yes" : "no") << " is_replicated = " << (is_replicated ? "yes" : "no") << " power = " << power << " bus_width = " << bus_width << " num_instances = " << num_instances << std::endl;
 
             // ignore bus signals
-            if (is_bus) {
-                idle_power += power;
-                continue;
-            }
+            //if (is_bus) {
+                //idle_power += power;
+                //continue;
+            //}
+            // TODO bits [1], [2], ... not found until strip the name so we avoid adding duplicate signals
 
             // start entry to track metadata
             power_cluster_t entry;
@@ -220,9 +221,10 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
                         }
 
                         // track fine-grained information
-                        tag_register(context, op, stripped_name, power, num_instances, bus_width, cluster_id);
+                        tag_register(context, op, name, power, num_instances, bus_width, cluster_id, &entry.indicator_fan_out);
                         entry.id = cluster_id;
                         entry.indicator_idx = 0;
+                        entry.indicator_bus_width = bus_width;
                     }
                     else {
                         log_f << "Could not find register for path segment " << p << std::endl;
@@ -305,6 +307,17 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
     //   list of signals inside the cluster
     //   signal_<i>,power,temperature_credit in csv
     //     one line for each signal with same power consumption
+    //   generate adjacency list to other clusters
+
+    // global information
+    std::ofstream global_header_f(globalHeaderFilename);
+    global_header_f << std::endl
+      << "#ifndef __GLOBAL_POWER_TRACE_H__\n"
+      << "#define __GLOBAL_POWER_TRACE_H__\n\n"
+      << "#define CLOCK_POWER " << clock_power << "\n"
+      << "#define IDLE_POWER " << idle_power << "\n"
+      << "\n#endif // __GLOBAL_POWER_TRACE_H__\n";
+    global_header_f.close();
 
     // create operations
     std::ofstream cluster_indicator_f(indicatorFilename);
@@ -341,9 +354,10 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
       }
 
       // create perf operation for the indicator
-      std::string description = entry.name + ":" + std::to_string(entry.id) + ":" + std::to_string(entry.power);
+      std::string name = "cluster_" + std::to_string(entry.id);
+      std::string description = "\\\"" + entry.name + "\\\"," + std::to_string(entry.power) + "";
       circt::perf::FIRRTLPerfInserter::insertTraceOp(entry.indicator_path,
-        llvm::StringRef(entry.name), llvm::StringRef(description));
+        llvm::StringRef(name), llvm::StringRef(description));
 
       // write cluster indicator
       std::string rtl_path = get_reg_node_attr<StringAttr, llvm::StringRef>(

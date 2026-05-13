@@ -290,6 +290,8 @@ def PowerTrace : Pass<"firrtl-power-trace", "firrtl::CircuitOp"> {
   let options = [
     Option<"powerFilename", "power-file", "std::string", "\"power.csv\"",
       "Input CSV file name for the per-signal power characterization.">,
+    Option<"globalHeaderFilename", "global-header-file", "std::string", "\"global.csv\"",
+      "Output C-style header file defining global constants.">,
     Option<"indicatorFilename", "indicator-file", "std::string", "\"indicators.csv\"",
       "Output CSV file indicating the indicator signal for each cluster.">,
     Option<"clusterFilename", "cluster-file", "std::string", "\"clusters.csv\"",

@@ -33,7 +33,8 @@ uint32_t compute_fan_out(mlir::Operation *op) {
   uint32_t fan_out = 0;
   for (auto indexedResult : llvm::enumerate(op->getResults())) {
     auto result = indexedResult.value();
-    for (Operation *userOp : result.getUsers()) {
+    //for (Operation *userOp : result.getUsers()) {
+    for (auto _ : result.getUsers()) {
       ++fan_out;
     }
   }
@@ -48,11 +49,15 @@ void tag_register(
   double power,
   uint32_t num_instances,
   uint32_t bus_width,
-  uint32_t cluster_id
+  uint32_t cluster_id,
+  uint32_t *indicator_fan_out
 ) {
   uint32_t fan_out = compute_fan_out(op);
+  if (indicator_fan_out) {
+    *indicator_fan_out = fan_out;
+  }
   op->setAttr(getFanOutAttrName(), getUintAttr(context, fan_out));
-  op->setAttr(getHdlPathAttrName(), getStringAttr(context, hdl_path));
+  op->setAttr(getRtlPathAttrName(), getStringAttr(context, hdl_path));
   op->setAttr(getPowerAttrName(), getFloatAttr(context, power));
   op->setAttr(getNumInstancesAttrName(), getUintAttr(context, num_instances));
   op->setAttr(getBusWidthAttrName(), getUintAttr(context, bus_width));
@@ -61,11 +66,21 @@ void tag_register(
 
 void untag_register(MLIRContext *context, mlir::Operation *op) {
   op->removeAttr(getFanOutAttrName());
-  op->removeAttr(getHdlPathAttrName());
+  op->removeAttr(getRtlPathAttrName());
   op->removeAttr(getPowerAttrName());
   op->removeAttr(getNumInstancesAttrName());
   op->removeAttr(getBusWidthAttrName());
   op->removeAttr(getClusterIdAttrName());
+}
+
+inline uint32_t get_register_cluster_id(mlir::Operation *op) {
+  if (op->hasAttr(getClusterIdAttrName())) {
+    return (uint32_t)(llvm::dyn_cast_or_null<IntegerAttr>(
+      op->getAttr(getClusterIdAttrName())
+    ).getValue().getZExtValue());
+  } else {
+    return 0;
+  }
 }
 
 // ========================================
@@ -130,7 +145,7 @@ bool apply_op(Operation *op, uint32_t inputs) {
 }
 
 /*
-void compute_fanout(power_cluster_t cluster) {
+void compute_fan_out(power_cluster_t cluster) {
 
   // for each register in the cluster
   for (reg_node_t node : cluster.nodes) {
@@ -162,7 +177,7 @@ void walk_register(power_cluster_t cluster, std::ofstream &log_stream) {
     //  llvm::outs() << " has multiple uses:\n";
     int i = 0;
     for (Operation *userOp : result.getUsers()) {
-      llvm::outs() << "    (" << i << ") - " << userOp->getName() << "\n";
+      llvm::outs() << "    (" << i << ") - " << userOp->getName().getStringRef().data()  << "\n";
       ++i;
     }
   }
@@ -250,17 +265,126 @@ void compute_switching_factor(Operation *op, uint32_t num_inputs, uint32_t num_o
 // ===== Cluster-specific functions =====
 // ======================================
 
-static uint32_t merge_clusters(power_clusters_t &clusters, uint32_t id0, uint32_t id1, uint32_t num_clusters) {
+// get the width of a signal in the MLIR
+// some signals get flattened from Uint<n> to one-bit signals
+//   so when they are marked with bus_width = 1, the Uint
+//   may not be a Uint<1>
+// so we need to confirm that anything tagged with bus_width = 1
+//   is indeed a Uint<1>
+uint32_t get_register_bus_width(Operation *op/*, std::ofstream &log_stream*/) {
 
-  //if (idx0 == idx1) {
-  //  return idx0;
-  //}
-  //else if (idx0 > idx1) {
-  //  // we want idx0 < idx1, so swap
-  //  idx0 = idx0 ^ idx1; // a ^ b
-  //  idx1 = idx0 ^ idx1; // (a ^ b) ^ b = a
-  //  idx0 = idx0 ^ idx1; // (a ^ b) ^ a = b
-  //}
+  uint32_t bus_width = 0;
+  if (op->hasAttr(getBusWidthAttrName())) {
+    bus_width = (uint32_t)llvm::dyn_cast_or_null<IntegerAttr>(
+      op->getAttr(getBusWidthAttrName())
+    ).getValue().getZExtValue();
+  }
+  else {
+    return 0;
+  }
+
+  // bus width = 1
+  //uint32_t bus_width = get_register_bus_width(op);
+  //log_stream << "  Bus width for operation " << op->getName().getStringRef().data() << " is " << bus_width << std::endl;
+  if (bus_width == 1) {
+    for (auto indexedResult : llvm::enumerate(op->getResults())) {
+      auto value = indexedResult.value();
+
+      auto uintType = llvm::dyn_cast<circt::firrtl::UIntType>(value.getType());
+      if (uintType) {
+        return uintType.getWidthOrSentinel();
+      }
+      else {
+        return 0;
+      }
+    }
+  }
+
+  return bus_width;
+}
+
+Operation *find_one_bit_register(Operation *op, std::ofstream &log_stream) {
+  if (op) {
+    log_stream << "  find_one_bit_register for operation ";
+    mlir::OperationName op_name = op->getName();
+    if (op_name.getContext()) {
+      log_stream << "with context" << std::flush;
+      log_stream << op->getName().getStringRef().data() << std::endl;
+    }
+    else {
+      log_stream << "    No name" << std::endl;
+    }
+  }
+  else {
+    log_stream << "  op is null!" << std::endl;
+  }
+  for (auto indexedOperand : op->getOperands()) {
+    // get defining operation for each operand
+    //log_stream << "  index is " << indexedOperand.getOperandNumber() << std::endl;
+    //auto value = indexedOperand.value();
+    log_stream << "  value" << std::flush;
+    //auto defining_op = value.getDefiningOp();
+    auto defining_op = indexedOperand.getDefiningOp();
+    if (defining_op) {
+      log_stream << " defined by " << defining_op->getName().getStringRef().data() << std::endl;
+    }
+    else {
+      log_stream << "  no defining operation" << std::endl;
+      continue;
+    }
+
+    /*
+    // classify register
+    uint32_t register_bits = TypeSwitch<Operation *, uint32_t>(defining_op)
+      .template Case<RegOp>([&](auto reg_op) -> uint32_t {
+
+      })
+      .template Case<RegResetOp>([&](auto reg_reset_op) -> uint32_t {
+
+      })
+      .Default([&](auto expr) -> bool {
+        return false;
+      });
+
+    if (is register) {
+      if (is one bit register) {
+        return defining_op;
+      }
+      else if (is multi bit register) {
+        return nullptr;
+      }
+    }
+    */
+
+    // determine bus width
+    // if unknown, traverse down the combinational path
+    // if known, return if a single bit
+    // if known
+    uint32_t bus_width = get_register_bus_width(defining_op);
+    log_stream << "  Bus width for operation " << defining_op->getName().getStringRef().data() << " is " << bus_width << std::endl;
+    if (bus_width == 1) {
+      return defining_op;
+      break;
+    }
+    else if (bus_width > 1) {
+      // another vector, so skip this path
+      continue;
+    }
+
+    // traverse one more level
+    Operation *ancestor_defining_op = find_one_bit_register(defining_op, log_stream);
+    if (ancestor_defining_op) {
+      return ancestor_defining_op;
+    }
+  }
+  return nullptr;
+}
+
+static uint32_t merge_clusters_ids(MLIRContext *context, power_clusters_t &clusters, uint32_t id0, uint32_t id1, uint32_t *num_clusters) {
+
+  if (id0 == 0 || id1 == 0) {
+    return 0;
+  }
 
   power_cluster_t c0 = clusters[id0];
   power_cluster_t c1 = clusters[id1];
@@ -271,38 +395,50 @@ static uint32_t merge_clusters(power_clusters_t &clusters, uint32_t id0, uint32_
   flattened.nodes.insert(flattened.nodes.end(), c0.nodes.begin(), c0.nodes.end());
   flattened.nodes.insert(flattened.nodes.end(), c1.nodes.begin(), c1.nodes.end());
 
-  // select indicator with a higher fanout
-  if (c0.indicator_fanout >= c1.indicator_fanout) {
-    flattened.id = id0;
+  // select indicator with a higher fan_out
+  bool select_c0 =
+    (
+      c0.indicator_bus_width < c1.indicator_bus_width
+    ) || (
+      c0.indicator_fan_out >= c1.indicator_fan_out
+      && c0.indicator_bus_width == c1.indicator_bus_width
+    );
+
+  // fill in flattened metadata
+  flattened.id = id0;
+  if (select_c0) {
     flattened.name = c0.name;
     flattened.indicator_idx = c0.indicator_idx;
-    flattened.indicator_fanout = c0.indicator_fanout;
+    flattened.indicator_fan_out = c0.indicator_fan_out;
     flattened.indicator_path = c0.indicator_path;
-
-    clusters[id0] = flattened;
-    clusters.erase(id1);
-    return id0;
   }
   else {
-    flattened.id = id1;
     flattened.name = c1.name;
     flattened.indicator_idx = (uint32_t)c0.nodes.size() + c1.indicator_idx;
-    flattened.indicator_fanout = c1.indicator_fanout;
+    flattened.indicator_fan_out = c1.indicator_fan_out;
     flattened.indicator_path = c1.indicator_path;
-
-    clusters[id1] = flattened;
-    clusters.erase(id0);
-    return id1;
   }
 
-  // shift over merged cluster
-  //for (uint32_t i = idx1; i < num_clusters; ++i) {
-  //  clusters[i] = clusters[i + 1];
-  //}
-  //clusters.resize(clusters.size()-1);
-  //clusters[idx0] = flattened;
+  // update cluster ID metadata
+  for (reg_node_t node : flattened.nodes) {
+    REG_NODE_T_GET_OP(node)->setAttr(getClusterIdAttrName(), getUintAttr(context, id0));
+  }
 
-  //return idx0;
+  // remove separate node
+  clusters[id0] = flattened;
+  clusters.erase(id1);
+  *num_clusters = *num_clusters - 1;
+  return id0;
+}
+
+static uint32_t merge_clusters_ops(MLIRContext *context, power_clusters_t &clusters, Operation *reg0, Operation *reg1, uint32_t *num_clusters) {
+  return merge_clusters_ids(
+    context,
+    clusters,
+    get_register_cluster_id(reg0),
+    get_register_cluster_id(reg1),
+    num_clusters
+  );
 }
 
 // factory method
@@ -391,21 +527,95 @@ void MaxPowerClusterer::runOnCircuit(
   uint32_t num_clusters = (uint32_t)clusters.size();
   log_stream << "Number of clusters to start: " << num_clusters << ", must minimize to " << max_num_clusters << "\n";
 
-  // remove vector clusters
-  for (auto map : clusters) {
-    int id = map.first;
-    power_cluster_t entry = map.second;
+  // get keys
+  std::vector<uint32_t> keys;
+  keys.reserve(num_clusters);
+  for (auto entry : clusters) {
+    keys.push_back(entry.first);
+  }
 
-    // ignore cluster when a vector
-    APInt bus_width = get_reg_node_attr<IntegerAttr, APInt>(entry.nodes[entry.indicator_idx], getBusWidthAttrName());
-    if (bus_width.ugt(1)) { // bus_width > 1
+  // remove RegOps until bug with reset reference is fixed
+  for (uint32_t id : keys) {
+    auto entry_it = clusters.find(id);
+    if (entry_it == clusters.end()) {
+      continue;
+    }
+    power_cluster_t entry = entry_it->second;
+
+    reg_node_t node = entry.nodes[entry.indicator_idx];
+    if (!REG_NODE_T_IS_RESET(node)) {
+      Operation *op = REG_NODE_T_GET_OP(node);
+      uint32_t bus_width = get_register_bus_width(op);
+      idle_power +=
+          entry.power * bus_width * VECTOR_DEFAULT_SWITCHING_FACTOR;
       clusters.erase(id);
       --num_clusters;
     }
   }
 
+  // remove vector clusters
+  for (uint32_t id : keys) {
+    // lookup entry in list of clusters
+    log_stream << "Looking up id " << id << std::endl;
+    auto entry_it = clusters.find(id);
+    if (entry_it == clusters.end()) {
+      continue;
+    }
+    power_cluster_t entry = entry_it->second;
+    log_stream << "Found entry with name " << entry.name << std::endl;
+
+    // ignore cluster when a vector
+    reg_node_t node = entry.nodes[entry.indicator_idx];
+    Operation *op = REG_NODE_T_GET_OP(node);
+    uint32_t bus_width = get_register_bus_width(op);
+    log_stream << "Bus width for " << entry.name << " is " << bus_width << std::endl;
+    if (bus_width > 1) {
+
+      log_stream << "  Found vector cluster starting with " << op->getName().getStringRef().data() << ": " << entry.name << std::endl;
+
+      // traverse results until find logic with one-bit
+      Operation *single_bit_merge = nullptr;
+      for (auto indexedResult : llvm::enumerate(op->getResults())) {
+        auto result = indexedResult.value();
+
+        // for each user of the vector result
+        for (Operation *userOp : result.getUsers()) {
+
+          // walk back to find a one-bit register
+          // for each operand in the user of the result
+          log_stream << "  Looking at operation " << userOp->getName().getStringRef().data() << std::endl;
+          single_bit_merge = find_one_bit_register(userOp, log_stream);
+          if (single_bit_merge) {
+            break;
+          }
+        }
+      }
+
+      // if found something to merge, merge
+      if (single_bit_merge) {
+        log_stream << "    Merging" << std::endl;
+        uint32_t new_id = merge_clusters_ops(context, clusters, op, single_bit_merge, &num_clusters);
+        if (new_id) {
+          log_stream << "    Merged into cluster with id " << new_id << std::endl;
+          continue;
+        } else {
+          log_stream << "    Unable to merge" << std::endl;
+        }
+      }
+
+      // otherwise keep as idle
+      log_stream << "    Could not find ancestor one-bit register" << std::endl;
+      idle_power +=
+        entry.power * bus_width * VECTOR_DEFAULT_SWITCHING_FACTOR;
+      clusters.erase(id);
+      --num_clusters;
+    }
+  }
+
+  log_stream << "Number of clusters to start after removing vectors: " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
   // remove min-power clusters
   uint32_t kept_id;
+  num_clusters = (uint32_t)clusters.size();
   while (num_clusters > max_num_clusters) {
     uint32_t min_power_id = 0;
     double min_power = std::numeric_limits<double>::max();
@@ -428,6 +638,8 @@ void MaxPowerClusterer::runOnCircuit(
     idle_power += min_power;
     clusters.erase(min_power_id);
     --num_clusters;
+
+    log_stream << "  After removing " << min_power_id << ": " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
   }
 
   // temporary test
@@ -489,9 +701,6 @@ void GlueLogicClusterer::runOnCircuit(
   std::ofstream &log_stream
 ) {
   double idle_power = *idle_power_ptr;
-
-  // group vectors with control logic
-  //for
 
   // select maximum power clusters
   MaxPowerClusterer sub_clusterer("", max_num_clusters);
