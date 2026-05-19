@@ -20,6 +20,7 @@
 
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/ADT/PostOrderIterator.h"
 
 using namespace mlir;
 using namespace circt;
@@ -30,6 +31,12 @@ using namespace firrtl;
 // ======================================
 
 uint32_t compute_fan_out(mlir::Operation *op) {
+  if (op->hasAttr(getFanOutAttrName())) {
+    return (uint32_t)(llvm::dyn_cast_or_null<IntegerAttr>(
+      op->getAttr(getFanOutAttrName())
+    ).getValue().getZExtValue());
+  }
+
   uint32_t fan_out = 0;
   for (auto indexedResult : llvm::enumerate(op->getResults())) {
     auto result = indexedResult.value();
@@ -283,9 +290,7 @@ uint32_t get_register_bus_width(Operation *op/*, std::ofstream &log_stream*/) {
     return 0;
   }
 
-  // bus width = 1
-  //uint32_t bus_width = get_register_bus_width(op);
-  //log_stream << "  Bus width for operation " << op->getName().getStringRef().data() << " is " << bus_width << std::endl;
+  // validate bus width of 1 from the physical design flow
   if (bus_width == 1) {
     for (auto indexedResult : llvm::enumerate(op->getResults())) {
       auto value = indexedResult.value();
@@ -380,7 +385,7 @@ Operation *find_one_bit_register(Operation *op, std::ofstream &log_stream) {
   return nullptr;
 }
 
-static uint32_t merge_clusters_ids(MLIRContext *context, power_clusters_t &clusters, uint32_t id0, uint32_t id1, uint32_t *num_clusters) {
+static uint32_t merge_clusters_ids(MLIRContext *context, power_clusters_t &clusters, power_clusters_t &new_clusters, uint32_t id0, uint32_t id1, uint32_t *num_clusters) {
 
   if (id0 == 0 || id1 == 0) {
     return 0;
@@ -406,6 +411,7 @@ static uint32_t merge_clusters_ids(MLIRContext *context, power_clusters_t &clust
 
   // fill in flattened metadata
   flattened.id = id0;
+  flattened.power = c0.power + c1.power;
   if (select_c0) {
     flattened.name = c0.name;
     flattened.indicator_idx = c0.indicator_idx;
@@ -425,16 +431,18 @@ static uint32_t merge_clusters_ids(MLIRContext *context, power_clusters_t &clust
   }
 
   // remove separate node
-  clusters[id0] = flattened;
+  new_clusters[id0] = flattened;
   clusters.erase(id1);
-  *num_clusters = *num_clusters - 1;
+  new_clusters.erase(id1);
+  *num_clusters = (uint32_t)new_clusters.size();
   return id0;
 }
 
-static uint32_t merge_clusters_ops(MLIRContext *context, power_clusters_t &clusters, Operation *reg0, Operation *reg1, uint32_t *num_clusters) {
+static uint32_t merge_clusters_ops(MLIRContext *context, power_clusters_t &clusters, power_clusters_t &new_clusters, Operation *reg0, Operation *reg1, uint32_t *num_clusters) {
   return merge_clusters_ids(
     context,
     clusters,
+    new_clusters,
     get_register_cluster_id(reg0),
     get_register_cluster_id(reg1),
     num_clusters
@@ -525,7 +533,7 @@ void MaxPowerClusterer::runOnCircuit(
   double idle_power = *idle_power_ptr;
 
   uint32_t num_clusters = (uint32_t)clusters.size();
-  log_stream << "Number of clusters to start: " << num_clusters << ", must minimize to " << max_num_clusters << "\n";
+  log_stream << "[MAX_POWER] Number of clusters to start: " << num_clusters << ", must minimize to " << max_num_clusters << "\n";
 
   // get keys
   std::vector<uint32_t> keys;
@@ -556,22 +564,19 @@ void MaxPowerClusterer::runOnCircuit(
   // remove vector clusters
   for (uint32_t id : keys) {
     // lookup entry in list of clusters
-    log_stream << "Looking up id " << id << std::endl;
     auto entry_it = clusters.find(id);
     if (entry_it == clusters.end()) {
       continue;
     }
     power_cluster_t entry = entry_it->second;
-    log_stream << "Found entry with name " << entry.name << std::endl;
 
     // ignore cluster when a vector
     reg_node_t node = entry.nodes[entry.indicator_idx];
     Operation *op = REG_NODE_T_GET_OP(node);
     uint32_t bus_width = get_register_bus_width(op);
-    log_stream << "Bus width for " << entry.name << " is " << bus_width << std::endl;
     if (bus_width > 1) {
 
-      log_stream << "  Found vector cluster starting with " << op->getName().getStringRef().data() << ": " << entry.name << std::endl;
+      log_stream << "[MAX_POWER] Found vector cluster starting with " << op->getName().getStringRef().data() << ": " << entry.name << "[" << (bus_width - 1) << ":0]" << std::endl;
 
       // traverse results until find logic with one-bit
       Operation *single_bit_merge = nullptr;
@@ -583,7 +588,7 @@ void MaxPowerClusterer::runOnCircuit(
 
           // walk back to find a one-bit register
           // for each operand in the user of the result
-          log_stream << "  Looking at operation " << userOp->getName().getStringRef().data() << std::endl;
+          log_stream << "[MAX_POWER]   Looking at operation " << userOp->getName().getStringRef().data() << std::endl;
           single_bit_merge = find_one_bit_register(userOp, log_stream);
           if (single_bit_merge) {
             break;
@@ -593,18 +598,18 @@ void MaxPowerClusterer::runOnCircuit(
 
       // if found something to merge, merge
       if (single_bit_merge) {
-        log_stream << "    Merging" << std::endl;
-        uint32_t new_id = merge_clusters_ops(context, clusters, op, single_bit_merge, &num_clusters);
+        log_stream << "[MAX_POWER]     Merging" << std::endl;
+        uint32_t new_id = merge_clusters_ops(context, clusters, clusters, op, single_bit_merge, &num_clusters);
         if (new_id) {
-          log_stream << "    Merged into cluster with id " << new_id << std::endl;
+          log_stream << "[MAX_POWER]     Merged into cluster with id " << new_id << std::endl;
           continue;
         } else {
-          log_stream << "    Unable to merge" << std::endl;
+          log_stream << "[MAX_POWER]     Unable to merge" << std::endl;
         }
       }
 
       // otherwise keep as idle
-      log_stream << "    Could not find ancestor one-bit register" << std::endl;
+      log_stream << "[MAX_POWER]     Could not find ancestor one-bit register" << std::endl;
       idle_power +=
         entry.power * bus_width * VECTOR_DEFAULT_SWITCHING_FACTOR;
       clusters.erase(id);
@@ -612,9 +617,9 @@ void MaxPowerClusterer::runOnCircuit(
     }
   }
 
-  log_stream << "Number of clusters to start after removing vectors: " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
+  log_stream << "[MAX_POWER] Number of clusters to start after removing vectors: " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
   // remove min-power clusters
-  uint32_t kept_id;
+  //uint32_t kept_id;
   num_clusters = (uint32_t)clusters.size();
   while (num_clusters > max_num_clusters) {
     uint32_t min_power_id = 0;
@@ -626,9 +631,9 @@ void MaxPowerClusterer::runOnCircuit(
         min_power_id = map.first;
         min_power = map.second.power;
       }
-      else {
-        kept_id = map.first;
-      }
+      //else {
+      //  kept_id = map.first;
+      //}
     }
 
     // remove
@@ -639,11 +644,11 @@ void MaxPowerClusterer::runOnCircuit(
     clusters.erase(min_power_id);
     --num_clusters;
 
-    log_stream << "  After removing " << min_power_id << ": " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
+    log_stream << "[MAX_POWER]   After removing " << min_power_id << ": " << num_clusters << " (" << (uint32_t)clusters.size() << "), must minimize to " << max_num_clusters << "\n";
   }
 
   // temporary test
-  walk_register(clusters[kept_id], log_stream);
+  //walk_register(clusters[kept_id], log_stream);
 
   *idle_power_ptr = idle_power;
 }
@@ -692,6 +697,10 @@ GlueLogicClusterer::GlueLogicClusterer(std::string args, uint32_t max_num_cluste
 
 GlueLogicClusterer::~GlueLogicClusterer() {}
 
+void traverse_inst_graph(circt::igraph::InstanceGraphNode *top_node) {
+
+}
+
 void GlueLogicClusterer::runOnCircuit(
   MLIRContext *context,
   firrtl::CircuitOp circuit,
@@ -702,9 +711,94 @@ void GlueLogicClusterer::runOnCircuit(
 ) {
   double idle_power = *idle_power_ptr;
 
+  //auto *body = circuit.getBodyBlock();
+  uint32_t num_clusters = clusters.size();
+  power_clusters_t new_clusters;
+  for (auto *ig_node : llvm::post_order<circt::igraph::InstanceGraph *>(inst_graph)) {
+  //mlir::detail::walk(body, [&](Operation *op_ptr) {
+    if (auto mod = dyn_cast<firrtl::FModuleLike>(*ig_node->getModule())) {
+      std::string module_name = mod.getModuleName().data();
+      log_stream << "[GLUE_LOGIC] Module name " << module_name << std::endl;
+
+      //auto it = llvm::max(mod, [&](Operation &op) -> uint32_t {
+      uint32_t max_fanout = 0;
+      uint32_t indicator_cluster_id = 0;
+      Operation *indicator_op = nullptr;
+      double total_power = 0.0;
+      mlir::detail::walk(mod, [&](Operation *op) {
+        uint32_t fanout = 0;
+        uint32_t cluster_id = get_register_cluster_id(op);
+        uint32_t bus_width = get_register_bus_width(op);
+
+        // compute fanout for 1-bit registers
+        if (bus_width == 1 && cluster_id) {
+          llvm::TypeSwitch<Operation *>(op)
+            //.Case<RegOp>([&](RegOp reg_op) {
+            //  fanout = compute_fan_out(reg_op);
+            //})
+            .Case<firrtl::RegResetOp>([&](RegResetOp reg_reset_op) {
+              fanout = compute_fan_out(reg_reset_op);
+            });
+
+          // remember maximum fanout
+          if (fanout > max_fanout) {
+            max_fanout = fanout;
+            indicator_cluster_id = cluster_id;
+            indicator_op = op;
+          }
+        }
+
+        // remember total power
+        // TODO weight with operations
+        if (cluster_id) {
+          total_power += clusters[cluster_id].power;
+        }
+      });
+
+      // if for some reason did not find an indicator
+      // dissolve all clusters
+      if (!indicator_cluster_id) {
+        idle_power += total_power;
+        // dissolve all clusters
+        mlir::detail::walk(mod, [&](Operation *op) {
+          uint32_t cluster_id = get_register_cluster_id(op);
+          if (cluster_id) {
+            clusters.erase(cluster_id);
+          }
+        });
+
+        log_stream << "[GLUE_LOGIC]   Collapsing all registers into idle power of " << total_power << std::endl;
+
+        continue;
+      }
+
+      log_stream << "[GLUE_LOGIC]   Max fanout " << max_fanout << " for cluster " << indicator_cluster_id << " (" << clusters[indicator_cluster_id].name << ", " << get_register_bus_width(indicator_op) << ")" << std::endl;
+
+      // merge all clusters
+      mlir::detail::walk(mod, [&](Operation *op) {
+        uint32_t cluster_id = get_register_cluster_id(op);
+        if (cluster_id && cluster_id != indicator_cluster_id) {
+          log_stream << "[GLUE_LOGIC]   Merging cluster " << cluster_id << " into " << indicator_cluster_id << std::endl;
+          merge_clusters_ids(context, clusters, new_clusters, indicator_cluster_id, cluster_id, &num_clusters);
+        }
+      });
+      new_clusters[indicator_cluster_id].name = module_name;
+      new_clusters[indicator_cluster_id].power = total_power;
+      log_stream << "[GLUE_LOGIC]   Module " << module_name << " has cluster ID " << indicator_cluster_id << " and power " << total_power << std::endl;
+    }
+  }//);
+
+  // delete clusters for registers not instantiated
+  log_stream << "[GLUE_LOGIC] There are " << new_clusters.size() << " new clusters" << std::endl;
+  clusters.clear();
+  clusters.insert(new_clusters.begin(), new_clusters.end());
+  log_stream << "[GLUE_LOGIC] There are " << clusters.size() << " remaining clusters" << std::endl;
+
   // select maximum power clusters
-  MaxPowerClusterer sub_clusterer("", max_num_clusters);
-  sub_clusterer.runOnCircuit(context, circuit, inst_graph, clusters, &idle_power, log_stream);
+  if (clusters.size() > max_num_clusters) {
+    MaxPowerClusterer sub_clusterer("", max_num_clusters);
+    sub_clusterer.runOnCircuit(context, circuit, inst_graph, clusters, &idle_power, log_stream);
+  }
 
   *idle_power_ptr = idle_power;
 }

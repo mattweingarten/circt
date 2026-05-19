@@ -160,6 +160,7 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
             // find module
             circt::igraph::InstanceGraphNode *node = top_node;
             llvm::SmallVector<firrtl::InstanceOp, 16> insts(pnr_top_path);
+            uint32_t insts_in_path = 0;
 
             int sidx = 0;
             std::string p;
@@ -250,6 +251,7 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
                     // search for instance
                     firrtl::InstanceOp inst_ptr = find_instance(node, p, &new_node);
                     insts.push_back(inst_ptr);
+                    ++insts_in_path;
                 }
 
                 // follow chain or break
@@ -261,7 +263,7 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
             }
 
             // could not find reference, so leave as "idle"
-            if (node == nullptr) {
+            if (node == nullptr || insts_in_path == 0) {
                 idle_power += power;
                 continue;
             }
@@ -327,18 +329,23 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
       int id = map.first;
       power_cluster_t entry = map.second;
 
-      if (entry.power == 0.0) { break; }
+      if (i >= maxNumClusters) {
+        idle_power += entry.power;
+        continue;
+      }
+
+      if (entry.power == 0.0 || entry.id == 0) { continue; }
 
       log_f << i << "(" << id << "): " << entry.name << " => " << entry.power << std::endl;
 
-      reg_node_t reg_target = entry.nodes[entry.indicator_idx];
-      mlir::Value reg_val;
-      if (REG_NODE_T_IS_RESET(reg_target)) {
-        reg_val = REG_NODE_T_GET_REG_RESET_OP(reg_target).getResult();
-      }
-      else {
-        reg_val = REG_NODE_T_GET_REG_OP(reg_target).getResult();
-      }
+      //reg_node_t reg_target = entry.nodes[entry.indicator_idx];
+      //mlir::Value reg_val;
+      //if (REG_NODE_T_IS_RESET(reg_target)) {
+      //  reg_val = REG_NODE_T_GET_REG_RESET_OP(reg_target).getResult();
+      //}
+      //else {
+      //  reg_val = REG_NODE_T_GET_REG_OP(reg_target).getResult();
+      //}
       log_f << "  Register " << entry.name << std::endl;
 
       log_f << "  Has path:" << std::endl;
@@ -356,6 +363,8 @@ class PowerTracePass : public PowerTraceBase<PowerTracePass> {
       // create perf operation for the indicator
       std::string name = "cluster_" + std::to_string(entry.id);
       std::string description = "\\\"" + entry.name + "\\\"," + std::to_string(entry.power) + "";
+
+      log_f << "  Inserting trace operation for cluster " << entry.name << " with name " << name << std::endl;
       circt::perf::FIRRTLPerfInserter::insertTraceOp(entry.indicator_path,
         llvm::StringRef(name), llvm::StringRef(description));
 

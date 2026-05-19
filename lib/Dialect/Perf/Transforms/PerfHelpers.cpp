@@ -24,7 +24,8 @@ bool FIRRTLPerfInserter::isClockLikeType(mlir::Type t) {
 }
 
 bool FIRRTLPerfInserter::isResetType(mlir::Type t) {
-  return llvm::isa<circt::firrtl::ResetType>(t);
+  return llvm::isa<circt::firrtl::ResetType>(t)
+      || llvm::isa<circt::firrtl::AsyncResetType>(t);
 }
 
 // TODO: Find reset and find clock are a bit hacky and dumb, but works for
@@ -201,7 +202,7 @@ bool FIRRTLPerfInserter::insertCounterOp(mlir::Value v,
   }
 
   mlir::Value reset = findReset(fmod);
-  if (!clk) {
+  if (!reset) {
     llvm::errs() << "[PERF] No reset found in module " << fmod.getName()
                  << " for value ";
     countCond.print(llvm::errs());
@@ -262,7 +263,7 @@ bool FIRRTLPerfInserter::insertTraceOp(mlir::Value v,
   }
 
   mlir::Value reset = findReset(fmod);
-  if (!clk) {
+  if (!reset) {
     llvm::errs() << "[PERF] No reset found in module " << fmod.getName()
                  << " for value ";
 
